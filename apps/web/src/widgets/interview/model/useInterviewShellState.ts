@@ -5,7 +5,6 @@ import {
   getReport,
   listSessions,
   pingBackendHealth,
-  startInterview,
   submitAnswer,
   type InterviewCharacter,
   type InterviewEmotion,
@@ -24,6 +23,8 @@ import {
 } from "@/features/interview-session/model/interviewSession.constants";
 import { useInterviewerSpeech } from "@/features/interview-session/model/useInterviewerSpeech";
 import { useQuestionStreaming } from "@/features/interview-session/model/useQuestionStreaming";
+import { useStartSession } from "@/features/interview/start-session/model/useStartSession";
+import { clearStoredSessionId, getStoredSessionId, setStoredSessionId } from "@/shared/auth/session";
 
 type UseInterviewShellStateResult = {
   step: InterviewStep;
@@ -82,7 +83,6 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
   const [periodDays, setPeriodDays] = useState<30 | 60 | 90>(30);
   const [emotion, setEmotion] = useState<InterviewEmotion>("neutral");
   const [avatarState, setAvatarState] = useState<AvatarState>("idle");
-  const [isStarting, setIsStarting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uiError, setUiError] = useState<string | null>(null);
   const [backendStatus, setBackendStatus] = useState<"checking" | "ok" | "error">("checking");
@@ -134,6 +134,7 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
     setQuestionOrder,
     setFollowupCount
   });
+  const { isStarting, startSession, startError, clearStartError } = useStartSession();
 
   useEffect(() => {
     return () => {
@@ -145,6 +146,22 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
   useEffect(() => {
     void runBackendHealthCheck();
   }, [runBackendHealthCheck]);
+
+  useEffect(() => {
+    if (!startError) {
+      return;
+    }
+    setUiError(startError);
+  }, [startError]);
+
+  useEffect(() => {
+    const storedSessionId = getStoredSessionId();
+    if (!storedSessionId) {
+      return;
+    }
+    clearStoredSessionId();
+    setUiError(`이전 세션(${storedSessionId})은 재개할 수 없습니다. 새 면접을 시작해 주세요.`);
+  }, []);
 
   const moveToReport = useCallback(
     async (targetSessionId: string) => {
@@ -158,6 +175,7 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
         setSessions(nextSessions);
         setAvatarState(nextReport.totalScore >= 75 ? "react_positive" : "react_negative");
         setStep("report");
+        clearStoredSessionId();
       } catch (error) {
         const message = error instanceof Error ? error.message : "리포트 조회에 실패했습니다.";
         setUiError(message);
@@ -167,10 +185,14 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
   );
 
   const handleStartInterview = useCallback(async () => {
-    setIsStarting(true);
     setUiError(null);
+    clearStartError();
     try {
-      const started = await startInterview(setupPayload);
+      const started = await startSession(setupPayload);
+      if (!started) {
+        return;
+      }
+      setStoredSessionId(started.sessionId);
       setSessionId(started.sessionId);
       setReport(null);
       setMessages([
@@ -190,10 +212,9 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
     } catch (error) {
       const message = error instanceof Error ? error.message : "면접 시작에 실패했습니다.";
       setUiError(message);
-    } finally {
-      setIsStarting(false);
+      clearStoredSessionId();
     }
-  }, [setupPayload, startQuestionStream]);
+  }, [clearStartError, setupPayload, startQuestionStream, startSession]);
 
   const handleSubmitAnswer = useCallback(async () => {
     if (!sessionId || !answerText.trim() || isSubmitting) {
@@ -260,6 +281,7 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
 
   const handleExit = useCallback(async () => {
     if (!sessionId) {
+      clearStoredSessionId();
       setStep("setup");
       return;
     }
