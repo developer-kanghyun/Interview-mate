@@ -21,11 +21,11 @@ import {
   mapDifficultyLabel,
   mapRoleLabel,
   type InterviewStep
-} from "@/features/interview-session/model/interviewFlow.constants";
+} from "@/features/interview-session/model/interviewSession.constants";
 import { useInterviewerSpeech } from "@/features/interview-session/model/useInterviewerSpeech";
 import { useQuestionStreaming } from "@/features/interview-session/model/useQuestionStreaming";
 
-type UseInterviewFlowResult = {
+type UseInterviewShellStateResult = {
   step: InterviewStep;
   setStep: (next: InterviewStep) => void;
   uiError: string | null;
@@ -67,7 +67,7 @@ type UseInterviewFlowResult = {
   handleRetryWeakness: () => void;
 };
 
-export function useInterviewFlow(): UseInterviewFlowResult {
+export function useInterviewShellState(): UseInterviewShellStateResult {
   const [step, setStep] = useState<InterviewStep>("setup");
   const [setupPayload, setSetupPayload] = useState<StartInterviewPayload>(defaultSetupPayload);
   const [sessionId, setSessionId] = useState<string | null>(null);
