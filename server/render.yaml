@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: ai-chatbot
+    env: docker
+    region: oregon # DB와 동일한 오리건으로 설정
+    plan: free
+    healthCheckPath: /health
+    numInstances: 1
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+
+      # DB 접속 정보 (같은 오리건 내에서 내부 호스트로 통신 가능)
+      - key: SPRING_DATASOURCE_HOST
+        fromDatabase: { name: chatbot-db, property: host }
+      - key: SPRING_DATASOURCE_PORT
+        fromDatabase: { name: chatbot-db, property: port }
+      - key: SPRING_DATASOURCE_DATABASE
+        fromDatabase: { name: chatbot-db, property: database }
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase: { name: chatbot-db, property: user }
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase: { name: chatbot-db, property: password }
+
+      # Redis 정보
+      - key: SPRING_DATA_REDIS_URL
+        fromService: { type: keyvalue, name: chatbot-redis, property: connectionString }
+
+      - key: OPENAI_API_KEY
+        sync: false
+
+  - type: keyvalue
+    name: chatbot-redis
+    region: oregon # 모든 자원을 오리건으로 통일
+    plan: free
+    ipAllowList: []
+
+databases:
+  - name: chatbot-db
+    region: oregon # 이미 생성된 리전 반영
+    plan: free
+    databaseName: chatbotdb
+    user: chatbot_user
