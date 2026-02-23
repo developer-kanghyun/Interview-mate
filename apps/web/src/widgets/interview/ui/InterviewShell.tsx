@@ -33,6 +33,7 @@ export function InterviewShell() {
         onChangeAnswer={shellState.setAnswerText}
         onSubmitAnswer={shellState.handleSubmitAnswer}
         onPause={shellState.handlePause}
+        isExiting={shellState.isExiting}
         onExit={shellState.handleExit}
       />
     );
@@ -94,6 +95,9 @@ export function InterviewShell() {
         {shellState.step === "report" ? (
           <ReportView
             report={shellState.report}
+            isLoading={shellState.isReportLoading}
+            errorMessage={shellState.reportErrorMessage}
+            onRetry={shellState.handleRetryReport}
             onGoInsights={shellState.handleGoInsights}
             onRestart={() => shellState.setStep("setup")}
           />
