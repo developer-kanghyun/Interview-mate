@@ -74,9 +74,11 @@ type UseInterviewShellStateResult = {
   reportErrorMessage: string | null;
   handleRetryReport: () => Promise<void>;
   handleGoInsights: () => Promise<void>;
+  isInsightsLoading: boolean;
   sessions: SessionHistoryItem[];
   weakKeywords: string[];
   studyGuide: string[];
+  isRetryingWeakness: boolean;
   handleRetryWeakness: () => Promise<void>;
 };
 
@@ -128,6 +130,8 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [report, setReport] = useState<InterviewReport | null>(null);
   const [sessions, setSessions] = useState<SessionHistoryItem[]>([]);
+  const [isInsightsLoading, setIsInsightsLoading] = useState(false);
+  const [isRetryingWeakness, setIsRetryingWeakness] = useState(false);
   const [emotion, setEmotion] = useState<InterviewEmotion>("neutral");
   const [avatarState, setAvatarState] = useState<AvatarState>("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -434,16 +438,23 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
   }, [moveToReport, sessionId]);
 
   const handleGoInsights = useCallback(async () => {
+    if (isInsightsLoading) {
+      return;
+    }
+
     setUiError(null);
     setStep("insights");
+    setIsInsightsLoading(true);
 
     try {
       await refreshSessions();
     } catch (error) {
       const message = error instanceof Error ? error.message : "세션 목록 조회에 실패했습니다.";
       setUiError(message);
+    } finally {
+      setIsInsightsLoading(false);
     }
-  }, [refreshSessions]);
+  }, [isInsightsLoading, refreshSessions]);
 
   const weakKeywords = useMemo(() => report?.weakKeywords ?? [], [report]);
   const studyGuide = useMemo(
@@ -456,6 +467,10 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
   );
 
   const handleRetryWeakness = useCallback(async () => {
+    if (isRetryingWeakness || isStarting) {
+      return;
+    }
+
     const retryPreset = buildRetryPreset(weakKeywords, setupPayload);
     const retryPayload: StartInterviewPayload = {
       ...setupPayload,
@@ -464,10 +479,15 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
       questionCount: Math.min(setupPayload.questionCount, 5)
     };
 
-    setStep("setup");
-    setSetupPayload(retryPayload);
-    await beginInterview(retryPayload);
-  }, [beginInterview, report, setupPayload, weakKeywords]);
+    setIsRetryingWeakness(true);
+    try {
+      setStep("setup");
+      setSetupPayload(retryPayload);
+      await beginInterview(retryPayload);
+    } finally {
+      setIsRetryingWeakness(false);
+    }
+  }, [beginInterview, isRetryingWeakness, isStarting, report, setupPayload, weakKeywords]);
 
   return {
     step,
@@ -510,9 +530,11 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
     reportErrorMessage: reportFetchError,
     handleRetryReport,
     handleGoInsights,
+    isInsightsLoading,
     sessions,
     weakKeywords,
     studyGuide,
+    isRetryingWeakness,
     handleRetryWeakness
   };
 }

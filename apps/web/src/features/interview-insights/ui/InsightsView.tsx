@@ -7,6 +7,8 @@ type InsightsViewProps = {
   sessions: SessionHistoryItem[];
   weakKeywords: string[];
   studyGuide: string[];
+  isLoading: boolean;
+  isRetryingWeakness: boolean;
   onRetryWeakness: () => void | Promise<void>;
   onBackSetup: () => void;
 };
@@ -15,7 +17,15 @@ function formatSessionStatus(status: SessionHistoryItem["status"]) {
   return status === "completed" ? "완료" : "진행중";
 }
 
-export function InsightsView({ sessions, weakKeywords, studyGuide, onRetryWeakness, onBackSetup }: InsightsViewProps) {
+export function InsightsView({
+  sessions,
+  weakKeywords,
+  studyGuide,
+  isLoading,
+  isRetryingWeakness,
+  onRetryWeakness,
+  onBackSetup
+}: InsightsViewProps) {
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-8">
       <header className="space-y-2">
@@ -25,7 +35,11 @@ export function InsightsView({ sessions, weakKeywords, studyGuide, onRetryWeakne
 
       <SubCard title="세션 목록">
         <ul className="grid gap-2">
-          {sessions.length === 0 ? (
+          {isLoading ? (
+            <li className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+              세션 목록을 불러오는 중입니다...
+            </li>
+          ) : sessions.length === 0 ? (
             <li className="rounded-xl border border-dashed border-slate-300 p-3 text-sm text-slate-600">
               세션 기록이 없습니다.
             </li>
@@ -75,10 +89,12 @@ export function InsightsView({ sessions, weakKeywords, studyGuide, onRetryWeakne
       </div>
 
       <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="secondary" onClick={onBackSetup}>
+        <Button variant="secondary" onClick={onBackSetup} disabled={isRetryingWeakness}>
           면접 탭으로
         </Button>
-        <Button onClick={() => void onRetryWeakness()}>약점 기반 다시 연습</Button>
+        <Button onClick={() => void onRetryWeakness()} disabled={isLoading || isRetryingWeakness}>
+          {isRetryingWeakness ? "재시작 준비 중..." : "약점 기반 다시 연습"}
+        </Button>
       </div>
     </div>
   );
