@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
 import {
-  getReport,
   listSessions,
   pingBackendHealth,
   submitAnswer,
@@ -24,6 +23,7 @@ import {
 import { useInterviewerSpeech } from "@/features/interview-session/model/useInterviewerSpeech";
 import { useQuestionStreaming } from "@/features/interview-session/model/useQuestionStreaming";
 import { useStartSession } from "@/features/interview/start-session/model/useStartSession";
+import { useFetchReport } from "@/features/interview-report/model/useFetchReport";
 import { clearStoredSessionId, getStoredSessionId, setStoredSessionId } from "@/shared/auth/session";
 
 type UseInterviewShellStateResult = {
@@ -58,7 +58,11 @@ type UseInterviewShellStateResult = {
   handleSubmitAnswer: () => Promise<void>;
   handlePause: () => void;
   handleExit: () => Promise<void>;
+  isExiting: boolean;
   report: InterviewReport | null;
+  isReportLoading: boolean;
+  reportErrorMessage: string | null;
+  handleRetryReport: () => Promise<void>;
   handleGoInsights: () => Promise<void>;
   sessions: SessionHistoryItem[];
   weakKeywords: string[];
@@ -84,6 +88,7 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
   const [emotion, setEmotion] = useState<InterviewEmotion>("neutral");
   const [avatarState, setAvatarState] = useState<AvatarState>("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
   const [uiError, setUiError] = useState<string | null>(null);
   const [backendStatus, setBackendStatus] = useState<"checking" | "ok" | "error">("checking");
   const [backendStatusMessage, setBackendStatusMessage] = useState<string | null>(null);
@@ -135,6 +140,7 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
     setFollowupCount
   });
   const { isStarting, startSession, startError, clearStartError } = useStartSession();
+  const { isFetchingReport, reportFetchError, fetchReport, clearReportFetchError } = useFetchReport();
 
   useEffect(() => {
     return () => {
@@ -165,27 +171,51 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
 
   const moveToReport = useCallback(
     async (targetSessionId: string) => {
+      if (isExiting) {
+        return;
+      }
+
+      setIsExiting(true);
       stopQuestionStream();
       stopTtsPlayback();
       setUiError(null);
+      clearReportFetchError();
+      setStep("report");
+      setReport(null);
 
       try {
-        const [nextReport, nextSessions] = await Promise.all([getReport(targetSessionId), listSessions(periodDays)]);
+        const sessionsPromise = listSessions(periodDays);
+        const nextReport = await fetchReport(targetSessionId);
+
+        try {
+          const nextSessions = await sessionsPromise;
+          setSessions(nextSessions);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "세션 목록 조회에 실패했습니다.";
+          setUiError(message);
+        }
+
+        if (!nextReport) {
+          return;
+        }
+
         setReport(nextReport);
-        setSessions(nextSessions);
         setAvatarState(nextReport.totalScore >= 75 ? "react_positive" : "react_negative");
-        setStep("report");
         clearStoredSessionId();
       } catch (error) {
         const message = error instanceof Error ? error.message : "리포트 조회에 실패했습니다.";
         setUiError(message);
+      } finally {
+        setIsExiting(false);
       }
     },
-    [periodDays, stopQuestionStream, stopTtsPlayback]
+    [clearReportFetchError, fetchReport, isExiting, periodDays, stopQuestionStream, stopTtsPlayback]
   );
 
   const handleStartInterview = useCallback(async () => {
     setUiError(null);
+    clearReportFetchError();
+    setIsExiting(false);
     clearStartError();
     try {
       const started = await startSession(setupPayload);
@@ -214,7 +244,7 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
       setUiError(message);
       clearStoredSessionId();
     }
-  }, [clearStartError, setupPayload, startQuestionStream, startSession]);
+  }, [clearReportFetchError, clearStartError, setupPayload, startQuestionStream, startSession]);
 
   const handleSubmitAnswer = useCallback(async () => {
     if (!sessionId || !answerText.trim() || isSubmitting) {
@@ -280,11 +310,23 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
   }, [appendMessage]);
 
   const handleExit = useCallback(async () => {
+    if (isExiting) {
+      return;
+    }
     if (!sessionId) {
       clearStoredSessionId();
       setStep("setup");
       return;
     }
+    await moveToReport(sessionId);
+  }, [isExiting, moveToReport, sessionId]);
+
+  const handleRetryReport = useCallback(async () => {
+    if (!sessionId) {
+      setUiError("세션 정보가 없어 리포트를 다시 조회할 수 없습니다.");
+      return;
+    }
+
     await moveToReport(sessionId);
   }, [moveToReport, sessionId]);
 
@@ -364,7 +406,11 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
     handleSubmitAnswer,
     handlePause,
     handleExit,
+    isExiting,
     report,
+    isReportLoading: isFetchingReport,
+    reportErrorMessage: reportFetchError,
+    handleRetryReport,
     handleGoInsights,
     sessions,
     weakKeywords,
