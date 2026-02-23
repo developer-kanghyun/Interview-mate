@@ -32,9 +32,10 @@ export function InsightsView({
 }: InsightsViewProps) {
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-8">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">인사이트 / 히스토리</h1>
-        <p className="text-sm text-slate-600">최근 30일 세션 이력과 약점 키워드를 바탕으로 복습 루프를 이어갑니다.</p>
+      <header className="rounded-2xl border border-white/80 bg-white/85 p-5 shadow-soft">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">Insights</p>
+        <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900">인사이트 / 히스토리</h1>
+        <p className="mt-2 text-sm text-slate-600">최근 30일 세션 이력과 약점 키워드를 바탕으로 복습 루프를 이어갑니다.</p>
       </header>
 
       <SubCard title="세션 목록">
