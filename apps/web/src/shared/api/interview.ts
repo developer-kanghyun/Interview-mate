@@ -216,7 +216,6 @@ export type GoogleAuthUrlApiResponse = {
 export type GoogleAuthCallbackApiResponse = {
   success: boolean;
   data: {
-    api_key: string;
     user_id: string;
     email: string;
     name: string;
@@ -227,7 +226,6 @@ export type GoogleAuthCallbackApiResponse = {
 export type GuestAuthApiResponse = {
   success: boolean;
   data: {
-    api_key: string;
     user_id: string;
     trial_question_limit: number;
   };
@@ -338,7 +336,7 @@ export async function getGoogleAuthUrl() {
   });
 }
 
-export async function completeGoogleAuth(code: string, state?: string | null, guestApiKey?: string | null) {
+export async function completeGoogleAuth(code: string, state?: string | null) {
   const query = new URLSearchParams();
   query.set("code", code);
   if (state) {
@@ -346,11 +344,6 @@ export async function completeGoogleAuth(code: string, state?: string | null, gu
   }
   return requestJson<GoogleAuthCallbackApiResponse>(`/api/auth/google/callback?${query.toString()}`, {
     method: "GET",
-    headers: guestApiKey
-      ? {
-          "X-Guest-Api-Key": guestApiKey
-        }
-      : undefined,
     requireAuth: false,
     fallbackMessage: "Google 로그인 처리 실패"
   });

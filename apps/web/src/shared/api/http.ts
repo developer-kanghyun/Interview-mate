@@ -1,5 +1,4 @@
-import { apiBaseUrl } from "@/shared/config/env";
-import { clearStoredApiKey, getAuthRequiredMessage, getRequiredApiKey } from "@/shared/auth/session";
+import { getAuthRequiredMessage } from "@/shared/auth/session";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -46,12 +45,8 @@ async function parsePayload(response: Response) {
   return text ? { message: text } : null;
 }
 
-function buildHeaders(requireAuth: boolean, hasJsonBody: boolean, headers?: HeadersInit): Headers {
+function buildHeaders(hasJsonBody: boolean, headers?: HeadersInit): Headers {
   const mergedHeaders = new Headers(headers);
-
-  if (requireAuth && !mergedHeaders.has("X-API-Key")) {
-    mergedHeaders.set("X-API-Key", getRequiredApiKey());
-  }
 
   if (hasJsonBody && !mergedHeaders.has("Content-Type")) {
     mergedHeaders.set("Content-Type", "application/json");
@@ -66,6 +61,11 @@ function isAbortError(error: unknown) {
 
 function isAuthenticationFailure(status: number) {
   return status === 401 || status === 403;
+}
+
+function buildProxyPath(path: string) {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return `/api/backend${normalized}`;
 }
 
 function createRequestSignal(signal: AbortSignal | undefined, timeoutMs: number) {
@@ -105,17 +105,17 @@ async function request(path: string, options: RequestOptions = {}) {
   const { signal: requestSignal, cleanup } = createRequestSignal(signal, timeoutMs);
 
   try {
-    const response = await fetch(`${apiBaseUrl}${path}`, {
+    const response = await fetch(buildProxyPath(path), {
       method,
-      headers: buildHeaders(requireAuth, hasJsonBody, headers),
+      headers: buildHeaders(hasJsonBody, headers),
       body: hasJsonBody ? JSON.stringify(body) : (body as BodyInit | undefined),
-      signal: requestSignal
+      signal: requestSignal,
+      credentials: "include"
     });
 
     if (!response.ok) {
       const payload = await parsePayload(response).catch(() => null);
       if (requireAuth && isAuthenticationFailure(response.status)) {
-        clearStoredApiKey();
         throw new Error(getAuthRequiredMessage());
       }
       throw new HttpError(resolveMessage(payload, fallbackMessage), response.status, payload);

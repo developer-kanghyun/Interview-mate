@@ -11,7 +11,7 @@ import {
   type SessionHistoryItem,
   type StartInterviewPayload
 } from "@/shared/api/interview-client";
-import { getGoogleAuthUrl, getGuestAccess } from "@/shared/api/interview";
+import { getGoogleAuthUrl, getGuestAccess, getMyProfile } from "@/shared/api/interview";
 import type { ChatMessage } from "@/shared/chat/ChatBoard";
 import type { AvatarState } from "@/entities/avatar/ui/InterviewerAvatarAnimated";
 import {
@@ -26,11 +26,10 @@ import { useQuestionStreaming } from "@/features/interview-session/model/useQues
 import { useStartSession } from "@/features/interview/start-session/model/useStartSession";
 import { useFetchReport } from "@/features/interview-report/model/useFetchReport";
 import {
+  clearLegacyApiKeyStorage,
   clearStoredSessionId,
   getAuthRequiredMessage,
-  getStoredApiKey,
   getStoredSessionId,
-  setStoredApiKey,
   setStoredSessionId
 } from "@/shared/auth/session";
 
@@ -216,24 +215,38 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
   }, [startError]);
 
   useEffect(() => {
-    if (getStoredApiKey()) {
-      return;
-    }
+    clearLegacyApiKeyStorage();
+  }, []);
 
+  useEffect(() => {
     let active = true;
     void (async () => {
       try {
-        const response = await getGuestAccess();
+        await getMyProfile();
         if (!active) {
           return;
         }
-        setStoredApiKey(response.data.api_key);
       } catch (error) {
         if (!active) {
           return;
         }
-        const message = error instanceof Error ? error.message : "게스트 인증 발급에 실패했습니다.";
-        setUiError(message);
+
+        const message = error instanceof Error ? error.message : "로그인 상태 확인에 실패했습니다.";
+        if (message !== getAuthRequiredMessage()) {
+          setUiError(message);
+          return;
+        }
+
+        try {
+          await getGuestAccess();
+        } catch (guestError) {
+          if (!active) {
+            return;
+          }
+          const guestMessage =
+            guestError instanceof Error ? guestError.message : "게스트 인증 발급에 실패했습니다.";
+          setUiError(guestMessage);
+        }
       }
     })();
 

@@ -1,48 +1,16 @@
 "use client";
 
-const API_KEY_STORAGE_KEY = "interviewMateApiKey";
+const LEGACY_API_KEY_STORAGE_KEY = "interviewMateApiKey";
 const SESSION_ID_STORAGE_KEY = "interviewMateSessionId";
 const AUTH_REQUIRED_MESSAGE = "로그인이 필요합니다. 다시 로그인해 주세요.";
 
-function readNonEmptyValue(value: string | null): string | null {
-  return value && value.trim() ? value : null;
-}
-
-export function getStoredApiKey(): string | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const sessionValue = readNonEmptyValue(window.sessionStorage.getItem(API_KEY_STORAGE_KEY));
-  if (sessionValue) {
-    return sessionValue;
-  }
-
-  // Migrate legacy storage to sessionStorage for safer runtime-only persistence.
-  const legacyLocalValue = readNonEmptyValue(window.localStorage.getItem(API_KEY_STORAGE_KEY));
-  if (!legacyLocalValue) {
-    return null;
-  }
-
-  window.sessionStorage.setItem(API_KEY_STORAGE_KEY, legacyLocalValue);
-  window.localStorage.removeItem(API_KEY_STORAGE_KEY);
-  return legacyLocalValue;
-}
-
-export function setStoredApiKey(apiKey: string) {
+export function clearLegacyApiKeyStorage() {
   if (typeof window === "undefined") {
     return;
   }
-  window.sessionStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
-  window.localStorage.removeItem(API_KEY_STORAGE_KEY);
-}
 
-export function clearStoredApiKey() {
-  if (typeof window === "undefined") {
-    return;
-  }
-  window.sessionStorage.removeItem(API_KEY_STORAGE_KEY);
-  window.localStorage.removeItem(API_KEY_STORAGE_KEY);
+  window.sessionStorage.removeItem(LEGACY_API_KEY_STORAGE_KEY);
+  window.localStorage.removeItem(LEGACY_API_KEY_STORAGE_KEY);
 }
 
 export function getStoredSessionId(): string | null {
@@ -65,14 +33,6 @@ export function clearStoredSessionId() {
     return;
   }
   window.sessionStorage.removeItem(SESSION_ID_STORAGE_KEY);
-}
-
-export function getRequiredApiKey(): string {
-  const apiKey = getStoredApiKey();
-  if (!apiKey) {
-    throw new Error(AUTH_REQUIRED_MESSAGE);
-  }
-  return apiKey;
 }
 
 export function getAuthRequiredMessage() {

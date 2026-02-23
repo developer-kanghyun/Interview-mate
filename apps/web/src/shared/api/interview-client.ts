@@ -8,7 +8,7 @@ import {
   submitInterviewAnswer,
   type SessionReportResponse
 } from "@/shared/api/interview";
-import { getAuthRequiredMessage, getRequiredApiKey } from "@/shared/auth/session";
+import { getAuthRequiredMessage } from "@/shared/auth/session";
 
 export type InterviewRole = "backend" | "frontend";
 export type InterviewDifficulty = "jobseeker" | "junior";
@@ -274,6 +274,10 @@ function buildQuestionStreamPrompt(questionContent: string) {
 }
 
 function parseApiErrorMessage(raw: string, status: number) {
+  if (status === 401 || status === 403) {
+    return getAuthRequiredMessage();
+  }
+
   if (!raw) {
     return `질문 스트리밍 요청이 실패했습니다. (${status})`;
   }
@@ -486,14 +490,11 @@ export function streamQuestion(
     try {
       resetIdleTimer();
 
-      const headers = new Headers({
-        "Content-Type": "application/json"
-      });
-      headers.set("X-API-Key", getRequiredApiKey());
-
       const response = await fetch(CHAT_STREAM_ENDPOINT, {
         method: "POST",
-        headers,
+        headers: {
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({
           message: buildQuestionStreamPrompt(content)
         }),
