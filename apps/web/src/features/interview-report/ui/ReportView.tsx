@@ -71,15 +71,16 @@ export function ReportView({
 
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-8">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">면접 리포트</h1>
-        <p className="text-sm text-slate-600">세션 종료 후 생성된 4축 평가와 질문별 피드백입니다.</p>
+      <header className="rounded-2xl border border-white/80 bg-white/85 p-5 shadow-soft">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">Report</p>
+        <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900">면접 리포트</h1>
+        <p className="mt-2 text-sm text-slate-600">세션 종료 후 생성된 4축 평가와 질문별 피드백입니다.</p>
       </header>
 
       <div className="grid gap-4 md:grid-cols-[280px,1fr]">
         <MetricCard title="총점" value={`${report.totalScore}점`} caption="100점 만점" />
         <SubCard title="세션 요약">
-          <p className="text-sm leading-6 text-slate-700">{report.summary}</p>
+          <p className="text-sm leading-7 text-slate-700">{report.summary}</p>
         </SubCard>
       </div>
 

@@ -3,6 +3,14 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --im-bg-top: #dbe8ff;
+    --im-bg-mid: #eef3ff;
+    --im-bg-bottom: #f7f9ff;
+    --im-surface: #ffffff;
+    --im-border: #e2e8f0;
+  }
+
   * {
     @apply box-border;
   }
@@ -11,9 +19,9 @@
   body {
     @apply m-0 min-h-full p-0 text-slate-900;
     background:
-      radial-gradient(1200px 380px at 10% -8%, #e4edff 0%, transparent 70%),
-      radial-gradient(900px 340px at 92% -12%, #e9f9ff 0%, transparent 72%),
-      linear-gradient(180deg, #f9fbff 0%, #f4f7ff 100%);
+      radial-gradient(1120px 420px at 8% -10%, var(--im-bg-top) 0%, transparent 70%),
+      radial-gradient(980px 360px at 92% -14%, #e1f5ff 0%, transparent 72%),
+      linear-gradient(180deg, var(--im-bg-mid) 0%, var(--im-bg-bottom) 100%);
     font-family: "Pretendard Variable", "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
   }
 
