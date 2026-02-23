@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
+import { usePathname } from "next/navigation";
 import {
   listSessions,
   pingBackendHealth,
@@ -89,6 +90,41 @@ type RetryPreset = {
   stack?: StartInterviewPayload["stack"];
 };
 
+type UseInterviewShellStateOptions = {
+  initialStep?: InterviewStep;
+  initialSessionId?: string | null;
+};
+
+function resolveStepFromPath(pathname: string | null): InterviewStep | null {
+  if (!pathname) {
+    return null;
+  }
+  if (pathname === "/setup") {
+    return "setup";
+  }
+  if (pathname === "/insights") {
+    return "insights";
+  }
+  if (/^\/report\/[^/]+$/.test(pathname)) {
+    return "report";
+  }
+  if (/^\/interview\/[^/]+$/.test(pathname)) {
+    return "room";
+  }
+  return null;
+}
+
+function resolveSessionIdFromPath(pathname: string | null) {
+  if (!pathname) {
+    return null;
+  }
+  const matched = pathname.match(/^\/(?:interview|report)\/([^/]+)$/);
+  if (!matched) {
+    return null;
+  }
+  return decodeURIComponent(matched[1]);
+}
+
 function buildRetryPreset(weakKeywords: string[], fallback: StartInterviewPayload): RetryPreset {
   const keywordText = weakKeywords.join(" ").toLowerCase();
 
@@ -118,7 +154,8 @@ function buildRetryPreset(weakKeywords: string[], fallback: StartInterviewPayloa
   };
 }
 
-export function useInterviewShellState(): UseInterviewShellStateResult {
+export function useInterviewShellState(options: UseInterviewShellStateOptions = {}): UseInterviewShellStateResult {
+  const pathname = usePathname();
   const [step, setStep] = useState<InterviewStep>("setup");
   const [setupPayload, setSetupPayload] = useState<StartInterviewPayload>(defaultSetupPayload);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -140,6 +177,29 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
   const [uiError, setUiError] = useState<string | null>(null);
   const [backendStatus, setBackendStatus] = useState<"checking" | "ok" | "error">("checking");
   const [backendStatusMessage, setBackendStatusMessage] = useState<string | null>(null);
+
+  const routeStep = useMemo(
+    () => options.initialStep ?? resolveStepFromPath(pathname),
+    [options.initialStep, pathname]
+  );
+  const routeSessionId = useMemo(
+    () => options.initialSessionId ?? resolveSessionIdFromPath(pathname),
+    [options.initialSessionId, pathname]
+  );
+
+  useEffect(() => {
+    if (!routeStep) {
+      return;
+    }
+    setStep((current) => (current === routeStep ? current : routeStep));
+  }, [routeStep]);
+
+  useEffect(() => {
+    if (!routeSessionId) {
+      return;
+    }
+    setSessionId((current) => (current === routeSessionId ? current : routeSessionId));
+  }, [routeSessionId]);
 
   const updateStep = useCallback((next: InterviewStep) => {
     setStep(next);

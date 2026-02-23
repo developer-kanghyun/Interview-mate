@@ -10,6 +10,28 @@ type Props = {
   oauthError: string | null;
 };
 
+function resolveRedirectTarget() {
+  if (typeof window === "undefined") {
+    return "/interview";
+  }
+
+  const rawTarget = new URLSearchParams(window.location.search).get("redirectTo");
+  if (!rawTarget) {
+    return "/interview";
+  }
+
+  const trimmed = rawTarget.trim();
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) {
+    return "/interview";
+  }
+
+  if (trimmed.startsWith("/auth/google/callback")) {
+    return "/interview";
+  }
+
+  return trimmed;
+}
+
 export default function GoogleCallbackClient({ code, state, oauthError }: Props) {
   const router = useRouter();
   const [message, setMessage] = useState(oauthError ? oauthError : "Google 로그인 처리 중...");
@@ -39,9 +61,10 @@ export default function GoogleCallbackClient({ code, state, oauthError }: Props)
         if (!active) {
           return;
         }
+        const redirectTarget = resolveRedirectTarget();
         setMessage("로그인 성공. 인터뷰 화면으로 이동합니다...");
         setTimeout(() => {
-          router.replace("/interview");
+          router.replace(redirectTarget);
         }, 500);
       } catch (error) {
         if (!active) {

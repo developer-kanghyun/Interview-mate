@@ -6,9 +6,18 @@ import { ReportView } from "@/features/interview-report/ui/ReportView";
 import { InsightsView } from "@/features/interview-insights/ui/InsightsView";
 import { Button } from "@/shared/ui/Button";
 import { useInterviewShellState } from "@/widgets/interview/model/useInterviewShellState";
+import type { InterviewStep } from "@/features/interview-session/model/interviewSession.constants";
 
-export function InterviewShell() {
-  const shellState = useInterviewShellState();
+type InterviewShellProps = {
+  initialStep?: InterviewStep;
+  initialSessionId?: string | null;
+};
+
+export function InterviewShell({ initialStep, initialSessionId }: InterviewShellProps) {
+  const shellState = useInterviewShellState({
+    initialStep,
+    initialSessionId
+  });
   const isNavigationBusy =
     shellState.isStarting || shellState.isReportLoading || shellState.isInsightsLoading || shellState.isRetryingWeakness;
 
