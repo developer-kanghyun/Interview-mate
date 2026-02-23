@@ -1,0 +1,65 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  main:
+    web-application-type: servlet
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 5
+
+  sql:
+    init:
+      mode: never
+
+  data:
+    redis:
+      url: ${SPRING_DATA_REDIS_URL:}
+      timeout: ${SPRING_DATA_REDIS_TIMEOUT:3s}
+      lettuce:
+        shutdown-timeout: ${SPRING_DATA_REDIS_LETTUCE_SHUTDOWN_TIMEOUT:100ms}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc.lob.non_contextual_creation: true
+
+openai:
+  api-key: ${OPENAI_API_KEY}
+  base-url: "https://api.openai.com"
+  model: gpt-4o-mini
+  connect-timeout-ms: 5000
+  response-timeout-ms: 60000
+
+app:
+  chat:
+    context-size: ${APP_CHAT_CONTEXT_SIZE:10}
+  rate-limit:
+    enabled: ${APP_RATE_LIMIT_ENABLED:true}
+    limit: ${APP_RATE_LIMIT_LIMIT:3}
+    window-seconds: ${APP_RATE_LIMIT_WINDOW_SECONDS:60}
+    key-prefix: ${APP_RATE_LIMIT_KEY_PREFIX:rate_limit}
+  auth:
+    google:
+      client-id: ${APP_AUTH_GOOGLE_CLIENT_ID:}
+      client-secret: ${APP_AUTH_GOOGLE_CLIENT_SECRET:}
+      redirect-uri: ${APP_AUTH_GOOGLE_REDIRECT_URI:http://localhost:3000/auth/google/callback}
+      token-uri: ${APP_AUTH_GOOGLE_TOKEN_URI:https://oauth2.googleapis.com/token}
+      userinfo-uri: ${APP_AUTH_GOOGLE_USERINFO_URI:https://openidconnect.googleapis.com/v1/userinfo}
+      state-secret: ${APP_AUTH_GOOGLE_STATE_SECRET:interview-mate-state-secret}
+      state-ttl-seconds: ${APP_AUTH_GOOGLE_STATE_TTL_SECONDS:600}
+
+logging:
+  level:
+    root: INFO
+    com.interviewmate: DEBUG
