@@ -1,0 +1,17 @@
+# dependencies
+**/node_modules/
+
+# frontend build
+**/.next/
+**/*.tsbuildinfo
+
+# backend build
+server/.gradle/
+server/build/
+server/bin/
+
+# local env (never commit real local secrets)
+apps/web/.env.local
+
+# system
+.DS_Store
