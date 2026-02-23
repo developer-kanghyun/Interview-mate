@@ -91,7 +91,7 @@ export function RoomView({
   const canPause = !isBusy && !isQuestionStreaming;
 
   return (
-    <div className="flex h-dvh w-full flex-col overflow-hidden text-slate-900">
+    <div className="flex h-dvh min-h-dvh w-full flex-col overflow-hidden text-slate-900">
       <header className="sticky top-0 z-20 h-16 shrink-0 border-b border-white/70 bg-white/75 backdrop-blur-xl">
         <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-3">
@@ -118,7 +118,7 @@ export function RoomView({
         </div>
       </header>
 
-      <main className="min-h-0 flex-1 px-4 pb-4 pt-3 md:px-6 md:pb-6">
+      <main className="min-h-0 flex-1 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 md:px-6 md:pb-6">
         <div className="mx-auto grid h-full min-h-0 w-full max-w-6xl grid-rows-[minmax(280px,46vh)_minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_440px] lg:grid-rows-1">
           <section className="relative min-h-0 overflow-hidden rounded-3xl border border-white/70 bg-white/60 shadow-glass backdrop-blur-xl">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sky-100 via-white/40 to-indigo-100/40" />
@@ -195,7 +195,7 @@ export function RoomView({
                 onChange={(event) => onChangeAnswer(event.target.value)}
                 disabled={isBusy}
                 placeholder="답변을 입력하세요. (텍스트/음성 STT 연동 예정)"
-                className="min-h-[96px] max-h-[32vh] resize-y border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-blue-300 focus:ring-blue-100 sm:min-h-[120px]"
+                className="min-h-[96px] max-h-[28dvh] resize-none border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-blue-300 focus:ring-blue-100 sm:min-h-[120px] sm:max-h-[32vh]"
               />
 
               <div className="mt-4 flex items-center gap-2">

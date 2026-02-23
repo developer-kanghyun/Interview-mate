@@ -9,6 +9,8 @@ import { useInterviewShellState } from "@/widgets/interview/model/useInterviewSh
 
 export function InterviewShell() {
   const shellState = useInterviewShellState();
+  const isNavigationBusy =
+    shellState.isStarting || shellState.isReportLoading || shellState.isInsightsLoading || shellState.isRetryingWeakness;
 
   if (shellState.step === "room" && shellState.sessionId) {
     return (
@@ -50,18 +52,21 @@ export function InterviewShell() {
           <Button
             variant={shellState.step === "setup" ? "primary" : "secondary"}
             onClick={() => shellState.setStep("setup")}
+            disabled={isNavigationBusy}
           >
             Setup
           </Button>
           <Button
             variant={shellState.step === "report" ? "primary" : "secondary"}
             onClick={() => shellState.setStep("report")}
+            disabled={isNavigationBusy}
           >
             Report
           </Button>
           <Button
             variant={shellState.step === "insights" ? "primary" : "secondary"}
             onClick={() => void shellState.handleGoInsights()}
+            disabled={isNavigationBusy}
           >
             Insights
           </Button>
@@ -104,6 +109,7 @@ export function InterviewShell() {
             report={shellState.report}
             isLoading={shellState.isReportLoading}
             errorMessage={shellState.reportErrorMessage}
+            isGoingInsights={shellState.isInsightsLoading}
             onRetry={shellState.handleRetryReport}
             onGoInsights={shellState.handleGoInsights}
             onRestart={() => shellState.setStep("setup")}

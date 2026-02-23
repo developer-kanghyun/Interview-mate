@@ -10,13 +10,23 @@ type ReportViewProps = {
   report: InterviewReport | null;
   isLoading: boolean;
   errorMessage: string | null;
+  isGoingInsights: boolean;
   onRetry: () => void;
   onGoInsights: () => void;
   onRestart: () => void;
   onLogin: () => void;
 };
 
-export function ReportView({ report, isLoading, errorMessage, onRetry, onGoInsights, onRestart, onLogin }: ReportViewProps) {
+export function ReportView({
+  report,
+  isLoading,
+  errorMessage,
+  isGoingInsights,
+  onRetry,
+  onGoInsights,
+  onRestart,
+  onLogin
+}: ReportViewProps) {
   if (isLoading) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-8">
@@ -109,7 +119,9 @@ export function ReportView({ report, isLoading, errorMessage, onRetry, onGoInsig
         <Button variant="secondary" onClick={onRestart}>
           새 면접 시작
         </Button>
-        <Button onClick={onGoInsights}>인사이트 보기</Button>
+        <Button onClick={onGoInsights} disabled={isGoingInsights}>
+          {isGoingInsights ? "인사이트 불러오는 중..." : "인사이트 보기"}
+        </Button>
       </div>
     </div>
   );
