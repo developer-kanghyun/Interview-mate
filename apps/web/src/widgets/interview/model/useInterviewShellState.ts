@@ -75,6 +75,7 @@ type UseInterviewShellStateResult = {
   handleRetryReport: () => Promise<void>;
   handleGoInsights: () => Promise<void>;
   isInsightsLoading: boolean;
+  insightsErrorMessage: string | null;
   sessions: SessionHistoryItem[];
   weakKeywords: string[];
   studyGuide: string[];
@@ -86,8 +87,6 @@ type RetryPreset = {
   jobRole?: StartInterviewPayload["jobRole"];
   stack?: StartInterviewPayload["stack"];
 };
-
-const INSIGHTS_LOOKBACK_DAYS = 30 as const;
 
 function buildRetryPreset(weakKeywords: string[], fallback: StartInterviewPayload): RetryPreset {
   const keywordText = weakKeywords.join(" ").toLowerCase();
@@ -131,6 +130,7 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
   const [report, setReport] = useState<InterviewReport | null>(null);
   const [sessions, setSessions] = useState<SessionHistoryItem[]>([]);
   const [isInsightsLoading, setIsInsightsLoading] = useState(false);
+  const [insightsErrorMessage, setInsightsErrorMessage] = useState<string | null>(null);
   const [isRetryingWeakness, setIsRetryingWeakness] = useState(false);
   const [emotion, setEmotion] = useState<InterviewEmotion>("neutral");
   const [avatarState, setAvatarState] = useState<AvatarState>("idle");
@@ -181,8 +181,7 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
   }, []);
 
   const refreshSessions = useCallback(async () => {
-    const days = INSIGHTS_LOOKBACK_DAYS;
-    const sessionList = await listSessions(days);
+    const sessionList = await listSessions(30);
     setSessions(sessionList);
   }, []);
 
@@ -284,7 +283,7 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
       setReport(null);
 
       try {
-        const sessionsPromise = listSessions(INSIGHTS_LOOKBACK_DAYS);
+        const sessionsPromise = listSessions(30);
         const nextReport = await fetchReport(targetSessionId);
 
         try {
@@ -443,6 +442,7 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
     }
 
     setUiError(null);
+    setInsightsErrorMessage(null);
     setStep("insights");
     setIsInsightsLoading(true);
 
@@ -450,7 +450,7 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
       await refreshSessions();
     } catch (error) {
       const message = error instanceof Error ? error.message : "세션 목록 조회에 실패했습니다.";
-      setUiError(message);
+      setInsightsErrorMessage(message);
     } finally {
       setIsInsightsLoading(false);
     }
@@ -471,6 +471,7 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
       return;
     }
 
+    // 고정 규칙: 약점 키워드로 역할/스택 프리셋, 점수 기준 난이도 보정, 문항 수는 최대 5개
     const retryPreset = buildRetryPreset(weakKeywords, setupPayload);
     const retryPayload: StartInterviewPayload = {
       ...setupPayload,
@@ -531,6 +532,7 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
     handleRetryReport,
     handleGoInsights,
     isInsightsLoading,
+    insightsErrorMessage,
     sessions,
     weakKeywords,
     studyGuide,

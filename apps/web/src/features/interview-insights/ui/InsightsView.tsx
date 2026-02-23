@@ -8,7 +8,9 @@ type InsightsViewProps = {
   weakKeywords: string[];
   studyGuide: string[];
   isLoading: boolean;
+  errorMessage: string | null;
   isRetryingWeakness: boolean;
+  onRefresh: () => void | Promise<void>;
   onRetryWeakness: () => void | Promise<void>;
   onBackSetup: () => void;
 };
@@ -22,7 +24,9 @@ export function InsightsView({
   weakKeywords,
   studyGuide,
   isLoading,
+  errorMessage,
   isRetryingWeakness,
+  onRefresh,
   onRetryWeakness,
   onBackSetup
 }: InsightsViewProps) {
@@ -37,11 +41,18 @@ export function InsightsView({
         <ul className="grid gap-2">
           {isLoading ? (
             <li className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-              세션 목록을 불러오는 중입니다...
+              최근 30일 세션 기록을 불러오는 중입니다...
+            </li>
+          ) : errorMessage ? (
+            <li className="space-y-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+              <p>{errorMessage}</p>
+              <Button variant="secondary" onClick={() => void onRefresh()} disabled={isLoading}>
+                다시 불러오기
+              </Button>
             </li>
           ) : sessions.length === 0 ? (
             <li className="rounded-xl border border-dashed border-slate-300 p-3 text-sm text-slate-600">
-              세션 기록이 없습니다.
+              최근 30일 세션 기록이 없습니다. 새 면접을 시작해 기록을 쌓아보세요.
             </li>
           ) : (
             sessions.map((session) => (
@@ -74,7 +85,7 @@ export function InsightsView({
                 </Chip>
               ))
             ) : (
-              <p className="text-sm text-slate-600">아직 수집된 약점 키워드가 없습니다.</p>
+              <p className="text-sm text-slate-600">약점 키워드는 리포트 생성 후 자동으로 수집됩니다.</p>
             )}
           </div>
         </SubCard>
