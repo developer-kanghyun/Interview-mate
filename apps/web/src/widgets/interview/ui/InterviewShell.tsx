@@ -60,7 +60,7 @@ export function InterviewShell() {
           </Button>
           <Button
             variant={shellState.step === "insights" ? "primary" : "secondary"}
-            onClick={() => shellState.setStep("insights")}
+            onClick={() => void shellState.handleGoInsights()}
           >
             Insights
           </Button>
