@@ -224,6 +224,15 @@ export type GoogleAuthCallbackApiResponse = {
   };
 };
 
+export type GuestAuthApiResponse = {
+  success: boolean;
+  data: {
+    api_key: string;
+    user_id: string;
+    trial_question_limit: number;
+  };
+};
+
 export type AuthMeApiResponse = {
   success: boolean;
   data: {
@@ -329,7 +338,7 @@ export async function getGoogleAuthUrl() {
   });
 }
 
-export async function completeGoogleAuth(code: string, state?: string | null) {
+export async function completeGoogleAuth(code: string, state?: string | null, guestApiKey?: string | null) {
   const query = new URLSearchParams();
   query.set("code", code);
   if (state) {
@@ -337,8 +346,21 @@ export async function completeGoogleAuth(code: string, state?: string | null) {
   }
   return requestJson<GoogleAuthCallbackApiResponse>(`/api/auth/google/callback?${query.toString()}`, {
     method: "GET",
+    headers: guestApiKey
+      ? {
+          "X-Guest-Api-Key": guestApiKey
+        }
+      : undefined,
     requireAuth: false,
     fallbackMessage: "Google 로그인 처리 실패"
+  });
+}
+
+export async function getGuestAccess() {
+  return requestJson<GuestAuthApiResponse>("/api/auth/guest", {
+    method: "GET",
+    requireAuth: false,
+    fallbackMessage: "게스트 인증 발급 실패"
   });
 }
 

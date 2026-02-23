@@ -13,9 +13,10 @@ type ReportViewProps = {
   onRetry: () => void;
   onGoInsights: () => void;
   onRestart: () => void;
+  onLogin: () => void;
 };
 
-export function ReportView({ report, isLoading, errorMessage, onRetry, onGoInsights, onRestart }: ReportViewProps) {
+export function ReportView({ report, isLoading, errorMessage, onRetry, onGoInsights, onRestart, onLogin }: ReportViewProps) {
   if (isLoading) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-8">
@@ -25,10 +26,16 @@ export function ReportView({ report, isLoading, errorMessage, onRetry, onGoInsig
   }
 
   if (errorMessage) {
+    const shouldShowLogin = /로그인/.test(errorMessage);
     return (
       <div className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-8">
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>
         <div className="flex justify-end gap-2">
+          {shouldShowLogin ? (
+            <Button variant="secondary" onClick={onLogin}>
+              Google 로그인
+            </Button>
+          ) : null}
           <Button variant="secondary" onClick={onRestart}>
             Setup으로 돌아가기
           </Button>

@@ -78,8 +78,13 @@ export function InterviewShell() {
         ) : null}
 
         {shellState.uiError ? (
-          <div className="mx-auto mb-4 w-full max-w-5xl rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            {shellState.uiError}
+          <div className="mx-auto mb-4 flex w-full max-w-5xl items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            <span>{shellState.uiError}</span>
+            {shellState.isAuthRequired ? (
+              <Button variant="secondary" onClick={() => void shellState.handleGoogleLogin()} className="shrink-0">
+                Google 로그인
+              </Button>
+            ) : null}
           </div>
         ) : null}
 
@@ -89,6 +94,7 @@ export function InterviewShell() {
             onChange={shellState.setSetupPayload}
             onStart={shellState.handleStartInterview}
             isStarting={shellState.isStarting}
+            canStart={!shellState.isAuthRequired}
           />
         ) : null}
 
@@ -100,6 +106,7 @@ export function InterviewShell() {
             onRetry={shellState.handleRetryReport}
             onGoInsights={shellState.handleGoInsights}
             onRestart={() => shellState.setStep("setup")}
+            onLogin={() => void shellState.handleGoogleLogin()}
           />
         ) : null}
 

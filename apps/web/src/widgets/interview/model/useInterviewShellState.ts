@@ -11,6 +11,7 @@ import {
   type SessionHistoryItem,
   type StartInterviewPayload
 } from "@/shared/api/interview-client";
+import { getGoogleAuthUrl, getGuestAccess } from "@/shared/api/interview";
 import type { ChatMessage } from "@/shared/chat/ChatBoard";
 import type { AvatarState } from "@/entities/avatar/ui/InterviewerAvatarAnimated";
 import {
@@ -24,12 +25,21 @@ import { useInterviewerSpeech } from "@/features/interview-session/model/useInte
 import { useQuestionStreaming } from "@/features/interview-session/model/useQuestionStreaming";
 import { useStartSession } from "@/features/interview/start-session/model/useStartSession";
 import { useFetchReport } from "@/features/interview-report/model/useFetchReport";
-import { clearStoredSessionId, getStoredSessionId, setStoredSessionId } from "@/shared/auth/session";
+import {
+  clearStoredSessionId,
+  getAuthRequiredMessage,
+  getStoredApiKey,
+  getStoredSessionId,
+  setStoredApiKey,
+  setStoredSessionId
+} from "@/shared/auth/session";
 
 type UseInterviewShellStateResult = {
   step: InterviewStep;
   setStep: (next: InterviewStep) => void;
   uiError: string | null;
+  isAuthRequired: boolean;
+  handleGoogleLogin: () => Promise<void>;
   backendStatus: "checking" | "ok" | "error";
   backendStatusMessage: string | null;
   retryBackendHealthCheck: () => Promise<void>;
@@ -69,8 +79,42 @@ type UseInterviewShellStateResult = {
   studyGuide: string[];
   periodDays: 30 | 60 | 90;
   handleChangePeriod: (days: 30 | 60 | 90) => Promise<void>;
-  handleRetryWeakness: () => void;
+  handleRetryWeakness: () => Promise<void>;
 };
+
+type RetryPreset = {
+  jobRole?: StartInterviewPayload["jobRole"];
+  stack?: StartInterviewPayload["stack"];
+};
+
+function buildRetryPreset(weakKeywords: string[], fallback: StartInterviewPayload): RetryPreset {
+  const keywordText = weakKeywords.join(" ").toLowerCase();
+
+  const backendSignals = ["api", "db", "sql", "transaction", "spring", "jpa", "redis", "cache", "서버", "백엔드"];
+  const frontendSignals = ["react", "next", "vue", "ui", "ux", "렌더링", "상태", "프론트", "컴포넌트", "css", "접근성"];
+
+  const hasBackendSignal = backendSignals.some((signal) => keywordText.includes(signal));
+  const hasFrontendSignal = frontendSignals.some((signal) => keywordText.includes(signal));
+
+  if (hasBackendSignal && !hasFrontendSignal) {
+    return {
+      jobRole: "backend",
+      stack: "Spring Boot"
+    };
+  }
+
+  if (hasFrontendSignal && !hasBackendSignal) {
+    return {
+      jobRole: "frontend",
+      stack: "Next.js"
+    };
+  }
+
+  return {
+    jobRole: fallback.jobRole,
+    stack: fallback.stack
+  };
+}
 
 export function useInterviewShellState(): UseInterviewShellStateResult {
   const [step, setStep] = useState<InterviewStep>("setup");
@@ -122,6 +166,17 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
     }
   }, []);
 
+  const handleGoogleLogin = useCallback(async () => {
+    setUiError(null);
+    try {
+      const response = await getGoogleAuthUrl();
+      window.location.assign(response.data.auth_url);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Google 로그인 URL 조회에 실패했습니다.";
+      setUiError(message);
+    }
+  }, []);
+
   const refreshSessions = useCallback(async (days: 30 | 60 | 90) => {
     const sessionList = await listSessions(days);
     setSessions(sessionList);
@@ -159,6 +214,33 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
     }
     setUiError(startError);
   }, [startError]);
+
+  useEffect(() => {
+    if (getStoredApiKey()) {
+      return;
+    }
+
+    let active = true;
+    void (async () => {
+      try {
+        const response = await getGuestAccess();
+        if (!active) {
+          return;
+        }
+        setStoredApiKey(response.data.api_key);
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+        const message = error instanceof Error ? error.message : "게스트 인증 발급에 실패했습니다.";
+        setUiError(message);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const storedSessionId = getStoredSessionId();
@@ -212,39 +294,46 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
     [clearReportFetchError, fetchReport, isExiting, periodDays, stopQuestionStream, stopTtsPlayback]
   );
 
-  const handleStartInterview = useCallback(async () => {
-    setUiError(null);
-    clearReportFetchError();
-    setIsExiting(false);
-    clearStartError();
-    try {
-      const started = await startSession(setupPayload);
-      if (!started) {
-        return;
-      }
-      setStoredSessionId(started.sessionId);
-      setSessionId(started.sessionId);
-      setReport(null);
-      setMessages([
-        {
-          id: `system-${Date.now()}`,
-          role: "coach",
-          content: "면접이 시작되었습니다. 질문을 듣고 120초 안에 핵심부터 답변해 주세요.",
-          meta: "세션 시작"
+  const beginInterview = useCallback(
+    async (payload: StartInterviewPayload) => {
+      setUiError(null);
+      clearReportFetchError();
+      setIsExiting(false);
+      clearStartError();
+      try {
+        const started = await startSession(payload);
+        if (!started) {
+          return;
         }
-      ]);
-      setFollowupCount(0);
-      setQuestionOrder(1);
-      setAnswerText("");
-      setEmotion("neutral");
-      setStep("room");
-      startQuestionStream(started.sessionId);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "면접 시작에 실패했습니다.";
-      setUiError(message);
-      clearStoredSessionId();
-    }
-  }, [clearReportFetchError, clearStartError, setupPayload, startQuestionStream, startSession]);
+        setStoredSessionId(started.sessionId);
+        setSessionId(started.sessionId);
+        setReport(null);
+        setMessages([
+          {
+            id: `system-${Date.now()}`,
+            role: "coach",
+            content: "면접이 시작되었습니다. 질문을 듣고 120초 안에 핵심부터 답변해 주세요.",
+            meta: "세션 시작"
+          }
+        ]);
+        setFollowupCount(0);
+        setQuestionOrder(1);
+        setAnswerText("");
+        setEmotion("neutral");
+        setStep("room");
+        startQuestionStream(started.sessionId);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "면접 시작에 실패했습니다.";
+        setUiError(message);
+        clearStoredSessionId();
+      }
+    },
+    [clearReportFetchError, clearStartError, startQuestionStream, startSession]
+  );
+
+  const handleStartInterview = useCallback(async () => {
+    await beginInterview(setupPayload);
+  }, [beginInterview, setupPayload]);
 
   const handleSubmitAnswer = useCallback(async () => {
     if (!sessionId || !answerText.trim() || isSubmitting) {
@@ -356,14 +445,6 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
     [refreshSessions]
   );
 
-  const handleRetryWeakness = useCallback(() => {
-    setStep("setup");
-    setSetupPayload((previous) => ({
-      ...previous,
-      questionCount: Math.min(previous.questionCount, 5)
-    }));
-  }, []);
-
   const weakKeywords = useMemo(() => report?.weakKeywords ?? [], [report]);
   const studyGuide = useMemo(
     () =>
@@ -374,10 +455,26 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
     [report]
   );
 
+  const handleRetryWeakness = useCallback(async () => {
+    const retryPreset = buildRetryPreset(weakKeywords, setupPayload);
+    const retryPayload: StartInterviewPayload = {
+      ...setupPayload,
+      ...retryPreset,
+      difficulty: report && report.totalScore >= 70 ? "junior" : "jobseeker",
+      questionCount: Math.min(setupPayload.questionCount, 5)
+    };
+
+    setStep("setup");
+    setSetupPayload(retryPayload);
+    await beginInterview(retryPayload);
+  }, [beginInterview, report, setupPayload, weakKeywords]);
+
   return {
     step,
     setStep: updateStep,
     uiError,
+    isAuthRequired: uiError === getAuthRequiredMessage(),
+    handleGoogleLogin,
     backendStatus,
     backendStatusMessage,
     retryBackendHealthCheck: runBackendHealthCheck,
