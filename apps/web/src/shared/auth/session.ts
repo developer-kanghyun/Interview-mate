@@ -2,6 +2,7 @@
 
 const API_KEY_STORAGE_KEY = "interviewMateApiKey";
 const SESSION_ID_STORAGE_KEY = "interviewMateSessionId";
+const AUTH_REQUIRED_MESSAGE = "로그인이 필요합니다. 다시 로그인해 주세요.";
 
 function readNonEmptyValue(value: string | null): string | null {
   return value && value.trim() ? value : null;
@@ -64,4 +65,16 @@ export function clearStoredSessionId() {
     return;
   }
   window.sessionStorage.removeItem(SESSION_ID_STORAGE_KEY);
+}
+
+export function getRequiredApiKey(): string {
+  const apiKey = getStoredApiKey();
+  if (!apiKey) {
+    throw new Error(AUTH_REQUIRED_MESSAGE);
+  }
+  return apiKey;
+}
+
+export function getAuthRequiredMessage() {
+  return AUTH_REQUIRED_MESSAGE;
 }

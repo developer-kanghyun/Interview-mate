@@ -8,8 +8,7 @@ import {
   submitInterviewAnswer,
   type SessionReportResponse
 } from "@/shared/api/interview";
-import { apiKey } from "@/shared/config/env";
-import { getStoredApiKey } from "@/shared/auth/session";
+import { getAuthRequiredMessage, getRequiredApiKey } from "@/shared/auth/session";
 
 export type InterviewRole = "backend" | "frontend";
 export type InterviewDifficulty = "jobseeker" | "junior";
@@ -490,10 +489,7 @@ export function streamQuestion(
       const headers = new Headers({
         "Content-Type": "application/json"
       });
-      const runtimeApiKey = getStoredApiKey() || apiKey;
-      if (runtimeApiKey) {
-        headers.set("X-API-Key", runtimeApiKey);
-      }
+      headers.set("X-API-Key", getRequiredApiKey());
 
       const response = await fetch(CHAT_STREAM_ENDPOINT, {
         method: "POST",
@@ -537,6 +533,10 @@ export function streamQuestion(
     } catch (error) {
       clearIdleTimer();
       if (stopRequested) {
+        return;
+      }
+      if (error instanceof Error && error.message === getAuthRequiredMessage()) {
+        onError?.(error.message);
         return;
       }
       startFallback();

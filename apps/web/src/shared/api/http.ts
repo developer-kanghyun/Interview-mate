@@ -1,5 +1,5 @@
-import { apiBaseUrl, apiKey } from "@/shared/config/env";
-import { getStoredApiKey } from "@/shared/auth/session";
+import { apiBaseUrl } from "@/shared/config/env";
+import { getAuthRequiredMessage, getRequiredApiKey } from "@/shared/auth/session";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -49,11 +49,8 @@ async function parsePayload(response: Response) {
 function buildHeaders(requireAuth: boolean, hasJsonBody: boolean, headers?: HeadersInit): Headers {
   const mergedHeaders = new Headers(headers);
 
-  if (requireAuth) {
-    const runtimeApiKey = getStoredApiKey() || apiKey;
-    if (runtimeApiKey) {
-      mergedHeaders.set("X-API-Key", runtimeApiKey);
-    }
+  if (requireAuth && !mergedHeaders.has("X-API-Key")) {
+    mergedHeaders.set("X-API-Key", getRequiredApiKey());
   }
 
   if (hasJsonBody && !mergedHeaders.has("Content-Type")) {
@@ -121,6 +118,9 @@ async function request(path: string, options: RequestOptions = {}) {
     if (error instanceof HttpError) {
       throw error;
     }
+    if (error instanceof Error && error.message === getAuthRequiredMessage()) {
+      throw error;
+    }
     if (isAbortError(error)) {
       throw new Error("요청 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.");
     }
@@ -139,4 +139,3 @@ export async function requestText(path: string, options: RequestOptions = {}) {
   const response = await request(path, options);
   return response.text();
 }
-
