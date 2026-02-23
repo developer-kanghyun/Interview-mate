@@ -4,6 +4,7 @@ import { SetupView } from "@/features/interview-setup/ui/SetupView";
 import { RoomView } from "@/widgets/interview-room/ui/RoomView";
 import { ReportView } from "@/features/interview-report/ui/ReportView";
 import { InsightsView } from "@/features/interview-insights/ui/InsightsView";
+import { LoginRequiredModal } from "@/features/auth/ui/LoginRequiredModal";
 import { Button } from "@/shared/ui/Button";
 import { useInterviewShellState } from "@/widgets/interview/model/useInterviewShellState";
 import type { InterviewStep } from "@/features/interview-session/model/interviewSession.constants";
@@ -92,15 +93,10 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
           </div>
         ) : null}
 
-        {shellState.uiError ? (
+        {shellState.uiError && !shellState.isAuthRequired ? (
           <div className="mx-auto mb-4 flex w-full max-w-5xl items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             <span>{shellState.uiError}</span>
             <div className="flex shrink-0 items-center gap-2">
-              {shellState.isAuthRequired ? (
-                <Button variant="secondary" onClick={() => void shellState.handleGoogleLogin()}>
-                  Google 로그인
-                </Button>
-              ) : null}
               <Button variant="secondary" onClick={shellState.clearUiError}>
                 닫기
               </Button>
@@ -127,7 +123,7 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
             onRetry={shellState.handleRetryReport}
             onGoInsights={shellState.handleGoInsights}
             onRestart={() => shellState.setStep("setup")}
-            onLogin={() => void shellState.handleGoogleLogin()}
+            onLogin={() => void shellState.handleGoogleLogin(shellState.authRedirectTarget)}
           />
         ) : null}
 
@@ -145,6 +141,14 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
           />
         ) : null}
       </div>
+
+      {shellState.uiError && shellState.isAuthRequired ? (
+        <LoginRequiredModal
+          message={shellState.uiError}
+          onClose={shellState.clearUiError}
+          onLogin={() => shellState.handleGoogleLogin(shellState.authRedirectTarget)}
+        />
+      ) : null}
     </div>
   );
 }

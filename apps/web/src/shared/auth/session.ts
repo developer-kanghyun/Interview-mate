@@ -2,6 +2,7 @@
 
 const LEGACY_API_KEY_STORAGE_KEY = "interviewMateApiKey";
 const SESSION_ID_STORAGE_KEY = "interviewMateSessionId";
+const POST_LOGIN_REDIRECT_STORAGE_KEY = "interviewMatePostLoginRedirect";
 const AUTH_REQUIRED_MESSAGE = "로그인이 필요합니다. 다시 로그인해 주세요.";
 
 export function clearLegacyApiKeyStorage() {
@@ -33,6 +34,28 @@ export function clearStoredSessionId() {
     return;
   }
   window.sessionStorage.removeItem(SESSION_ID_STORAGE_KEY);
+}
+
+export function setPostLoginRedirectTarget(path: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.sessionStorage.setItem(POST_LOGIN_REDIRECT_STORAGE_KEY, path);
+}
+
+export function getPostLoginRedirectTarget(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const value = window.sessionStorage.getItem(POST_LOGIN_REDIRECT_STORAGE_KEY);
+  return value && value.trim() ? value : null;
+}
+
+export function clearPostLoginRedirectTarget() {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.sessionStorage.removeItem(POST_LOGIN_REDIRECT_STORAGE_KEY);
 }
 
 export function getAuthRequiredMessage() {

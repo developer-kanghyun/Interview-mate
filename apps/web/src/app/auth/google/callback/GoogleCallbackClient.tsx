@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { completeGoogleAuth } from "@/shared/api/interview";
+import {
+  clearPostLoginRedirectTarget,
+  getPostLoginRedirectTarget
+} from "@/shared/auth/session";
 
 type Props = {
   code: string | null;
@@ -12,21 +16,21 @@ type Props = {
 
 function resolveRedirectTarget() {
   if (typeof window === "undefined") {
-    return "/interview";
+    return null;
   }
 
   const rawTarget = new URLSearchParams(window.location.search).get("redirectTo");
   if (!rawTarget) {
-    return "/interview";
+    return null;
   }
 
   const trimmed = rawTarget.trim();
   if (!trimmed.startsWith("/") || trimmed.startsWith("//")) {
-    return "/interview";
+    return null;
   }
 
   if (trimmed.startsWith("/auth/google/callback")) {
-    return "/interview";
+    return null;
   }
 
   return trimmed;
@@ -42,6 +46,7 @@ export default function GoogleCallbackClient({ code, state, oauthError }: Props)
 
     async function run() {
       if (oauthError) {
+        clearPostLoginRedirectTarget();
         redirectTimer = setTimeout(() => {
           router.replace("/");
         }, 1200);
@@ -49,6 +54,7 @@ export default function GoogleCallbackClient({ code, state, oauthError }: Props)
       }
 
       if (!code) {
+        clearPostLoginRedirectTarget();
         setMessage("인증 code가 없습니다. 다시 로그인해 주세요.");
         redirectTimer = setTimeout(() => {
           router.replace("/");
@@ -61,9 +67,10 @@ export default function GoogleCallbackClient({ code, state, oauthError }: Props)
         if (!active) {
           return;
         }
-        const redirectTarget = resolveRedirectTarget();
+        const redirectTarget = resolveRedirectTarget() ?? getPostLoginRedirectTarget() ?? "/interview";
+        clearPostLoginRedirectTarget();
         setMessage("로그인 성공. 인터뷰 화면으로 이동합니다...");
-        setTimeout(() => {
+        redirectTimer = setTimeout(() => {
           router.replace(redirectTarget);
         }, 500);
       } catch (error) {

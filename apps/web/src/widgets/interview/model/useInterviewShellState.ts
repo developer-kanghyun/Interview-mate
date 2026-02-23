@@ -27,10 +27,12 @@ import { useQuestionStreaming } from "@/features/interview-session/model/useQues
 import { useStartSession } from "@/features/interview/start-session/model/useStartSession";
 import { useFetchReport } from "@/features/interview-report/model/useFetchReport";
 import {
+  clearPostLoginRedirectTarget,
   clearLegacyApiKeyStorage,
   clearStoredSessionId,
   getAuthRequiredMessage,
   getStoredSessionId,
+  setPostLoginRedirectTarget,
   setStoredSessionId
 } from "@/shared/auth/session";
 
@@ -40,7 +42,8 @@ type UseInterviewShellStateResult = {
   uiError: string | null;
   clearUiError: () => void;
   isAuthRequired: boolean;
-  handleGoogleLogin: () => Promise<void>;
+  authRedirectTarget: string;
+  handleGoogleLogin: (redirectTo?: string) => Promise<void>;
   backendStatus: "checking" | "ok" | "error";
   backendStatusMessage: string | null;
   retryBackendHealthCheck: () => Promise<void>;
@@ -234,8 +237,29 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     }
   }, []);
 
-  const handleGoogleLogin = useCallback(async () => {
+  const authRedirectTarget = useMemo(() => {
+    if (step === "report" && sessionId) {
+      return `/report/${sessionId}`;
+    }
+    if (step === "room" && sessionId) {
+      return `/interview/${sessionId}`;
+    }
+    if (step === "insights") {
+      return "/insights";
+    }
+    if (step === "setup") {
+      return "/setup";
+    }
+    return "/interview";
+  }, [sessionId, step]);
+
+  const handleGoogleLogin = useCallback(async (redirectTo?: string) => {
     setUiError(null);
+    if (redirectTo) {
+      setPostLoginRedirectTarget(redirectTo);
+    } else {
+      clearPostLoginRedirectTarget();
+    }
     try {
       const response = await getGoogleAuthUrl();
       window.location.assign(response.data.auth_url);
@@ -561,6 +585,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     uiError,
     clearUiError,
     isAuthRequired: uiError === getAuthRequiredMessage(),
+    authRedirectTarget,
     handleGoogleLogin,
     backendStatus,
     backendStatusMessage,
