@@ -1,5 +1,4 @@
-import { apiBaseUrl, apiKey } from "@/shared/config/env";
-import { getStoredApiKey } from "@/shared/auth/session";
+import { getAuthRequiredMessage } from "@/shared/auth/session";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -46,15 +45,8 @@ async function parsePayload(response: Response) {
   return text ? { message: text } : null;
 }
 
-function buildHeaders(requireAuth: boolean, hasJsonBody: boolean, headers?: HeadersInit): Headers {
+function buildHeaders(hasJsonBody: boolean, headers?: HeadersInit): Headers {
   const mergedHeaders = new Headers(headers);
-
-  if (requireAuth) {
-    const runtimeApiKey = getStoredApiKey() || apiKey;
-    if (runtimeApiKey) {
-      mergedHeaders.set("X-API-Key", runtimeApiKey);
-    }
-  }
 
   if (hasJsonBody && !mergedHeaders.has("Content-Type")) {
     mergedHeaders.set("Content-Type", "application/json");
@@ -65,6 +57,15 @@ function buildHeaders(requireAuth: boolean, hasJsonBody: boolean, headers?: Head
 
 function isAbortError(error: unknown) {
   return error instanceof DOMException && error.name === "AbortError";
+}
+
+function isAuthenticationFailure(status: number) {
+  return status === 401 || status === 403;
+}
+
+function buildProxyPath(path: string) {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return `/api/backend${normalized}`;
 }
 
 function createRequestSignal(signal: AbortSignal | undefined, timeoutMs: number) {
@@ -104,21 +105,28 @@ async function request(path: string, options: RequestOptions = {}) {
   const { signal: requestSignal, cleanup } = createRequestSignal(signal, timeoutMs);
 
   try {
-    const response = await fetch(`${apiBaseUrl}${path}`, {
+    const response = await fetch(buildProxyPath(path), {
       method,
-      headers: buildHeaders(requireAuth, hasJsonBody, headers),
+      headers: buildHeaders(hasJsonBody, headers),
       body: hasJsonBody ? JSON.stringify(body) : (body as BodyInit | undefined),
-      signal: requestSignal
+      signal: requestSignal,
+      credentials: "include"
     });
 
     if (!response.ok) {
       const payload = await parsePayload(response).catch(() => null);
+      if (requireAuth && isAuthenticationFailure(response.status)) {
+        throw new Error(getAuthRequiredMessage());
+      }
       throw new HttpError(resolveMessage(payload, fallbackMessage), response.status, payload);
     }
 
     return response;
   } catch (error) {
     if (error instanceof HttpError) {
+      throw error;
+    }
+    if (error instanceof Error && error.message === getAuthRequiredMessage()) {
       throw error;
     }
     if (isAbortError(error)) {
@@ -139,4 +147,3 @@ export async function requestText(path: string, options: RequestOptions = {}) {
   const response = await request(path, options);
   return response.text();
 }
-

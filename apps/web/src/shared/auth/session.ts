@@ -1,28 +1,16 @@
 "use client";
 
-const API_KEY_STORAGE_KEY = "interviewMateApiKey";
+const LEGACY_API_KEY_STORAGE_KEY = "interviewMateApiKey";
 const SESSION_ID_STORAGE_KEY = "interviewMateSessionId";
+const AUTH_REQUIRED_MESSAGE = "로그인이 필요합니다. 다시 로그인해 주세요.";
 
-export function getStoredApiKey(): string | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-  const value = window.localStorage.getItem(API_KEY_STORAGE_KEY);
-  return value && value.trim() ? value : null;
-}
-
-export function setStoredApiKey(apiKey: string) {
+export function clearLegacyApiKeyStorage() {
   if (typeof window === "undefined") {
     return;
   }
-  window.localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
-}
 
-export function clearStoredApiKey() {
-  if (typeof window === "undefined") {
-    return;
-  }
-  window.localStorage.removeItem(API_KEY_STORAGE_KEY);
+  window.sessionStorage.removeItem(LEGACY_API_KEY_STORAGE_KEY);
+  window.localStorage.removeItem(LEGACY_API_KEY_STORAGE_KEY);
 }
 
 export function getStoredSessionId(): string | null {
@@ -45,4 +33,8 @@ export function clearStoredSessionId() {
     return;
   }
   window.sessionStorage.removeItem(SESSION_ID_STORAGE_KEY);
+}
+
+export function getAuthRequiredMessage() {
+  return AUTH_REQUIRED_MESSAGE;
 }
