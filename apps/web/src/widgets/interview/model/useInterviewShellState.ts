@@ -180,6 +180,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   const [uiError, setUiError] = useState<string | null>(null);
   const [backendStatus, setBackendStatus] = useState<"checking" | "ok" | "error">("checking");
   const [backendStatusMessage, setBackendStatusMessage] = useState<string | null>(null);
+  const [isGuestUser, setIsGuestUser] = useState(false);
 
   const routeStep = useMemo(
     () => options.initialStep ?? resolveStepFromPath(pathname),
@@ -315,10 +316,11 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     let active = true;
     void (async () => {
       try {
-        await getMyProfile();
+        const profile = await getMyProfile();
         if (!active) {
           return;
         }
+        setIsGuestUser(!profile.data.email);
       } catch (error) {
         if (!active) {
           return;
@@ -332,6 +334,10 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
 
         try {
           await getGuestAccess();
+          if (!active) {
+            return;
+          }
+          setIsGuestUser(true);
         } catch (guestError) {
           if (!active) {
             return;
@@ -472,6 +478,13 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       });
 
       if (response.isSessionComplete) {
+        if (isGuestUser) {
+          stopQuestionStream();
+          stopTtsPlayback();
+          setStep("report");
+          setUiError(getAuthRequiredMessage());
+          return;
+        }
         await moveToReport(sessionId);
         return;
       }
@@ -492,7 +505,18 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     } finally {
       setIsSubmitting(false);
     }
-  }, [answerText, appendMessage, isSubmitting, moveToReport, questionOrder, sessionId, startQuestionStream]);
+  }, [
+    answerText,
+    appendMessage,
+    isGuestUser,
+    isSubmitting,
+    moveToReport,
+    questionOrder,
+    sessionId,
+    startQuestionStream,
+    stopQuestionStream,
+    stopTtsPlayback
+  ]);
 
   const handlePause = useCallback(() => {
     setAvatarState("idle");
