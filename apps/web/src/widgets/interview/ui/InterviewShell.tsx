@@ -116,8 +116,6 @@ export function InterviewShell() {
             sessions={shellState.sessions}
             weakKeywords={shellState.weakKeywords}
             studyGuide={shellState.studyGuide}
-            periodDays={shellState.periodDays}
-            onChangePeriod={shellState.handleChangePeriod}
             onRetryWeakness={shellState.handleRetryWeakness}
             onBackSetup={() => shellState.setStep("setup")}
           />

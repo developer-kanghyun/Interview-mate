@@ -77,8 +77,6 @@ type UseInterviewShellStateResult = {
   sessions: SessionHistoryItem[];
   weakKeywords: string[];
   studyGuide: string[];
-  periodDays: 30 | 60 | 90;
-  handleChangePeriod: (days: 30 | 60 | 90) => Promise<void>;
   handleRetryWeakness: () => Promise<void>;
 };
 
@@ -86,6 +84,8 @@ type RetryPreset = {
   jobRole?: StartInterviewPayload["jobRole"];
   stack?: StartInterviewPayload["stack"];
 };
+
+const INSIGHTS_LOOKBACK_DAYS = 30 as const;
 
 function buildRetryPreset(weakKeywords: string[], fallback: StartInterviewPayload): RetryPreset {
   const keywordText = weakKeywords.join(" ").toLowerCase();
@@ -128,7 +128,6 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [report, setReport] = useState<InterviewReport | null>(null);
   const [sessions, setSessions] = useState<SessionHistoryItem[]>([]);
-  const [periodDays, setPeriodDays] = useState<30 | 60 | 90>(30);
   const [emotion, setEmotion] = useState<InterviewEmotion>("neutral");
   const [avatarState, setAvatarState] = useState<AvatarState>("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -177,7 +176,8 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
     }
   }, []);
 
-  const refreshSessions = useCallback(async (days: 30 | 60 | 90) => {
+  const refreshSessions = useCallback(async () => {
+    const days = INSIGHTS_LOOKBACK_DAYS;
     const sessionList = await listSessions(days);
     setSessions(sessionList);
   }, []);
@@ -280,7 +280,7 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
       setReport(null);
 
       try {
-        const sessionsPromise = listSessions(periodDays);
+        const sessionsPromise = listSessions(INSIGHTS_LOOKBACK_DAYS);
         const nextReport = await fetchReport(targetSessionId);
 
         try {
@@ -305,7 +305,7 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
         setIsExiting(false);
       }
     },
-    [clearReportFetchError, fetchReport, isExiting, periodDays, stopQuestionStream, stopTtsPlayback]
+    [clearReportFetchError, fetchReport, isExiting, stopQuestionStream, stopTtsPlayback]
   );
 
   const beginInterview = useCallback(
@@ -438,26 +438,12 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
     setStep("insights");
 
     try {
-      await refreshSessions(periodDays);
+      await refreshSessions();
     } catch (error) {
       const message = error instanceof Error ? error.message : "세션 목록 조회에 실패했습니다.";
       setUiError(message);
     }
-  }, [periodDays, refreshSessions]);
-
-  const handleChangePeriod = useCallback(
-    async (days: 30 | 60 | 90) => {
-      setPeriodDays(days);
-      setUiError(null);
-      try {
-        await refreshSessions(days);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "세션 목록 조회에 실패했습니다.";
-        setUiError(message);
-      }
-    },
-    [refreshSessions]
-  );
+  }, [refreshSessions]);
 
   const weakKeywords = useMemo(() => report?.weakKeywords ?? [], [report]);
   const studyGuide = useMemo(
@@ -527,8 +513,6 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
     sessions,
     weakKeywords,
     studyGuide,
-    periodDays,
-    handleChangePeriod,
     handleRetryWeakness
   };
 }
