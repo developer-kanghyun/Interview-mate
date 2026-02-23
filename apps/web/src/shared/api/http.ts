@@ -63,6 +63,10 @@ function isAuthenticationFailure(status: number) {
   return status === 401 || status === 403;
 }
 
+function isTooManyRequests(status: number) {
+  return status === 429;
+}
+
 function buildProxyPath(path: string) {
   const normalized = path.startsWith("/") ? path : `/${path}`;
   return `/api/backend${normalized}`;
@@ -117,6 +121,16 @@ async function request(path: string, options: RequestOptions = {}) {
       const payload = await parsePayload(response).catch(() => null);
       if (requireAuth && isAuthenticationFailure(response.status)) {
         throw new Error(getAuthRequiredMessage());
+      }
+      if (isTooManyRequests(response.status)) {
+        const retryAfterSeconds = response.headers.get("retry-after");
+        const message = retryAfterSeconds
+          ? `요청이 많습니다. ${retryAfterSeconds}초 후 다시 시도해 주세요.`
+          : "요청이 많습니다. 잠시 후 다시 시도해 주세요.";
+        throw new HttpError(message, response.status, payload);
+      }
+      if (response.status >= 500) {
+        throw new HttpError("서버 응답에 실패했습니다. 잠시 후 다시 시도해 주세요.", response.status, payload);
       }
       throw new HttpError(resolveMessage(payload, fallbackMessage), response.status, payload);
     }

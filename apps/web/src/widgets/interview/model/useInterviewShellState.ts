@@ -41,6 +41,7 @@ type UseInterviewShellStateResult = {
   setStep: (next: InterviewStep) => void;
   uiError: string | null;
   clearUiError: () => void;
+  handleRetryUiError: () => Promise<void>;
   isAuthRequired: boolean;
   authRedirectTarget: string;
   handleGoogleLogin: (redirectTo?: string) => Promise<void>;
@@ -569,6 +570,19 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     }
   }, [isInsightsLoading, refreshSessions]);
 
+  const handleRetryUiError = useCallback(async () => {
+    setUiError(null);
+    if (step === "report" && sessionId) {
+      await moveToReport(sessionId);
+      return;
+    }
+    if (step === "insights") {
+      await handleGoInsights();
+      return;
+    }
+    await runBackendHealthCheck();
+  }, [handleGoInsights, moveToReport, runBackendHealthCheck, sessionId, step]);
+
   const weakKeywords = useMemo(() => report?.weakKeywords ?? [], [report]);
   const studyGuide = useMemo(
     () =>
@@ -608,6 +622,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     setStep: updateStep,
     uiError,
     clearUiError,
+    handleRetryUiError,
     isAuthRequired: uiError === getAuthRequiredMessage(),
     authRedirectTarget,
     handleGoogleLogin,

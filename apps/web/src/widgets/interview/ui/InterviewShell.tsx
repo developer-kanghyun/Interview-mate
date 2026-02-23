@@ -97,6 +97,9 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
           <div className="mx-auto mb-4 flex w-full max-w-5xl items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             <span>{shellState.uiError}</span>
             <div className="flex shrink-0 items-center gap-2">
+              <Button variant="secondary" onClick={() => void shellState.handleRetryUiError()}>
+                다시 시도
+              </Button>
               <Button variant="secondary" onClick={shellState.clearUiError}>
                 닫기
               </Button>
