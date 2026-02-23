@@ -63,6 +63,7 @@ type UseInterviewShellStateResult = {
   messages: ChatMessage[];
   answerText: string;
   setAnswerText: (value: string) => void;
+  isSubmitting: boolean;
   handleStartInterview: () => Promise<void>;
   handleSubmitAnswer: () => Promise<void>;
   handlePause: () => void;
@@ -512,6 +513,7 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
     messages,
     answerText,
     setAnswerText: updateAnswerText,
+    isSubmitting,
     handleStartInterview,
     handleSubmitAnswer,
     handlePause,

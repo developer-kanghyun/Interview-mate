@@ -31,6 +31,7 @@ export function InterviewShell() {
         messages={shellState.messages}
         answerText={shellState.answerText}
         onChangeAnswer={shellState.setAnswerText}
+        isSubmitting={shellState.isSubmitting}
         onSubmitAnswer={shellState.handleSubmitAnswer}
         onPause={shellState.handlePause}
         isExiting={shellState.isExiting}
@@ -60,7 +61,7 @@ export function InterviewShell() {
           </Button>
           <Button
             variant={shellState.step === "insights" ? "primary" : "secondary"}
-            onClick={() => shellState.setStep("insights")}
+            onClick={() => void shellState.handleGoInsights()}
           >
             Insights
           </Button>
