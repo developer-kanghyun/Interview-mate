@@ -22,6 +22,7 @@ import {
   mapRoleLabel,
   type InterviewStep
 } from "@/features/interview-session/model/interviewSession.constants";
+import { getInterviewPreferences } from "@/shared/config/interview-preferences";
 import { useInterviewerSpeech } from "@/features/interview-session/model/useInterviewerSpeech";
 import { useQuestionStreaming } from "@/features/interview-session/model/useQuestionStreaming";
 import { useStartSession } from "@/features/interview/start-session/model/useStartSession";
@@ -311,6 +312,17 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
 
   useEffect(() => {
     clearLegacyApiKeyStorage();
+  }, []);
+
+  useEffect(() => {
+    const savedPreferences = getInterviewPreferences();
+    if (!savedPreferences) {
+      return;
+    }
+    setSetupPayload((previous) => ({
+      ...previous,
+      ...savedPreferences
+    }));
   }, []);
 
   useEffect(() => {

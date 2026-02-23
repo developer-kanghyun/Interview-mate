@@ -1,5 +1,5 @@
-import { InterviewShell } from "@/widgets/interview/ui/InterviewShell";
+import { SettingsView } from "@/features/settings/ui/SettingsView";
 
 export default function SettingsPage() {
-  return <InterviewShell />;
+  return <SettingsView />;
 }
