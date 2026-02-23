@@ -37,6 +37,7 @@ type UseInterviewShellStateResult = {
   step: InterviewStep;
   setStep: (next: InterviewStep) => void;
   uiError: string | null;
+  clearUiError: () => void;
   isAuthRequired: boolean;
   handleGoogleLogin: () => Promise<void>;
   backendStatus: "checking" | "ok" | "error";
@@ -150,6 +151,10 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
 
   const updateAnswerText = useCallback((value: string) => {
     setAnswerText(value);
+  }, []);
+
+  const clearUiError = useCallback(() => {
+    setUiError(null);
   }, []);
 
   const appendMessage = useCallback((nextMessage: ChatMessage) => {
@@ -494,6 +499,7 @@ export function useInterviewShellState(): UseInterviewShellStateResult {
     step,
     setStep: updateStep,
     uiError,
+    clearUiError,
     isAuthRequired: uiError === getAuthRequiredMessage(),
     handleGoogleLogin,
     backendStatus,

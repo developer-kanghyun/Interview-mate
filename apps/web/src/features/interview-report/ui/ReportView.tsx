@@ -30,7 +30,7 @@ export function ReportView({
   if (isLoading) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <p className="text-sm text-slate-600">리포트 데이터를 불러오는 중입니다...</p>
+        <p className="text-sm text-slate-600">리포트를 불러오는 중입니다. 잠시만 기다려 주세요.</p>
       </div>
     );
   }
@@ -47,9 +47,9 @@ export function ReportView({
             </Button>
           ) : null}
           <Button variant="secondary" onClick={onRestart}>
-            Setup으로 돌아가기
+            설정으로 이동
           </Button>
-          <Button onClick={onRetry}>리포트 다시 시도</Button>
+          <Button onClick={onRetry}>다시 시도</Button>
         </div>
       </div>
     );
@@ -58,12 +58,12 @@ export function ReportView({
   if (!report) {
     return (
       <div className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-8">
-        <p className="text-sm text-slate-600">리포트 데이터가 없습니다.</p>
+        <p className="text-sm text-slate-600">표시할 리포트가 없습니다. 면접을 완료한 뒤 다시 시도해 주세요.</p>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onRestart}>
-            Setup으로 돌아가기
+            설정으로 이동
           </Button>
-          <Button onClick={onRetry}>리포트 다시 시도</Button>
+          <Button onClick={onRetry}>다시 시도</Button>
         </div>
       </div>
     );
