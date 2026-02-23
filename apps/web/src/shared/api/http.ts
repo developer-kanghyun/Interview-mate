@@ -1,5 +1,5 @@
 import { apiBaseUrl } from "@/shared/config/env";
-import { getAuthRequiredMessage, getRequiredApiKey } from "@/shared/auth/session";
+import { clearStoredApiKey, getAuthRequiredMessage, getRequiredApiKey } from "@/shared/auth/session";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -64,6 +64,10 @@ function isAbortError(error: unknown) {
   return error instanceof DOMException && error.name === "AbortError";
 }
 
+function isAuthenticationFailure(status: number) {
+  return status === 401 || status === 403;
+}
+
 function createRequestSignal(signal: AbortSignal | undefined, timeoutMs: number) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(new Error("timeout")), timeoutMs);
@@ -110,6 +114,10 @@ async function request(path: string, options: RequestOptions = {}) {
 
     if (!response.ok) {
       const payload = await parsePayload(response).catch(() => null);
+      if (requireAuth && isAuthenticationFailure(response.status)) {
+        clearStoredApiKey();
+        throw new Error(getAuthRequiredMessage());
+      }
       throw new HttpError(resolveMessage(payload, fallbackMessage), response.status, payload);
     }
 
