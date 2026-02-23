@@ -33,6 +33,7 @@ type RoomViewProps = {
   messages: ChatMessage[];
   answerText: string;
   onChangeAnswer: (value: string) => void;
+  isSubmitting: boolean;
   onSubmitAnswer: () => void;
   onPause: () => void;
   isExiting: boolean;
@@ -78,12 +79,16 @@ export function RoomView({
   messages,
   answerText,
   onChangeAnswer,
+  isSubmitting,
   onSubmitAnswer,
   onPause,
   isExiting,
   onExit
 }: RoomViewProps) {
   const visibleMessages = messages.filter((message) => message.role !== "interviewer");
+  const isBusy = isExiting || isSubmitting;
+  const canSubmitAnswer = !isBusy && !isQuestionStreaming && answerText.trim().length > 0;
+  const canPause = !isBusy && !isQuestionStreaming;
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-hidden text-slate-900">
@@ -184,29 +189,32 @@ export function RoomView({
               <ChatBoard messages={visibleMessages} />
             </div>
 
-            <footer className="shrink-0 border-t border-slate-200/80 bg-white/85 px-5 py-4">
+            <footer className="shrink-0 border-t border-slate-200/80 bg-white/85 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4">
               <Textarea
                 value={answerText}
                 onChange={(event) => onChangeAnswer(event.target.value)}
+                disabled={isBusy}
                 placeholder="답변을 입력하세요. (텍스트/음성 STT 연동 예정)"
-                className="min-h-[120px] border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-blue-300 focus:ring-blue-100"
+                className="min-h-[96px] max-h-[32vh] resize-y border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-blue-300 focus:ring-blue-100 sm:min-h-[120px]"
               />
 
               <div className="mt-4 flex items-center gap-2">
                 <Button
                   variant="ghost"
+                  disabled
                   className="h-10 w-10 rounded-full p-0 text-slate-600 hover:bg-slate-100 focus-visible:ring-slate-200"
                 >
                   ◀
                 </Button>
-                <Button variant="secondary" onClick={onPause} className="border-slate-200">
+                <Button variant="secondary" onClick={onPause} disabled={!canPause} className="border-slate-200">
                   일시정지
                 </Button>
-                <Button onClick={onSubmitAnswer} className="flex-1">
-                  답변 완료
+                <Button onClick={onSubmitAnswer} disabled={!canSubmitAnswer} className="flex-1">
+                  {isSubmitting ? "답변 제출 중..." : "답변 완료"}
                 </Button>
                 <Button
                   variant="ghost"
+                  disabled
                   className="h-10 w-10 rounded-full p-0 text-slate-600 hover:bg-slate-100 focus-visible:ring-slate-200"
                 >
                   ▶

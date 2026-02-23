@@ -31,6 +31,7 @@ export function InterviewShell() {
         messages={shellState.messages}
         answerText={shellState.answerText}
         onChangeAnswer={shellState.setAnswerText}
+        isSubmitting={shellState.isSubmitting}
         onSubmitAnswer={shellState.handleSubmitAnswer}
         onPause={shellState.handlePause}
         isExiting={shellState.isExiting}
