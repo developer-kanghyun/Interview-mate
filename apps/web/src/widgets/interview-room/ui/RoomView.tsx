@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, type FocusEvent, type RefObject } from "react";
+import { useCallback, type FocusEvent, type KeyboardEvent, type RefObject } from "react";
 import { ChatBoard, type ChatMessage } from "@/shared/chat/ChatBoard";
 import { Button } from "@/shared/ui/Button";
 import { Chip } from "@/shared/ui/Chip";
@@ -105,6 +105,23 @@ export function RoomView({
     });
   }, []);
 
+  const handleAnswerKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.key !== "Enter" || event.shiftKey) {
+        return;
+      }
+      if (event.nativeEvent.isComposing || event.keyCode === 229) {
+        return;
+      }
+      event.preventDefault();
+      if (!canSubmitAnswer) {
+        return;
+      }
+      onSubmitAnswer();
+    },
+    [canSubmitAnswer, onSubmitAnswer]
+  );
+
   return (
     <div className="flex h-dvh min-h-dvh w-full flex-col overflow-hidden bg-white text-im-text-main">
       {/* Minimal Header */}
@@ -189,6 +206,7 @@ export function RoomView({
               onChange={(event) => onChangeAnswer(event.target.value)}
               disabled={isBusy}
               onFocus={handleFocusAnswer}
+              onKeyDown={handleAnswerKeyDown}
               placeholder="답변을 입력하세요..."
               className="min-h-[80px] max-h-[22dvh] resize-none sm:min-h-[100px] sm:max-h-[32vh]"
             />
