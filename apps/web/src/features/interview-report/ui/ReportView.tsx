@@ -5,12 +5,14 @@ import { SubCard } from "@/shared/cards/SubCard";
 import { TodoBox } from "@/shared/cards/TodoBox";
 import { Button } from "@/shared/ui/Button";
 import { Chip } from "@/shared/ui/Chip";
+import { InlineNotice } from "@/shared/ui/InlineNotice";
 
 type ReportViewProps = {
   report: InterviewReport | null;
   isLoading: boolean;
   errorMessage: string | null;
   isGoingInsights: boolean;
+  isBusy?: boolean;
   onRetry: () => void;
   onGoInsights: () => void;
   onRestart: () => void;
@@ -22,6 +24,7 @@ export function ReportView({
   isLoading,
   errorMessage,
   isGoingInsights,
+  isBusy = false,
   onRetry,
   onGoInsights,
   onRestart,
@@ -39,17 +42,19 @@ export function ReportView({
     const shouldShowLogin = /로그인/.test(errorMessage);
     return (
       <div className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-8">
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>
+        <InlineNotice variant="error" message={errorMessage} />
         <div className="flex justify-end gap-2">
           {shouldShowLogin ? (
-            <Button variant="secondary" onClick={onLogin}>
+            <Button variant="secondary" onClick={onLogin} disabled={isBusy}>
               Google 로그인
             </Button>
           ) : null}
-          <Button variant="secondary" onClick={onRestart}>
+          <Button variant="secondary" onClick={onRestart} disabled={isBusy}>
             설정으로 이동
           </Button>
-          <Button onClick={onRetry}>다시 시도</Button>
+          <Button onClick={onRetry} disabled={isBusy}>
+            다시 시도
+          </Button>
         </div>
       </div>
     );
@@ -58,12 +63,14 @@ export function ReportView({
   if (!report) {
     return (
       <div className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-8">
-        <p className="text-sm text-slate-600">표시할 리포트가 없습니다. 면접을 완료한 뒤 다시 시도해 주세요.</p>
+        <InlineNotice variant="info" message="표시할 리포트가 없습니다. 면접을 완료한 뒤 다시 시도해 주세요." />
         <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={onRestart}>
+          <Button variant="secondary" onClick={onRestart} disabled={isBusy}>
             설정으로 이동
           </Button>
-          <Button onClick={onRetry}>다시 시도</Button>
+          <Button onClick={onRetry} disabled={isBusy}>
+            다시 시도
+          </Button>
         </div>
       </div>
     );
@@ -117,10 +124,10 @@ export function ReportView({
       />
 
       <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="secondary" onClick={onRestart}>
+        <Button variant="secondary" onClick={onRestart} disabled={isBusy}>
           새 면접 시작
         </Button>
-        <Button onClick={onGoInsights} disabled={isGoingInsights}>
+        <Button onClick={onGoInsights} disabled={isBusy || isGoingInsights}>
           {isGoingInsights ? "인사이트 불러오는 중..." : "인사이트 보기"}
         </Button>
       </div>

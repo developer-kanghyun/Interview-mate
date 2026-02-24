@@ -2,6 +2,7 @@ import type { SessionHistoryItem } from "@/shared/api/interview-client";
 import { SubCard } from "@/shared/cards/SubCard";
 import { Button } from "@/shared/ui/Button";
 import { Chip } from "@/shared/ui/Chip";
+import { InlineNotice } from "@/shared/ui/InlineNotice";
 
 type InsightsViewProps = {
   sessions: SessionHistoryItem[];
@@ -30,6 +31,8 @@ export function InsightsView({
   onRetryWeakness,
   onBackSetup
 }: InsightsViewProps) {
+  const isActionBusy = isLoading || isRetryingWeakness;
+
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-8">
       <header className="rounded-2xl border border-white/80 bg-white/85 p-5 shadow-soft">
@@ -45,11 +48,16 @@ export function InsightsView({
               최근 30일 세션 기록을 불러오는 중입니다...
             </li>
           ) : errorMessage ? (
-            <li className="space-y-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
-              <p>{errorMessage}</p>
-              <Button variant="secondary" onClick={() => void onRefresh()} disabled={isLoading}>
-                다시 불러오기
-              </Button>
+            <li>
+              <InlineNotice
+                variant="error"
+                message={errorMessage}
+                actions={
+                  <Button variant="secondary" onClick={() => void onRefresh()} disabled={isActionBusy}>
+                    다시 불러오기
+                  </Button>
+                }
+              />
             </li>
           ) : sessions.length === 0 ? (
             <li className="rounded-xl border border-dashed border-slate-300 p-3 text-sm text-slate-600">
@@ -101,10 +109,10 @@ export function InsightsView({
       </div>
 
       <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="secondary" onClick={onBackSetup} disabled={isRetryingWeakness}>
+        <Button variant="secondary" onClick={onBackSetup} disabled={isActionBusy}>
           면접 탭으로
         </Button>
-        <Button onClick={() => void onRetryWeakness()} disabled={isLoading || isRetryingWeakness}>
+        <Button onClick={() => void onRetryWeakness()} disabled={isActionBusy}>
           {isRetryingWeakness ? "재시작 준비 중..." : "약점 기반 다시 연습"}
         </Button>
       </div>
