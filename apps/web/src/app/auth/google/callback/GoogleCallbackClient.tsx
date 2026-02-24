@@ -67,7 +67,7 @@ export default function GoogleCallbackClient({ code, state, oauthError }: Props)
         if (!active) {
           return;
         }
-        const redirectTarget = resolveRedirectTarget() ?? getPostLoginRedirectTarget() ?? "/interview";
+        const redirectTarget = resolveRedirectTarget() ?? getPostLoginRedirectTarget() ?? "/setup";
         clearPostLoginRedirectTarget();
         setMessage("로그인 성공. 인터뷰 화면으로 이동합니다...");
         redirectTimer = setTimeout(() => {
