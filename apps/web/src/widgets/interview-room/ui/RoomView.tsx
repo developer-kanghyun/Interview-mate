@@ -200,7 +200,7 @@ export function RoomView({
               <Button
                 variant={isRecording ? "primary" : "secondary"}
                 onClick={onToggleRecording}
-                disabled={isSttBusy}
+                disabled={!isRecording && isSttBusy}
                 className="shrink-0"
               >
                 {isRecording ? "⏹ 음성 중지" : "🎤 음성 답변"}

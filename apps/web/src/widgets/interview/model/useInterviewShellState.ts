@@ -382,6 +382,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
 
   useEffect(() => {
     return () => {
+      stopRecording();
       stopQuestionStream();
       stopTtsPlayback();
       if (ttsNoticeTimerRef.current) {
@@ -391,7 +392,14 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         clearTimeout(sttNoticeTimerRef.current);
       }
     };
-  }, [stopQuestionStream, stopTtsPlayback]);
+  }, [stopQuestionStream, stopRecording, stopTtsPlayback]);
+
+  useEffect(() => {
+    if (step === "room" || !isRecording) {
+      return;
+    }
+    stopRecording();
+  }, [isRecording, step, stopRecording]);
 
   useEffect(() => {
     if (!speechError) {
@@ -490,6 +498,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       }
 
       setIsExiting(true);
+      stopRecording();
       stopQuestionStream();
       stopTtsPlayback();
       setUiError(null);
@@ -523,7 +532,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         setIsExiting(false);
       }
     },
-    [clearReportFetchError, fetchReport, isExiting, stopQuestionStream, stopTtsPlayback]
+    [clearReportFetchError, fetchReport, isExiting, stopQuestionStream, stopRecording, stopTtsPlayback]
   );
 
   const beginInterview = useCallback(

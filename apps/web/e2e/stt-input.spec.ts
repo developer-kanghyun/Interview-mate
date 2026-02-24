@@ -280,3 +280,83 @@ test("STT 전사 성공 시 음성 타입 자동 제출", async ({ page }) => {
   await expect.poll(() => submittedAnswerText).toContain("음성 자동 제출 테스트");
   await expect(page.getByText("핵심을 먼저 말하고 근거를 이어가세요.")).toBeVisible();
 });
+
+test("STT 녹음 중지 토글 동작", async ({ page }) => {
+  await page.addInitScript(() => {
+    class MockSpeechRecognition {
+      lang = "ko-KR";
+      interimResults = false;
+      continuous = false;
+      onresult: ((event: any) => void) | null = null;
+      onerror: ((event: any) => void) | null = null;
+      onend: (() => void) | null = null;
+      onstart: (() => void) | null = null;
+
+      start() {
+        this.onstart?.();
+      }
+
+      stop() {
+        this.onend?.();
+      }
+
+      abort() {
+        this.onend?.();
+      }
+
+      addEventListener(): void {}
+      removeEventListener(): void {}
+      dispatchEvent(): boolean {
+        return true;
+      }
+    }
+
+    const speechWindow = window as Window & {
+      webkitSpeechRecognition?: any;
+      SpeechRecognition?: any;
+    };
+
+    speechWindow.webkitSpeechRecognition = MockSpeechRecognition;
+    speechWindow.SpeechRecognition = MockSpeechRecognition;
+  });
+
+  await page.route("**/api/backend/health", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "ok",
+        timestamp: "2026-02-24T00:00:00.000Z"
+      })
+    });
+  });
+
+  await page.route("**/api/backend/api/auth/me", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        success: true,
+        data: {
+          user_id: "user-1",
+          email: "user@example.com",
+          name: "user"
+        }
+      })
+    });
+  });
+
+  await page.goto(`/interview/${SESSION_ID}`);
+  await expect(page.getByText("Interview Room")).toBeVisible();
+
+  const startButton = page.getByRole("button", { name: "🎤 음성 답변" });
+  await expect(startButton).toBeEnabled();
+  await startButton.click();
+
+  const stopButton = page.getByRole("button", { name: "⏹ 음성 중지" });
+  await expect(stopButton).toBeVisible();
+  await expect(stopButton).toBeEnabled();
+  await stopButton.click();
+
+  await expect(page.getByRole("button", { name: "🎤 음성 답변" })).toBeVisible();
+});
