@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { RefObject } from "react";
+import { useCallback, type FocusEvent, type RefObject } from "react";
 import { ChatBoard, type ChatMessage } from "@/shared/chat/ChatBoard";
 import { Button } from "@/shared/ui/Button";
 import { Chip } from "@/shared/ui/Chip";
@@ -87,8 +87,22 @@ export function RoomView({
 }: RoomViewProps) {
   const visibleMessages = messages.filter((message) => message.role !== "interviewer");
   const isBusy = isExiting || isSubmitting;
+  const canExit = !isBusy;
   const canSubmitAnswer = !isBusy && !isQuestionStreaming && answerText.trim().length > 0;
   const canPause = !isBusy && !isQuestionStreaming;
+  const handleFocusAnswer = useCallback((event: FocusEvent<HTMLTextAreaElement>) => {
+    const target = event.currentTarget;
+    if (window.innerWidth >= 1024) {
+      return;
+    }
+    window.requestAnimationFrame(() => {
+      target.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "nearest"
+      });
+    });
+  }, []);
 
   return (
     <div className="flex h-dvh min-h-dvh w-full flex-col overflow-hidden text-slate-900">
@@ -110,7 +124,7 @@ export function RoomView({
           <Button
             variant="secondary"
             onClick={onExit}
-            disabled={isExiting}
+            disabled={!canExit}
             className="border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 focus-visible:ring-rose-200"
           >
             {isExiting ? "리포트 불러오는 중..." : "면접 종료"}
@@ -194,6 +208,7 @@ export function RoomView({
                 value={answerText}
                 onChange={(event) => onChangeAnswer(event.target.value)}
                 disabled={isBusy}
+                onFocus={handleFocusAnswer}
                 placeholder="답변을 입력하세요. (텍스트/음성 STT 연동 예정)"
                 className="min-h-[88px] max-h-[22dvh] resize-none border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-blue-300 focus:ring-blue-100 sm:min-h-[120px] sm:max-h-[32vh]"
               />

@@ -6,6 +6,7 @@ import { ReportView } from "@/features/interview-report/ui/ReportView";
 import { InsightsView } from "@/features/interview-insights/ui/InsightsView";
 import { LoginRequiredModal } from "@/features/auth/ui/LoginRequiredModal";
 import { Button } from "@/shared/ui/Button";
+import { InlineNotice } from "@/shared/ui/InlineNotice";
 import { useInterviewShellState } from "@/widgets/interview/model/useInterviewShellState";
 import type { InterviewStep } from "@/features/interview-session/model/interviewSession.constants";
 
@@ -20,7 +21,12 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
     initialSessionId
   });
   const isNavigationBusy =
-    shellState.isStarting || shellState.isReportLoading || shellState.isInsightsLoading || shellState.isRetryingWeakness;
+    shellState.isStarting ||
+    shellState.isReportLoading ||
+    shellState.isInsightsLoading ||
+    shellState.isRetryingWeakness ||
+    shellState.isExiting ||
+    shellState.isSubmitting;
 
   if (shellState.step === "room" && shellState.sessionId) {
     return (
@@ -85,26 +91,39 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
 
       <div className="px-2 py-4 sm:px-4 sm:py-6">
         {shellState.backendStatus === "error" ? (
-          <div className="mx-auto mb-4 flex w-full max-w-5xl items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            <span>{shellState.backendStatusMessage ?? "백엔드 연결 확인에 실패했습니다."}</span>
-            <Button variant="secondary" onClick={() => void shellState.retryBackendHealthCheck()} className="shrink-0">
-              다시 시도
-            </Button>
-          </div>
+          <InlineNotice
+            variant="warning"
+            className="mb-4"
+            message={shellState.backendStatusMessage ?? "백엔드 연결 확인에 실패했습니다."}
+            actions={
+              <Button
+                variant="secondary"
+                onClick={() => void shellState.retryBackendHealthCheck()}
+                className="shrink-0"
+                disabled={isNavigationBusy}
+              >
+                다시 시도
+              </Button>
+            }
+          />
         ) : null}
 
         {shellState.uiError && !shellState.isAuthRequired ? (
-          <div className="mx-auto mb-4 flex w-full max-w-5xl items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            <span>{shellState.uiError}</span>
-            <div className="flex shrink-0 items-center gap-2">
-              <Button variant="secondary" onClick={() => void shellState.handleRetryUiError()}>
-                다시 시도
-              </Button>
-              <Button variant="secondary" onClick={shellState.clearUiError}>
-                닫기
-              </Button>
-            </div>
-          </div>
+          <InlineNotice
+            variant="error"
+            className="mb-4"
+            message={shellState.uiError}
+            actions={
+              <>
+                <Button variant="secondary" onClick={() => void shellState.handleRetryUiError()} disabled={isNavigationBusy}>
+                  다시 시도
+                </Button>
+                <Button variant="secondary" onClick={shellState.clearUiError} disabled={isNavigationBusy}>
+                  닫기
+                </Button>
+              </>
+            }
+          />
         ) : null}
 
         {shellState.step === "setup" ? (
@@ -123,6 +142,7 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
             isLoading={shellState.isReportLoading}
             errorMessage={shellState.reportErrorMessage}
             isGoingInsights={shellState.isInsightsLoading}
+            isBusy={isNavigationBusy}
             onRetry={shellState.handleRetryReport}
             onGoInsights={shellState.handleGoInsights}
             onRestart={() => shellState.setStep("setup")}
