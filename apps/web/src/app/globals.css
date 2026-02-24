@@ -3,361 +3,51 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --im-bg-top: #dbe8ff;
-    --im-bg-mid: #eef3ff;
-    --im-bg-bottom: #f7f9ff;
-    --im-surface: #ffffff;
-    --im-border: #e2e8f0;
-  }
-
   * {
     @apply box-border;
   }
 
   html,
   body {
-    @apply m-0 min-h-full p-0 text-slate-900;
-    background:
-      radial-gradient(1120px 420px at 8% -10%, var(--im-bg-top) 0%, transparent 70%),
-      radial-gradient(980px 360px at 92% -14%, #e1f5ff 0%, transparent 72%),
-      linear-gradient(180deg, var(--im-bg-mid) 0%, var(--im-bg-bottom) 100%);
-    font-family: "Pretendard Variable", "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+    @apply m-0 min-h-full p-0 font-display text-im-text-main;
+    background: #ffffff;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   a {
     @apply text-inherit no-underline;
   }
 
-  main {
-    @apply mx-auto max-w-[1120px] px-5 pb-16 pt-8;
+  ::selection {
+    background: rgba(255, 96, 0, 0.2);
+    color: #111418;
   }
 
   h1 {
-    @apply m-0 text-3xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-4xl;
+    @apply m-0 text-3xl font-bold leading-tight tracking-tight text-im-text-main sm:text-4xl;
   }
 
   h2 {
-    @apply m-0 text-lg font-bold leading-tight text-slate-900;
+    @apply m-0 text-lg font-bold leading-tight text-im-text-main;
   }
 
   h3 {
-    @apply m-0 text-base font-semibold text-slate-800;
+    @apply m-0 text-base font-semibold text-im-text-main;
   }
 
   p {
     @apply m-0;
   }
+
+  pre {
+    @apply m-0 whitespace-pre-wrap break-words rounded-2xl border border-im-border bg-im-subtle p-3 text-sm leading-6;
+  }
 }
 
 @layer components {
-  .interview-shell {
-    @apply grid gap-4;
-  }
-
-  .page-subtitle {
-    @apply -mt-0.5 mb-1 text-sm text-slate-600;
-  }
-
-  .tab-row {
-    @apply inline-flex flex-wrap gap-2;
-  }
-
-  .tab-button {
-    @apply min-w-[102px];
-  }
-
-  .tab-button.active {
-    @apply border-blue-700 bg-gradient-to-b from-blue-600 to-blue-700 text-white;
-  }
-
-  .screen-nav .tab-button {
-    @apply min-w-[130px];
-  }
-
-  .card {
-    @apply rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm;
-  }
-
-  .stack {
-    @apply grid gap-3;
-  }
-
-  .row {
-    @apply flex flex-wrap gap-2;
-  }
-
-  .row > * {
-    @apply min-w-[220px] flex-1;
-  }
-
-  .input,
-  .select,
-  .button,
-  .textarea {
-    @apply w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition;
-  }
-
-  .input:focus,
-  .select:focus,
-  .textarea:focus {
-    @apply border-blue-400 ring-4 ring-blue-200;
-  }
-
-  .textarea {
-    @apply min-h-[148px] resize-y leading-6 text-slate-800;
-  }
-
-  .button {
-    @apply cursor-pointer border-0 bg-gradient-to-b from-blue-500 to-blue-700 font-semibold text-white;
-  }
-
-  .button:hover:not(:disabled) {
-    @apply brightness-105;
-  }
-
-  .button.secondary {
-    @apply border border-slate-200 bg-white text-slate-700;
-  }
-
-  .button:disabled {
-    @apply cursor-not-allowed opacity-55;
-  }
-
-  .muted {
-    @apply text-sm text-slate-600;
-  }
-
-  .error {
-    @apply text-sm font-medium text-rose-600;
-  }
-
-  pre {
-    @apply m-0 whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-6;
-  }
-
-  .setup-grid {
-    @apply items-stretch;
-  }
-
-  .todo-box {
-    @apply grid gap-1.5 rounded-xl border border-dashed border-blue-200 bg-blue-50/50 p-3;
-  }
-
-  .todo-box ul {
-    @apply m-0 grid gap-1 pl-5 text-sm text-slate-700;
-  }
-
-  .role-grid {
-    @apply grid gap-2 sm:grid-cols-2;
-  }
-
-  .role-card {
-    @apply grid gap-1 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:-translate-y-0.5 hover:border-blue-300;
-  }
-
-  .role-card.active {
-    @apply border-blue-400 bg-blue-50 ring-4 ring-blue-100;
-  }
-
-  .status-chip {
-    @apply inline-flex min-h-6 items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-bold;
-  }
-
-  .status-chip.active {
-    @apply border-blue-200 bg-blue-50 text-blue-700;
-  }
-
-  .status-chip.completed {
-    @apply border-emerald-200 bg-emerald-50 text-emerald-700;
-  }
-
-  .question-header {
-    @apply flex items-center justify-between gap-2;
-  }
-
-  .character-card {
-    @apply flex items-start gap-3 rounded-xl border p-3;
-  }
-
-  .character-card.luna {
-    @apply border-sky-200 bg-gradient-to-b from-sky-50 to-white;
-  }
-
-  .character-card.jet {
-    @apply border-indigo-200 bg-gradient-to-b from-indigo-50 to-white;
-  }
-
-  .character-card.iron {
-    @apply border-rose-200 bg-gradient-to-b from-rose-50 to-white;
-  }
-
-  .character-avatar-wrap {
-    @apply shrink-0;
-  }
-
-  .character-content {
-    @apply grid w-full gap-1.5;
-  }
-
-  .character-title-row {
-    @apply flex flex-wrap items-center gap-2;
-  }
-
-  .character-role {
-    @apply rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-bold text-slate-600;
-  }
-
-  .character-line {
-    @apply font-semibold leading-snug text-slate-800;
-  }
-
-  .character-meta-row {
-    @apply flex flex-wrap items-center justify-between gap-2;
-  }
-
-  .emotion-chip {
-    @apply inline-flex min-h-6 items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-bold;
-  }
-
-  .emotion-chip.neutral {
-    @apply border-slate-200 bg-slate-100 text-slate-600;
-  }
-
-  .emotion-chip.encourage {
-    @apply border-emerald-200 bg-emerald-50 text-emerald-700;
-  }
-
-  .emotion-chip.pressure {
-    @apply border-rose-200 bg-rose-50 text-rose-700;
-  }
-
-  .question-meta-grid,
-  .metric-grid {
-    @apply grid gap-2 sm:grid-cols-2 lg:grid-cols-4;
-  }
-
-  .question-meta-card,
-  .metric-card {
-    @apply grid gap-0.5 rounded-xl border border-slate-200 bg-white p-3;
-  }
-
-  .question-meta-card strong,
-  .metric-card strong {
-    @apply text-base tracking-tight text-slate-900;
-  }
-
-  .stream-indicator {
-    @apply text-sm font-semibold text-blue-700;
-  }
-
-  .progress-track {
-    @apply h-2.5 w-full overflow-hidden rounded-full bg-slate-200;
-  }
-
-  .progress-fill {
-    @apply h-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all;
-  }
-
-  .chat-board {
-    @apply grid max-h-[420px] gap-2 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3;
-  }
-
-  .chat-bubble {
-    @apply max-w-[82%] rounded-xl border p-3 leading-snug;
-  }
-
-  .chat-bubble.interviewer {
-    @apply justify-self-start border-slate-200 bg-white;
-  }
-
-  .chat-bubble.user {
-    @apply justify-self-end border-blue-200 bg-blue-50;
-  }
-
-  .chat-bubble.coach {
-    @apply justify-self-start border-indigo-200 bg-indigo-50;
-  }
-
-  .chat-meta {
-    @apply mb-1 text-xs text-slate-500;
-  }
-
-  .coaching-card {
-    @apply rounded-xl border p-3;
-  }
-
-  .coaching-card.high {
-    @apply border-rose-200 bg-rose-50;
-  }
-
-  .coaching-card.normal {
-    @apply border-blue-200 bg-blue-50;
-  }
-
-  .coaching-header {
-    @apply flex flex-wrap items-center justify-between gap-2;
-  }
-
-  .coaching-priority {
-    @apply inline-flex min-h-6 items-center rounded-full border px-2 py-0.5 text-xs font-bold;
-  }
-
-  .coaching-priority.high {
-    @apply border-rose-200 bg-white text-rose-700;
-  }
-
-  .coaching-priority.normal {
-    @apply border-blue-200 bg-white text-blue-700;
-  }
-
-  .coaching-checklist {
-    @apply m-0 grid gap-1 pl-5 text-sm text-slate-700;
-  }
-
-  .axis-grid {
-    @apply grid gap-2 sm:grid-cols-2 lg:grid-cols-5;
-  }
-
-  .axis-card {
-    @apply grid gap-1 rounded-xl border border-slate-200 bg-slate-50 p-3;
-  }
-
-  .axis-card.total {
-    @apply border-blue-200 bg-blue-50;
-  }
-
-  .keyword-pool {
-    @apply grid gap-2 rounded-xl border border-slate-200 bg-white p-3;
-  }
-
-  .keyword-chip-wrap {
-    @apply flex flex-wrap gap-2;
-  }
-
-  .keyword-chip {
-    @apply inline-flex min-h-6 items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700;
-  }
-
-  .sub-card {
-    @apply grid gap-2 rounded-xl border border-slate-200 bg-white p-3;
-  }
-
-  .sub-card p {
-    @apply leading-6;
-  }
-}
-
-@media (max-width: 760px) {
-  .character-card {
-    @apply flex-col items-center text-center;
-  }
-
-  .character-meta-row {
-    @apply justify-center;
-  }
-
-  .chat-bubble {
-    @apply max-w-[95%];
+  .sse-caret::after {
+    content: "▌";
+    @apply ml-0.5 animate-pulse text-im-primary;
   }
 }
