@@ -42,6 +42,12 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
         playTtsAudio={shellState.playTtsAudio}
         ttsNotice={shellState.ttsNotice}
         onDismissTtsNotice={shellState.clearTtsNotice}
+        isRecording={shellState.isRecording}
+        isSttSupported={shellState.isSttSupported}
+        isSttBusy={shellState.isSttBusy}
+        sttNotice={shellState.sttNotice}
+        onDismissSttNotice={shellState.clearSttNotice}
+        onToggleRecording={shellState.handleToggleRecording}
         reactionEnabled={shellState.reactionEnabled}
         jobRoleLabel={shellState.jobRoleLabel}
         stackLabel={shellState.stackLabel}

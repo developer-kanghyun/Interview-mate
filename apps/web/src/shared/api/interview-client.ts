@@ -559,7 +559,11 @@ export function streamQuestion(
   };
 }
 
-export async function submitAnswer(sessionId: string, answer: string): Promise<SubmitAnswerResponse> {
+export async function submitAnswer(
+  sessionId: string,
+  answer: string,
+  inputType: "text" | "voice" = "text"
+): Promise<SubmitAnswerResponse> {
   const runtimeState = await ensureRuntimeState(sessionId);
   if (!runtimeState.currentQuestion) {
     throw new Error("현재 질문이 없어 답변을 제출할 수 없습니다.");
@@ -569,7 +573,7 @@ export async function submitAnswer(sessionId: string, answer: string): Promise<S
     sessionId,
     questionId: runtimeState.currentQuestion.questionId,
     answerText: answer,
-    inputType: "text"
+    inputType
   });
 
   const data = readResponseData(submitResponse, "답변 제출 실패");

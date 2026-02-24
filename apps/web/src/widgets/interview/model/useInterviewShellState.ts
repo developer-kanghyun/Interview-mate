@@ -27,6 +27,7 @@ import { useInterviewerSpeech } from "@/features/interview-session/model/useInte
 import { useQuestionStreaming } from "@/features/interview-session/model/useQuestionStreaming";
 import { useStartSession } from "@/features/interview/start-session/model/useStartSession";
 import { useFetchReport } from "@/features/interview-report/model/useFetchReport";
+import { useSpeechToText } from "@/shared/lib/useSpeechToText";
 import {
   clearPostLoginRedirectTarget,
   clearLegacyApiKeyStorage,
@@ -63,6 +64,12 @@ type UseInterviewShellStateResult = {
   playTtsAudio: () => void;
   ttsNotice: string | null;
   clearTtsNotice: () => void;
+  isRecording: boolean;
+  isSttSupported: boolean;
+  isSttBusy: boolean;
+  sttNotice: string | null;
+  clearSttNotice: () => void;
+  handleToggleRecording: () => void;
   reactionEnabled: boolean;
   jobRoleLabel: string;
   stackLabel: string;
@@ -98,6 +105,11 @@ type UseInterviewShellStateResult = {
 type RetryPreset = {
   jobRole?: StartInterviewPayload["jobRole"];
   stack?: StartInterviewPayload["stack"];
+};
+
+type SubmitAnswerOptions = {
+  answerOverride?: string;
+  inputType?: "text" | "voice";
 };
 
 type UseInterviewShellStateOptions = {
@@ -190,7 +202,17 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   const [backendStatusMessage, setBackendStatusMessage] = useState<string | null>(null);
   const [isGuestUser, setIsGuestUser] = useState(false);
   const [ttsNotice, setTtsNotice] = useState<string | null>(null);
+  const [sttNotice, setSttNotice] = useState<string | null>(null);
   const ttsNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sttNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const {
+    isRecording,
+    isSupported: isSttSupported,
+    speechError,
+    startRecording,
+    stopRecording,
+    clearSpeechError
+  } = useSpeechToText();
 
   const routeStep = useMemo(
     () => options.initialStep ?? resolveStepFromPath(pathname),
@@ -314,8 +336,32 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     []
   );
 
+  const clearSttNotice = useCallback(() => {
+    if (sttNoticeTimerRef.current) {
+      clearTimeout(sttNoticeTimerRef.current);
+      sttNoticeTimerRef.current = null;
+    }
+    setSttNotice(null);
+  }, []);
+
+  const showSttNotice = useCallback(
+    (message: string) => {
+      if (sttNoticeTimerRef.current) {
+        clearTimeout(sttNoticeTimerRef.current);
+      }
+      setSttNotice(message);
+      sttNoticeTimerRef.current = setTimeout(() => {
+        setSttNotice(null);
+        sttNoticeTimerRef.current = null;
+      }, 5000);
+    },
+    []
+  );
+
   const { ttsAudioRef, stopTtsPlayback, speakInterviewer: rawSpeakInterviewer, isAutoplayBlocked, playTtsAudio } =
     useInterviewerSpeech(setAvatarState, { onNotice: showTtsNotice });
+
+  const isSttBusy = isRecording || isSubmitting || isQuestionStreaming || isExiting;
   const speakInterviewer = useCallback(
     (text: string) => rawSpeakInterviewer(text, setupPayload.character),
     [rawSpeakInterviewer, setupPayload.character]
@@ -336,13 +382,37 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
 
   useEffect(() => {
     return () => {
+      stopRecording();
       stopQuestionStream();
       stopTtsPlayback();
       if (ttsNoticeTimerRef.current) {
         clearTimeout(ttsNoticeTimerRef.current);
       }
+      if (sttNoticeTimerRef.current) {
+        clearTimeout(sttNoticeTimerRef.current);
+      }
     };
-  }, [stopQuestionStream, stopTtsPlayback]);
+  }, [stopQuestionStream, stopRecording, stopTtsPlayback]);
+
+  useEffect(() => {
+    if (step === "room" || !isRecording) {
+      return;
+    }
+    stopRecording();
+  }, [isRecording, step, stopRecording]);
+
+  useEffect(() => {
+    if (!speechError) {
+      return;
+    }
+
+    if (!isSttSupported) {
+      showSttNotice("이 브라우저는 음성 인식을 지원하지 않습니다. 텍스트로 답변해 주세요.");
+    } else {
+      showSttNotice("음성 인식 실패 상태입니다. 버튼 눌러 다시 시도해 주세요.");
+    }
+    clearSpeechError();
+  }, [clearSpeechError, isSttSupported, showSttNotice, speechError]);
 
   useEffect(() => {
     void runBackendHealthCheck();
@@ -428,6 +498,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       }
 
       setIsExiting(true);
+      stopRecording();
       stopQuestionStream();
       stopTtsPlayback();
       setUiError(null);
@@ -461,7 +532,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         setIsExiting(false);
       }
     },
-    [clearReportFetchError, fetchReport, isExiting, stopQuestionStream, stopTtsPlayback]
+    [clearReportFetchError, fetchReport, isExiting, stopQuestionStream, stopRecording, stopTtsPlayback]
   );
 
   const beginInterview = useCallback(
@@ -505,12 +576,14 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     await beginInterview(setupPayload);
   }, [beginInterview, setupPayload]);
 
-  const handleSubmitAnswer = useCallback(async () => {
-    if (!sessionId || !answerText.trim() || isSubmitting) {
+  const handleSubmitAnswer = useCallback(async (options?: SubmitAnswerOptions) => {
+    const inputType = options?.inputType ?? "text";
+    const sourceAnswer = options?.answerOverride ?? answerText;
+    if (!sessionId || !sourceAnswer.trim() || isSubmitting) {
       return;
     }
 
-    const submittedAnswer = answerText.trim();
+    const submittedAnswer = sourceAnswer.trim();
     appendMessage({
       id: `answer-${Date.now()}`,
       role: "user",
@@ -524,7 +597,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     setUiError(null);
 
     try {
-      const response = await submitAnswer(sessionId, submittedAnswer);
+      const response = await submitAnswer(sessionId, submittedAnswer, inputType);
       setEmotion(response.suggestedEmotion);
       setFollowupCount(response.followupCount);
 
@@ -564,16 +637,47 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       setIsSubmitting(false);
     }
   }, [
-    answerText,
     appendMessage,
     isGuestUser,
     isSubmitting,
+    answerText,
     moveToReport,
     questionOrder,
     sessionId,
     startQuestionStream,
     stopQuestionStream,
     stopTtsPlayback
+  ]);
+
+  const handleToggleRecording = useCallback(() => {
+    if (isSubmitting || isQuestionStreaming || isExiting) {
+      return;
+    }
+
+    if (isRecording) {
+      stopRecording();
+      return;
+    }
+
+    clearSttNotice();
+    clearSpeechError();
+    startRecording((transcript) => {
+      setAnswerText(transcript);
+      void handleSubmitAnswer({
+        answerOverride: transcript,
+        inputType: "voice"
+      });
+    });
+  }, [
+    clearSpeechError,
+    clearSttNotice,
+    handleSubmitAnswer,
+    isExiting,
+    isQuestionStreaming,
+    isRecording,
+    isSubmitting,
+    startRecording,
+    stopRecording
   ]);
 
   const handlePause = useCallback(() => {
@@ -700,6 +804,12 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     playTtsAudio,
     ttsNotice,
     clearTtsNotice,
+    isRecording,
+    isSttSupported,
+    isSttBusy,
+    sttNotice,
+    clearSttNotice,
+    handleToggleRecording,
     reactionEnabled: setupPayload.reactionEnabled,
     jobRoleLabel: mapRoleLabel(setupPayload.jobRole),
     stackLabel: setupPayload.stack,

@@ -26,6 +26,12 @@ type RoomViewProps = {
   playTtsAudio: () => void;
   ttsNotice: string | null;
   onDismissTtsNotice: () => void;
+  isRecording: boolean;
+  isSttSupported: boolean;
+  isSttBusy: boolean;
+  sttNotice: string | null;
+  onDismissSttNotice: () => void;
+  onToggleRecording: () => void;
   reactionEnabled: boolean;
   jobRoleLabel: string;
   stackLabel: string;
@@ -56,6 +62,12 @@ export function RoomView({
   playTtsAudio,
   ttsNotice,
   onDismissTtsNotice,
+  isRecording,
+  isSttSupported,
+  isSttBusy,
+  sttNotice,
+  onDismissSttNotice,
+  onToggleRecording,
   reactionEnabled,
   jobRoleLabel,
   stackLabel,
@@ -185,6 +197,14 @@ export function RoomView({
               <Button variant="secondary" onClick={onPause} disabled={!canPause} className="shrink-0">
                 일시정지
               </Button>
+              <Button
+                variant={isRecording ? "primary" : "secondary"}
+                onClick={onToggleRecording}
+                disabled={!isRecording && isSttBusy}
+                className="shrink-0"
+              >
+                {isRecording ? "⏹ 음성 중지" : "🎤 음성 답변"}
+              </Button>
               <div className="flex-1" />
               <Button onClick={onSubmitAnswer} disabled={!canSubmitAnswer} className="min-w-[120px]">
                 {isSubmitting ? "제출 중..." : "답변 완료"}
@@ -202,6 +222,21 @@ export function RoomView({
             message={ttsNotice}
             actions={
               <Button variant="secondary" className="h-7 px-3 text-xs" onClick={onDismissTtsNotice}>
+                닫기
+              </Button>
+            }
+          />
+        </div>
+      ) : null}
+
+      {sttNotice ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-20 z-30 flex justify-center px-4">
+          <InlineNotice
+            variant={isSttSupported ? "warning" : "info"}
+            className="pointer-events-auto max-w-xl shadow-soft"
+            message={sttNotice}
+            actions={
+              <Button variant="secondary" className="h-7 px-3 text-xs" onClick={onDismissSttNotice}>
                 닫기
               </Button>
             }
