@@ -22,6 +22,7 @@ public class TtsController {
 
     private static final int MAX_TEXT_LENGTH = 400;
     private static final String DEFAULT_VOICE_NAME = "ko-KR-Neural2-c";
+    private static final double DEFAULT_SPEAKING_RATE = 1.1;
 
     private final TtsPort ttsPort;
     private final TtsProperties ttsProperties;
@@ -67,7 +68,7 @@ public class TtsController {
     }
 
     public Double resolveSpeakingRate(Double speakingRate) {
-        return speakingRate != null ? speakingRate : 1.0;
+        return speakingRate != null ? speakingRate : DEFAULT_SPEAKING_RATE;
     }
 
     public String resolveVoiceName(String character) {
