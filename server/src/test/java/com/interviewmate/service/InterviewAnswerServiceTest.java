@@ -199,6 +199,41 @@ class InterviewAnswerServiceTest {
     }
 
     @Test
+    void testSubmitAnswerCompletesGuestSessionWithoutFollowup() {
+        jdbcTemplate.update(
+                "INSERT INTO users (id, api_key, is_guest, created_at, updated_at) VALUES (2, 'guest-key', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+        );
+        jdbcTemplate.update("""
+                INSERT INTO interview_sessions (id, user_id, job_role, interviewer_character, total_questions, status, started_at, created_at, updated_at)
+                VALUES (20, 2, 'backend', 'jet', 1, 'in_progress', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """);
+        jdbcTemplate.update("""
+                INSERT INTO interview_session_questions (id, session_id, question_id, question_order, followup_count, created_at)
+                VALUES (2000, 20, 100, 1, 0, CURRENT_TIMESTAMP)
+                """);
+
+        InterviewAnswerSubmitRequest request = new InterviewAnswerSubmitRequest();
+        request.setQuestionId(100L);
+        request.setAnswerText("잘 모르겠습니다.");
+        request.setInputType("text");
+
+        InterviewAnswerSubmitResponse response = interviewAnswerService.submitAnswer(20L, request);
+
+        assertThat(response.getEvaluation()).isNotNull();
+        assertThat(response.getEvaluation().isFollowupRequired()).isFalse();
+        assertThat(response.getEvaluation().getFollowupReason()).isEqualTo("followup_limit_reached");
+        assertThat(response.getFollowupQuestion()).isNull();
+        assertThat(response.getNextQuestion()).isNull();
+        assertThat(response.getSessionStatus()).isEqualTo("completed");
+        assertThat(response.isSessionCompleted()).isTrue();
+        Integer savedFollowupCount = jdbcTemplate.queryForObject(
+                "SELECT followup_count FROM interview_session_questions WHERE id = 2000",
+                Integer.class
+        );
+        assertThat(savedFollowupCount).isEqualTo(0);
+    }
+
+    @Test
     void testSubmitAnswerMarksSessionCompletedOnLastQuestion() {
         InterviewAnswerSubmitRequest firstRequest = new InterviewAnswerSubmitRequest();
         firstRequest.setQuestionId(100L);
