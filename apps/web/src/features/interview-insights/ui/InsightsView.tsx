@@ -34,17 +34,21 @@ export function InsightsView({
   const isActionBusy = isLoading || isRetryingWeakness;
 
   return (
-    <div className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-8">
-      <header className="rounded-2xl border border-white/80 bg-white/85 p-5 shadow-soft">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">Insights</p>
-        <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900">인사이트 / 히스토리</h1>
-        <p className="mt-2 text-sm text-slate-600">최근 30일 세션 이력과 약점 키워드를 바탕으로 복습 루프를 이어갑니다.</p>
+    <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-8">
+      {/* Insights Header */}
+      <header className="text-center">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-im-primary">Insights</p>
+        <h1 className="mt-2 text-2xl font-bold text-im-text-main sm:text-3xl">인사이트 / 히스토리</h1>
+        <p className="mt-2 text-sm text-im-text-muted">
+          최근 30일 세션 이력과 약점 키워드를 바탕으로 복습 루프를 이어갑니다.
+        </p>
       </header>
 
+      {/* Session List */}
       <SubCard title="세션 목록">
-        <ul className="grid gap-2">
+        <ul className="grid gap-3">
           {isLoading ? (
-            <li className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+            <li className="rounded-2xl border border-im-border bg-im-subtle p-4 text-sm text-im-text-muted">
               최근 30일 세션 기록을 불러오는 중입니다...
             </li>
           ) : errorMessage ? (
@@ -60,22 +64,22 @@ export function InsightsView({
               />
             </li>
           ) : sessions.length === 0 ? (
-            <li className="rounded-xl border border-dashed border-slate-300 p-3 text-sm text-slate-600">
+            <li className="rounded-2xl border border-dashed border-gray-300 p-4 text-sm text-im-text-muted">
               최근 30일 세션 기록이 없습니다. 새 면접을 시작해 기록을 쌓아보세요.
             </li>
           ) : (
             sessions.map((session) => (
-              <li key={session.sessionId} className="rounded-xl border border-slate-200 bg-white p-3">
+              <li key={session.sessionId} className="rounded-2xl border border-im-border bg-white p-4 transition-colors hover:bg-im-subtle">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-slate-900">
+                  <p className="text-sm font-bold text-im-text-main">
                     {session.role === "backend" ? "백엔드" : "프론트엔드"} · {session.stack}
                   </p>
                   <Chip variant={session.status === "completed" ? "success" : "info"}>
                     {formatSessionStatus(session.status)}
                   </Chip>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">{new Date(session.startedAt).toLocaleString()}</p>
-                <p className="mt-2 text-sm text-slate-700">
+                <p className="mt-1 text-xs text-im-text-muted">{new Date(session.startedAt).toLocaleString()}</p>
+                <p className="mt-2 text-sm text-im-text-muted">
                   평균 점수 {session.totalScore}점 · 답변 {session.questionCount}개
                 </p>
               </li>
@@ -84,6 +88,7 @@ export function InsightsView({
         </ul>
       </SubCard>
 
+      {/* Bottom Grid */}
       <div className="grid gap-4 lg:grid-cols-2">
         <SubCard title="약점 키워드 모아보기">
           <div className="flex flex-wrap gap-2">
@@ -94,13 +99,13 @@ export function InsightsView({
                 </Chip>
               ))
             ) : (
-              <p className="text-sm text-slate-600">약점 키워드는 리포트 생성 후 자동으로 수집됩니다.</p>
+              <p className="text-sm text-im-text-muted">약점 키워드는 리포트 생성 후 자동으로 수집됩니다.</p>
             )}
           </div>
         </SubCard>
 
         <SubCard title="학습 가이드">
-          <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">
+          <ul className="list-disc space-y-1 pl-5 text-sm text-im-text-muted">
             {studyGuide.map((item) => (
               <li key={item}>{item}</li>
             ))}
@@ -108,6 +113,7 @@ export function InsightsView({
         </SubCard>
       </div>
 
+      {/* Actions */}
       <div className="flex flex-wrap justify-end gap-2">
         <Button variant="secondary" onClick={onBackSetup} disabled={isActionBusy}>
           면접 탭으로

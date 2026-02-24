@@ -33,7 +33,7 @@ export function ReportView({
   if (isLoading) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <p className="text-sm text-slate-600">리포트를 불러오는 중입니다. 잠시만 기다려 주세요.</p>
+        <p className="text-sm text-im-text-muted">리포트를 불러오는 중입니다. 잠시만 기다려 주세요.</p>
       </div>
     );
   }
@@ -77,20 +77,23 @@ export function ReportView({
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-8">
-      <header className="rounded-2xl border border-white/80 bg-white/85 p-5 shadow-soft">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">Report</p>
-        <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900">면접 리포트</h1>
-        <p className="mt-2 text-sm text-slate-600">세션 종료 후 생성된 4축 평가와 질문별 피드백입니다.</p>
+    <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-8">
+      {/* Report Header */}
+      <header className="text-center">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-im-primary">Report</p>
+        <h1 className="mt-2 text-2xl font-bold text-im-text-main sm:text-3xl">면접 리포트</h1>
+        <p className="mt-2 text-sm text-im-text-muted">세션 종료 후 생성된 4축 평가와 질문별 피드백입니다.</p>
       </header>
 
+      {/* Score + Summary */}
       <div className="grid gap-4 md:grid-cols-[280px,1fr]">
         <MetricCard title="총점" value={`${report.totalScore}점`} caption="100점 만점" />
         <SubCard title="세션 요약">
-          <p className="text-sm leading-7 text-slate-700">{report.summary}</p>
+          <p className="text-sm leading-7 text-im-text-muted">{report.summary}</p>
         </SubCard>
       </div>
 
+      {/* 4-Axis Scores */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <AxisCard title="기술 정확도" score={report.axisScores.technical} description="핵심 개념/용어 정확도" />
         <AxisCard title="문제 해결력" score={report.axisScores.problemSolving} description="원인-해결 구조화" />
@@ -98,23 +101,25 @@ export function ReportView({
         <AxisCard title="전달력" score={report.axisScores.delivery} description="간결성/설득력" />
       </div>
 
+      {/* Question Feedback */}
       <SubCard title="질문별 피드백">
-        <ul className="grid gap-2">
+        <ul className="grid gap-3">
           {report.questionFeedback.map((item) => (
-            <li key={item.questionId} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-xs font-semibold text-slate-500">Q{item.order}</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{item.question}</p>
-              <p className="mt-2 text-sm text-slate-700">{item.feedback}</p>
-              <div className="mt-2">
+            <li key={item.questionId} className="rounded-2xl border border-im-border bg-im-subtle p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-im-text-muted">Q{item.order}</p>
                 <Chip variant={item.totalScore >= 75 ? "success" : item.totalScore >= 60 ? "info" : "danger"}>
                   {item.totalScore}점
                 </Chip>
               </div>
+              <p className="mt-2 text-sm font-bold text-im-text-main">{item.question}</p>
+              <p className="mt-2 text-sm text-im-text-muted">{item.feedback}</p>
             </li>
           ))}
         </ul>
       </SubCard>
 
+      {/* Study Guide */}
       <TodoBox
         title="개선 가이드 / 키워드"
         items={[
@@ -123,6 +128,7 @@ export function ReportView({
         ]}
       />
 
+      {/* Actions */}
       <div className="flex flex-wrap justify-end gap-2">
         <Button variant="secondary" onClick={onRestart} disabled={isBusy}>
           새 면접 시작
