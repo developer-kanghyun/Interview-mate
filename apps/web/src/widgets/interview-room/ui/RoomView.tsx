@@ -153,7 +153,7 @@ export function RoomView({
         {/* Right Column: Chat + Input */}
         <section className="flex min-w-0 flex-1 flex-col">
           {/* Current Question Banner */}
-          <div className="shrink-0 border-b border-im-border bg-blue-50/50 px-5 py-4">
+          <div className="shrink-0 border-b border-im-border bg-im-primary-soft/70 px-5 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-im-primary">
@@ -218,7 +218,7 @@ export function RoomView({
         <div className="pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center px-4">
           <InlineNotice
             variant="info"
-            className="pointer-events-auto max-w-xl border-blue-300 shadow-soft"
+            className="pointer-events-auto max-w-xl border-im-primary/30 shadow-soft"
             message={ttsNotice}
             actions={
               <Button variant="secondary" className="h-7 px-3 text-xs" onClick={onDismissTtsNotice}>

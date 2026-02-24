@@ -54,31 +54,41 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
     setStep((previous) => (previous === 1 ? 1 : ((previous - 1) as 1 | 2 | 3)));
   };
 
-  const stepLabel = step === 1 ? "Step 1 · 직무 선택" : step === 2 ? "Step 2 · 스택/난이도" : "Step 3 · 면접관 선택";
-
   return (
-    <div className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-8">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">면접 탭</h1>
-        <p className="text-sm text-slate-600">3단계로 조건을 선택하고 바로 모의면접을 시작합니다.</p>
-        <div className="flex items-center gap-2">
-          <Chip variant="info">{stepLabel}</Chip>
-          <Chip variant="default">{step}/3</Chip>
-        </div>
-      </header>
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-10">
+      {/* Progress indicator */}
+      <div className="flex items-center justify-center gap-2">
+        {[1, 2, 3].map((s) => (
+          <div
+            key={s}
+            className={`h-2 rounded-full transition-[width,background-color] duration-300 ${
+              s === step ? "w-8 bg-im-primary" : s < step ? "w-2 bg-im-primary/40" : "w-2 bg-gray-200"
+            }`}
+          />
+        ))}
+      </div>
 
+      {/* Step 1: Job Role */}
       {step === 1 ? (
-        <Card title="직무 선택" description="질문 분배는 직무 비중을 우선으로 하되 공통 질문이 일부 섞입니다.">
-          <div className="grid gap-2 sm:grid-cols-2">
+        <div className="flex flex-col items-center gap-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-im-text-main sm:text-3xl">
+              어떤 직무의 면접을 준비하시나요?
+            </h1>
+            <p className="mt-2 text-sm text-im-text-muted">
+              선택한 직무에 맞춘 AI 면접관이 배정됩니다.
+            </p>
+          </div>
+          <div className="grid w-full gap-3 sm:grid-cols-2">
             {(["backend", "frontend"] as const).map((jobRole) => (
               <button
                 key={jobRole}
                 type="button"
                 disabled={isSetupBusy}
-                className={`rounded-xl border p-4 text-left transition ${
+                className={`rounded-2xl border px-5 py-4 text-left transition-[background-color,border-color,box-shadow,transform,opacity,filter] ${
                   value.jobRole === jobRole
-                    ? "border-blue-500 bg-blue-600 text-white ring-4 ring-blue-100"
-                    : "border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300"
+                    ? "border-im-primary bg-im-primary-soft ring-4 ring-im-primary/20"
+                    : "border-im-border bg-white hover:border-gray-300 hover:shadow-sm"
                 }`}
                 onClick={() =>
                   onChange({
@@ -88,21 +98,29 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
                   })
                 }
               >
-                <p className="text-sm font-semibold">{jobRole === "backend" ? "백엔드" : "프론트엔드"}</p>
-                <p className={`mt-1 text-xs ${value.jobRole === jobRole ? "text-blue-50" : "text-slate-500"}`}>
+                <p className={`text-sm font-bold ${value.jobRole === jobRole ? "text-im-primary" : "text-im-text-main"}`}>
+                  {jobRole === "backend" ? "백엔드" : "프론트엔드"}
+                </p>
+                <p className={`mt-1 text-xs ${value.jobRole === jobRole ? "text-im-primary/70" : "text-im-text-muted"}`}>
                   {jobRole === "backend" ? "API/DB/성능/아키텍처 중심" : "UI/상태/성능/접근성 중심"}
                 </p>
               </button>
             ))}
           </div>
-        </Card>
+        </div>
       ) : null}
 
+      {/* Step 2: Stack & Difficulty */}
       {step === 2 ? (
-        <Card title="기술 스택 / 난이도">
-          <div className="grid gap-3">
-            <label className="grid gap-1">
-              <span className="text-xs font-semibold text-slate-700">스택</span>
+        <div className="flex flex-col items-center gap-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-im-text-main sm:text-3xl">
+              기술 스택과 난이도를 알려주세요.
+            </h1>
+          </div>
+          <div className="grid w-full gap-5">
+            <label className="grid gap-1.5">
+              <span className="text-xs font-bold text-im-text-muted">기술 스택</span>
               <Select
                 value={value.stack}
                 disabled={isSetupBusy}
@@ -116,18 +134,18 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
               </Select>
             </label>
 
-            <label className="grid gap-1">
-              <span className="text-xs font-semibold text-slate-700">난이도</span>
-              <div className="grid gap-2 sm:grid-cols-2">
+            <label className="grid gap-1.5">
+              <span className="text-xs font-bold text-im-text-muted">면접 난이도</span>
+              <div className="grid gap-3 sm:grid-cols-2">
                 {(["jobseeker", "junior"] as const).map((difficulty) => (
                   <button
                     key={difficulty}
                     type="button"
                     disabled={isSetupBusy}
-                    className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${
+                    className={`rounded-2xl border px-5 py-3 text-sm font-semibold transition-[background-color,border-color,box-shadow,color,transform] ${
                       value.difficulty === difficulty
-                        ? "border-blue-500 bg-blue-600 text-white ring-4 ring-blue-100"
-                        : "border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300"
+                        ? "border-im-primary bg-im-primary-soft ring-4 ring-im-primary/20 text-im-primary"
+                        : "border-im-border bg-white text-im-text-main hover:border-gray-300 hover:shadow-sm"
                     }`}
                     onClick={() => onChange({ ...value, difficulty })}
                   >
@@ -137,55 +155,69 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
               </div>
             </label>
           </div>
-        </Card>
+        </div>
       ) : null}
 
+      {/* Step 3: Interviewer */}
       {step === 3 ? (
-        <Card title="면접관 선택" description="한 명을 선택하고 면접을 시작하세요.">
-          <div className="grid gap-2">
+        <div className="flex flex-col items-center gap-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-im-text-main sm:text-3xl">
+              면접관을 선택해주세요.
+            </h1>
+            <p className="mt-2 text-sm text-im-text-muted">
+              한 명을 선택하고 면접을 시작하세요.
+            </p>
+          </div>
+          <div className="grid w-full gap-3">
             {characterOptions.map((character) => (
               <button
                 key={character.key}
                 type="button"
                 disabled={isSetupBusy}
-                className={`rounded-xl border p-3 text-left transition-colors ${
+                className={`rounded-2xl border p-4 text-left transition-[background-color,border-color,box-shadow,opacity,filter] ${
                   value.character === character.key
-                    ? "border-blue-500 bg-blue-50 ring-4 ring-blue-100"
-                    : "border-slate-200 bg-slate-50 hover:border-slate-300"
+                    ? "border-im-primary bg-im-primary-soft ring-4 ring-im-primary/20"
+                    : "border-im-border bg-white opacity-80 grayscale hover:border-gray-300 hover:opacity-100 hover:grayscale-0 hover:shadow-sm"
                 }`}
                 onClick={() => onChange({ ...value, character: character.key })}
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
+                  <div className={`shrink-0 transition-[filter,opacity] ${value.character === character.key ? "grayscale-0 opacity-100" : ""}`}>
                     <InterviewerAvatarAnimated
                       character={character.key === "zet" ? "jet" : character.key}
                       emotion="neutral"
                     />
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">{character.name}</p>
-                      <p className="mt-1 text-xs text-slate-600">{character.summary}</p>
-                    </div>
                   </div>
-                  {value.character === character.key ? <Chip variant="info">선택됨</Chip> : null}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className={`text-sm font-bold ${value.character === character.key ? "text-im-primary" : "text-im-text-main"}`}>
+                        {character.name}
+                      </p>
+                      {value.character === character.key ? <Chip variant="info">선택됨</Chip> : null}
+                    </div>
+                    <p className="mt-1 text-xs text-im-text-muted">{character.summary}</p>
+                  </div>
                 </div>
               </button>
             ))}
           </div>
-        </Card>
+        </div>
       ) : null}
 
-      <div className="flex flex-wrap justify-between gap-2">
-        <Button variant="secondary" onClick={previousStep} disabled={step === 1 || isSetupBusy}>
-          이전
+      {/* Actions */}
+      <div className="flex items-center justify-between gap-3 pt-2">
+        <Button variant="ghost" onClick={previousStep} disabled={step === 1 || isSetupBusy} className="px-6">
+          ← 이전
         </Button>
 
         {step < 3 ? (
-          <Button onClick={nextStep} disabled={isSetupBusy}>
-            다음
+          <Button onClick={nextStep} disabled={isSetupBusy} className="px-6">
+            다음 →
           </Button>
         ) : (
-          <Button onClick={onStart} disabled={isStarting || !canStart} className="min-w-[180px]">
-            {isStarting ? "면접 준비 중..." : canStart ? "면접 시작" : "로그인 후 시작"}
+          <Button onClick={onStart} disabled={isStarting || !canStart} className="min-w-[180px] shadow-glow">
+            {isStarting ? "면접 준비 중..." : canStart ? "🚀 면접 시작" : "로그인 후 시작"}
           </Button>
         )}
       </div>

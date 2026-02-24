@@ -2,52 +2,139 @@ import Link from "next/link";
 
 export default function HomePage() {
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-6xl items-center px-4 py-10 md:px-6">
-      <section className="grid w-full gap-8 rounded-[36px] border border-white/80 bg-white/80 p-8 shadow-glass backdrop-blur-2xl md:p-12">
-        <div className="grid gap-6 lg:grid-cols-[1.3fr,0.7fr]">
-          <div className="space-y-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-700">Interview Mate</p>
-            <h1 className="text-4xl font-black tracking-tight text-slate-900 md:text-6xl">
-              개발자 면접을
+    <div className="flex min-h-dvh flex-col bg-white font-display">
+      {/* Header */}
+      <header className="sticky top-0 z-50 w-full border-b border-im-border bg-white/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-im-primary text-sm font-extrabold text-white">
+              IM
+            </div>
+            <span className="text-lg font-bold tracking-tight text-im-text-main">
+              Interview Mate
+            </span>
+          </div>
+          <Link
+            href="/setup"
+            className="rounded-full bg-im-primary/10 px-5 py-2 text-sm font-bold text-im-primary transition-[background-color,color,transform] hover:bg-im-primary hover:text-white active:scale-95"
+          >
+            시작하기 →
+          </Link>
+        </div>
+      </header>
+
+      <main className="flex flex-1 flex-col">
+        {/* Hero Section */}
+        <section className="relative flex flex-col items-center justify-center px-6 pb-24 pt-20 md:pb-32 md:pt-32">
+          <div className="absolute -top-40 left-1/2 -z-10 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-im-primary/5 blur-3xl" />
+
+          <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-im-primary/20 bg-im-primary/5 px-4 py-1.5 text-sm font-medium text-im-primary">
+              ✦ AI 기반 실전 면접 트레이닝
+            </div>
+
+            <h1 className="mb-6 text-4xl font-black tracking-tight text-im-text-main sm:text-5xl md:text-6xl md:leading-[1.1]">
+              AI 면접관과 함께하는
               <br />
-              실전처럼 훈련한다
+              <span className="text-im-primary">완벽한 면접 준비</span>
             </h1>
-            <p className="max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
-              Setup부터 Room, Report, Insights까지 한 사이클로 연결된 훈련 흐름으로 약점을 빠르게 반복 학습합니다.
+
+            <p className="mb-10 max-w-2xl text-base leading-relaxed text-im-text-muted md:text-lg">
+              원하는 직무, 난이도를 설정하고 실제 면접과 유사한 환경에서
+              <br className="hidden sm:block" />
+              무제한 모의 면접을 경험하세요. 상세한 피드백으로 합격률을 높여드립니다.
             </p>
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                AI 꼬리질문
-              </span>
-              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                4축 리포트
-              </span>
-              <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
-                약점 기반 재시작
-              </span>
+
+            <div className="flex flex-col items-center gap-4 sm:flex-row">
+              <Link
+                href="/setup"
+                className="flex h-14 min-w-[200px] items-center justify-center gap-2 rounded-full bg-im-primary px-8 text-base font-bold text-white shadow-glow transition-[background-color,transform,box-shadow] hover:scale-105 hover:bg-im-primary-hover active:scale-95"
+              >
+                지금 🚀 시작하기
+              </Link>
+            </div>
+
+            {/* Social Proof */}
+            <div className="mt-16 flex flex-wrap justify-center gap-8 text-sm font-semibold text-im-text-muted md:gap-16">
+              <span>👥 10,000+ 유저</span>
+              <span>✅ 95% 합격률 상승</span>
+              <span>🏢 500+ 기업 데이터</span>
             </div>
           </div>
+        </section>
 
-          <div className="rounded-3xl border border-slate-200/80 bg-white/90 p-5 shadow-soft">
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Workflow</p>
-            <ol className="mt-3 grid gap-3 text-sm text-slate-700">
-              <li className="rounded-xl border border-slate-200 bg-slate-50 p-3">1. Setup: 직무/스택/난이도 설정</li>
-              <li className="rounded-xl border border-slate-200 bg-slate-50 p-3">2. Room: 질문 스트리밍 + 답변 제출</li>
-              <li className="rounded-xl border border-slate-200 bg-slate-50 p-3">3. Report/Insights: 피드백 분석 및 재도전</li>
-            </ol>
+        {/* Recent Records */}
+        <section className="border-t border-im-border bg-im-subtle px-6 py-20">
+          <div className="mx-auto max-w-5xl">
+            <div className="mb-8 px-2">
+              <h2 className="text-2xl font-bold text-im-text-main">최근 면접 기록</h2>
+              <p className="mt-1 text-sm text-im-text-muted">
+                지난 모의 면접 결과를 확인하고 복습해보세요.
+              </p>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Card 1 */}
+              <div className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-im-border bg-white p-6 shadow-card transition-[border-color,box-shadow,transform] duration-300 hover:border-im-primary/30 hover:shadow-lg">
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-im-primary-soft text-lg">
+                      🖥️
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-im-text-main group-hover:text-im-primary">
+                        백엔드 개발자 (Junior)
+                      </h3>
+                      <p className="text-xs font-medium text-im-text-muted">기술 면접</p>
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-600">
+                    85점
+                  </span>
+                </div>
+                <div className="mt-auto space-y-2">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-full w-[85%] rounded-full bg-im-primary" />
+                  </div>
+                  <div className="flex justify-between text-xs text-im-text-muted">
+                    <span>답변 완성도</span>
+                    <span className="font-medium text-im-text-main">우수함</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2 */}
+              <div className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-im-border bg-white p-6 shadow-card transition-[border-color,box-shadow,transform] duration-300 hover:border-im-primary/30 hover:shadow-lg">
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-im-primary-soft text-lg">
+                      🎨
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-im-text-main group-hover:text-im-primary">
+                        프론트엔드 (Junior)
+                      </h3>
+                      <p className="text-xs font-medium text-im-text-muted">인성/협업 면접</p>
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-yellow-50 px-2.5 py-1 text-xs font-bold text-yellow-600">
+                    진행중
+                  </span>
+                </div>
+                <div className="mt-auto space-y-2">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-full w-[40%] rounded-full bg-yellow-500" />
+                  </div>
+                  <div className="flex justify-between text-xs text-im-text-muted">
+                    <span>진행률</span>
+                    <span className="font-medium text-im-text-main">40%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-
-        <div className="grid gap-4 border-t border-slate-200/80 pt-5 md:grid-cols-[auto,auto,1fr] md:items-center">
-          <Link href="/setup" className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-soft transition hover:bg-blue-500">
-            면접 시작하기
-          </Link>
-          <Link href="/settings" className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-            기본값 설정
-          </Link>
-          <p className="text-sm text-slate-500">반응형 웹에서 바로 체험 가능하며 로그인 후 결과를 이어서 확인할 수 있습니다.</p>
-        </div>
-      </section>
-    </main>
+        </section>
+      </main>
+    </div>
   );
 }

@@ -10,7 +10,7 @@ export type ChatBubbleProps = {
 
 const roleClassMap: Record<ChatRole, string> = {
   interviewer: "justify-self-start border-slate-200/80 bg-white/85 text-slate-900 shadow-soft backdrop-blur-xl",
-  user: "justify-self-end border-blue-200/80 bg-blue-50/90 text-slate-900 shadow-soft",
+  user: "justify-self-end border-im-primary/25 bg-im-primary-soft text-slate-900 shadow-soft",
   coach: "justify-self-start border-emerald-200/80 bg-emerald-50/90 text-slate-900 shadow-soft"
 };
 
