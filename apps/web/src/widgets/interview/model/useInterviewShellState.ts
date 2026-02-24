@@ -303,7 +303,11 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       window.location.assign(response.data.auth_url);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Google 로그인 URL 조회에 실패했습니다.";
-      setUiError(message);
+      if (message.includes("Google OAuth Client ID")) {
+        setUiError("Google 로그인 설정이 올바르지 않습니다. 서버 OAuth 환경변수를 확인해 주세요.");
+      } else {
+        setUiError(message);
+      }
     } finally {
       setIsAuthLoading(false);
     }
