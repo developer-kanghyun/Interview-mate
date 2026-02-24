@@ -107,6 +107,11 @@ type RetryPreset = {
   stack?: StartInterviewPayload["stack"];
 };
 
+type SubmitAnswerOptions = {
+  answerOverride?: string;
+  inputType?: "text" | "voice";
+};
+
 type UseInterviewShellStateOptions = {
   initialStep?: InterviewStep;
   initialSessionId?: string | null;
@@ -357,23 +362,6 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     useInterviewerSpeech(setAvatarState, { onNotice: showTtsNotice });
 
   const isSttBusy = isRecording || isSubmitting || isQuestionStreaming || isExiting;
-
-  const handleToggleRecording = useCallback(() => {
-    if (isSubmitting || isQuestionStreaming || isExiting) {
-      return;
-    }
-
-    if (isRecording) {
-      stopRecording();
-      return;
-    }
-
-    clearSttNotice();
-    clearSpeechError();
-    startRecording((transcript) => {
-      setAnswerText(transcript);
-    });
-  }, [clearSpeechError, clearSttNotice, isExiting, isQuestionStreaming, isRecording, isSubmitting, startRecording, stopRecording]);
   const speakInterviewer = useCallback(
     (text: string) => rawSpeakInterviewer(text, setupPayload.character),
     [rawSpeakInterviewer, setupPayload.character]
@@ -579,12 +567,14 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     await beginInterview(setupPayload);
   }, [beginInterview, setupPayload]);
 
-  const handleSubmitAnswer = useCallback(async () => {
-    if (!sessionId || !answerText.trim() || isSubmitting) {
+  const handleSubmitAnswer = useCallback(async (options?: SubmitAnswerOptions) => {
+    const inputType = options?.inputType ?? "text";
+    const sourceAnswer = options?.answerOverride ?? answerText;
+    if (!sessionId || !sourceAnswer.trim() || isSubmitting) {
       return;
     }
 
-    const submittedAnswer = answerText.trim();
+    const submittedAnswer = sourceAnswer.trim();
     appendMessage({
       id: `answer-${Date.now()}`,
       role: "user",
@@ -598,7 +588,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     setUiError(null);
 
     try {
-      const response = await submitAnswer(sessionId, submittedAnswer);
+      const response = await submitAnswer(sessionId, submittedAnswer, inputType);
       setEmotion(response.suggestedEmotion);
       setFollowupCount(response.followupCount);
 
@@ -638,16 +628,47 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       setIsSubmitting(false);
     }
   }, [
-    answerText,
     appendMessage,
     isGuestUser,
     isSubmitting,
+    answerText,
     moveToReport,
     questionOrder,
     sessionId,
     startQuestionStream,
     stopQuestionStream,
     stopTtsPlayback
+  ]);
+
+  const handleToggleRecording = useCallback(() => {
+    if (isSubmitting || isQuestionStreaming || isExiting) {
+      return;
+    }
+
+    if (isRecording) {
+      stopRecording();
+      return;
+    }
+
+    clearSttNotice();
+    clearSpeechError();
+    startRecording((transcript) => {
+      setAnswerText(transcript);
+      void handleSubmitAnswer({
+        answerOverride: transcript,
+        inputType: "voice"
+      });
+    });
+  }, [
+    clearSpeechError,
+    clearSttNotice,
+    handleSubmitAnswer,
+    isExiting,
+    isQuestionStreaming,
+    isRecording,
+    isSubmitting,
+    startRecording,
+    stopRecording
   ]);
 
   const handlePause = useCallback(() => {
