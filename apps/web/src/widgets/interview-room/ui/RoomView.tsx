@@ -221,7 +221,7 @@ export function RoomView({
                 disabled={!isRecording && isSttBusy}
                 className="shrink-0"
               >
-                {isRecording ? "⏹ 음성 중지" : "🎤 음성 답변"}
+                {isRecording ? "⏹ 녹음 종료" : "🎤 음성 답변"}
               </Button>
               <div className="flex-1" />
               <Button onClick={onSubmitAnswer} disabled={!canSubmitAnswer} className="min-w-[120px]">

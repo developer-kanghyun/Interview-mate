@@ -659,7 +659,18 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     }
 
     if (isRecording) {
-      stopRecording();
+      stopRecording((finalTranscript) => {
+        const trimmedTranscript = finalTranscript.trim();
+        if (!trimmedTranscript) {
+          showSttNotice("인식된 음성이 없어 전송하지 않았습니다. 다시 시도해 주세요.");
+          return;
+        }
+        setAnswerText(trimmedTranscript);
+        void handleSubmitAnswer({
+          answerOverride: trimmedTranscript,
+          inputType: "voice"
+        });
+      });
       return;
     }
 
@@ -667,14 +678,11 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     clearSpeechError();
     startRecording((transcript) => {
       setAnswerText(transcript);
-      void handleSubmitAnswer({
-        answerOverride: transcript,
-        inputType: "voice"
-      });
     });
   }, [
     clearSpeechError,
     clearSttNotice,
+    showSttNotice,
     handleSubmitAnswer,
     isExiting,
     isQuestionStreaming,
