@@ -1,7 +1,11 @@
 "use client";
 
-import { useCallback, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
+import { useCallback, useRef, useState, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from "react";
 import type { AvatarState } from "@/entities/avatar/ui/InterviewerAvatarAnimated";
+
+type UseInterviewerSpeechOptions = {
+  onNotice?: (message: string) => void;
+};
 
 type UseInterviewerSpeechResult = {
   ttsAudioRef: RefObject<HTMLAudioElement>;
@@ -12,14 +16,31 @@ type UseInterviewerSpeechResult = {
 };
 
 export function useInterviewerSpeech(
-  setAvatarState: Dispatch<SetStateAction<AvatarState>>
+  setAvatarState: Dispatch<SetStateAction<AvatarState>>,
+  options: UseInterviewerSpeechOptions = {}
 ): UseInterviewerSpeechResult {
+  const onNotice = options.onNotice;
   const ttsAudioRef = useRef<HTMLAudioElement>(null);
   const ttsObjectUrlRef = useRef<string | null>(null);
   const ttsRequestIdRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const autoplayNoticeShownRef = useRef(false);
+  const fallbackNoticeShownRef = useRef(false);
   
   const [isAutoplayBlocked, setIsAutoplayBlocked] = useState(false);
+
+  const pushNotice = useCallback(
+    (message: string, onceRef?: MutableRefObject<boolean>) => {
+      if (onceRef?.current) {
+        return;
+      }
+      onNotice?.(message);
+      if (onceRef) {
+        onceRef.current = true;
+      }
+    },
+    [onNotice]
+  );
 
   const stopTtsPlayback = useCallback(() => {
     if (abortControllerRef.current) {
@@ -73,6 +94,7 @@ export function useInterviewerSpeech(
     } catch (err: any) {
       if (err.name === "NotAllowedError") {
         setIsAutoplayBlocked(true);
+        pushNotice("브라우저 자동재생이 차단되었습니다. 우측의 '🔊 질문 듣기' 버튼을 눌러주세요.", autoplayNoticeShownRef);
       }
       throw err;
     }
@@ -103,7 +125,7 @@ export function useInterviewerSpeech(
       audioElement.addEventListener("error", handleError, { once: true });
       signal.addEventListener("abort", handleAbort, { once: true });
     });
-  }, []);
+  }, [pushNotice]);
 
   const speakWithWebSpeech = useCallback(async (text: string) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) {
@@ -160,18 +182,21 @@ export function useInterviewerSpeech(
             await playBlobWithAudioElement(audioBlob, abortController.signal);
             playedFromBackend = true;
           }
+        } else {
+          pushNotice("TTS 서버 응답이 지연되어 브라우저 음성으로 재생합니다.", fallbackNoticeShownRef);
         }
       } catch (err: any) {
         if (err.name === "AbortError") {
           return;
         }
+        pushNotice("TTS 서버 연결이 불안정하여 브라우저 음성으로 재생합니다.", fallbackNoticeShownRef);
       }
 
       if (!playedFromBackend && !abortController.signal.aborted && !isAutoplayBlocked) {
         try {
           await speakWithWebSpeech(trimmedText);
         } catch {
-          // fallback 실패 시 조용히 종료
+          pushNotice("음성 재생에 실패했습니다. '🔊 질문 듣기' 버튼을 다시 눌러주세요.");
         }
       }
 
@@ -179,7 +204,7 @@ export function useInterviewerSpeech(
         setAvatarState("listening");
       }
     },
-    [playBlobWithAudioElement, setAvatarState, speakWithWebSpeech, stopTtsPlayback, isAutoplayBlocked]
+    [isAutoplayBlocked, playBlobWithAudioElement, pushNotice, setAvatarState, speakWithWebSpeech, stopTtsPlayback]
   );
 
   return {

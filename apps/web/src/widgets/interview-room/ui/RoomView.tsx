@@ -5,6 +5,7 @@ import { useCallback, type FocusEvent, type RefObject } from "react";
 import { ChatBoard, type ChatMessage } from "@/shared/chat/ChatBoard";
 import { Button } from "@/shared/ui/Button";
 import { Chip } from "@/shared/ui/Chip";
+import { InlineNotice } from "@/shared/ui/InlineNotice";
 import { Textarea } from "@/shared/ui/Textarea";
 import type { InterviewCharacter, InterviewEmotion } from "@/shared/api/interview-client";
 import type { AvatarState } from "@/entities/avatar/ui/InterviewerAvatarAnimated";
@@ -23,6 +24,8 @@ type RoomViewProps = {
   audioRef: RefObject<HTMLAudioElement>;
   isAutoplayBlocked: boolean;
   playTtsAudio: () => void;
+  ttsNotice: string | null;
+  onDismissTtsNotice: () => void;
   reactionEnabled: boolean;
   jobRoleLabel: string;
   stackLabel: string;
@@ -51,6 +54,8 @@ export function RoomView({
   audioRef,
   isAutoplayBlocked,
   playTtsAudio,
+  ttsNotice,
+  onDismissTtsNotice,
   reactionEnabled,
   jobRoleLabel,
   stackLabel,
@@ -188,6 +193,21 @@ export function RoomView({
           </footer>
         </section>
       </main>
+
+      {ttsNotice ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center px-4">
+          <InlineNotice
+            variant="info"
+            className="pointer-events-auto max-w-xl border-blue-300 shadow-soft"
+            message={ttsNotice}
+            actions={
+              <Button variant="secondary" className="h-7 px-3 text-xs" onClick={onDismissTtsNotice}>
+                닫기
+              </Button>
+            }
+          />
+        </div>
+      ) : null}
 
       <audio ref={audioRef} className="hidden" />
     </div>

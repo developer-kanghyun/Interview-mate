@@ -2,6 +2,7 @@ package com.interviewmate.infrastructure.tts;
 
 import com.interviewmate.application.port.out.TtsPort;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
@@ -20,6 +21,7 @@ public class GoogleTtsAdapter implements TtsPort {
     private final WebClient webClient;
     private final String apiKey;
 
+    @Autowired
     public GoogleTtsAdapter(WebClient.Builder webClientBuilder,
                             @Value("${tts.google.api-key}") String apiKey) {
         this.webClient = webClientBuilder

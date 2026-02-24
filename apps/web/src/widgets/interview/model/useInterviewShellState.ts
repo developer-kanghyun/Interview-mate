@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { usePathname } from "next/navigation";
 import {
   listSessions,
@@ -61,6 +61,8 @@ type UseInterviewShellStateResult = {
   ttsAudioRef: RefObject<HTMLAudioElement>;
   isAutoplayBlocked: boolean;
   playTtsAudio: () => void;
+  ttsNotice: string | null;
+  clearTtsNotice: () => void;
   reactionEnabled: boolean;
   jobRoleLabel: string;
   stackLabel: string;
@@ -187,6 +189,8 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   const [backendStatus, setBackendStatus] = useState<"checking" | "ok" | "error">("checking");
   const [backendStatusMessage, setBackendStatusMessage] = useState<string | null>(null);
   const [isGuestUser, setIsGuestUser] = useState(false);
+  const [ttsNotice, setTtsNotice] = useState<string | null>(null);
+  const ttsNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const routeStep = useMemo(
     () => options.initialStep ?? resolveStepFromPath(pathname),
@@ -288,7 +292,30 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     setSessions(sessionList);
   }, []);
 
-  const { ttsAudioRef, stopTtsPlayback, speakInterviewer: rawSpeakInterviewer, isAutoplayBlocked, playTtsAudio } = useInterviewerSpeech(setAvatarState);
+  const clearTtsNotice = useCallback(() => {
+    if (ttsNoticeTimerRef.current) {
+      clearTimeout(ttsNoticeTimerRef.current);
+      ttsNoticeTimerRef.current = null;
+    }
+    setTtsNotice(null);
+  }, []);
+
+  const showTtsNotice = useCallback(
+    (message: string) => {
+      if (ttsNoticeTimerRef.current) {
+        clearTimeout(ttsNoticeTimerRef.current);
+      }
+      setTtsNotice(message);
+      ttsNoticeTimerRef.current = setTimeout(() => {
+        setTtsNotice(null);
+        ttsNoticeTimerRef.current = null;
+      }, 5000);
+    },
+    []
+  );
+
+  const { ttsAudioRef, stopTtsPlayback, speakInterviewer: rawSpeakInterviewer, isAutoplayBlocked, playTtsAudio } =
+    useInterviewerSpeech(setAvatarState, { onNotice: showTtsNotice });
   const speakInterviewer = useCallback(
     (text: string) => rawSpeakInterviewer(text, setupPayload.character),
     [rawSpeakInterviewer, setupPayload.character]
@@ -311,6 +338,9 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     return () => {
       stopQuestionStream();
       stopTtsPlayback();
+      if (ttsNoticeTimerRef.current) {
+        clearTimeout(ttsNoticeTimerRef.current);
+      }
     };
   }, [stopQuestionStream, stopTtsPlayback]);
 
@@ -668,6 +698,8 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     ttsAudioRef,
     isAutoplayBlocked,
     playTtsAudio,
+    ttsNotice,
+    clearTtsNotice,
     reactionEnabled: setupPayload.reactionEnabled,
     jobRoleLabel: mapRoleLabel(setupPayload.jobRole),
     stackLabel: setupPayload.stack,

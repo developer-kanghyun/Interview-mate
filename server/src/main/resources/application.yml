@@ -25,6 +25,12 @@ spring:
       lettuce:
         shutdown-timeout: ${SPRING_DATA_REDIS_LETTUCE_SHUTDOWN_TIMEOUT:100ms}
 
+  cache:
+    type: caffeine
+    cache-names: ttsCache
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=7d
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -72,4 +78,3 @@ tts:
     zet: ko-KR-Neural2-c
     luna: ko-KR-Neural2-b
     iron: ko-KR-Neural2-d
-

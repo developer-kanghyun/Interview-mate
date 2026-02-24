@@ -64,5 +64,6 @@ class GoogleTtsAdapterTest {
         String requestBody = recordedRequest.getBody().readUtf8();
         assertThat(requestBody).contains("안녕하세요");
         assertThat(requestBody).contains("ko-KR-Neural2-c");
+        assertThat(requestBody).contains("\"speakingRate\":1.0");
     }
 }
