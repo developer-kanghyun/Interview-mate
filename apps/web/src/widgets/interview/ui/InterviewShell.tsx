@@ -26,7 +26,8 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
     shellState.isInsightsLoading ||
     shellState.isRetryingWeakness ||
     shellState.isExiting ||
-    shellState.isSubmitting;
+    shellState.isSubmitting ||
+    shellState.isAuthLoading;
 
   if (shellState.step === "room" && shellState.sessionId) {
     return (
@@ -169,6 +170,7 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
         <LoginRequiredModal
           message={shellState.uiError}
           onClose={shellState.clearUiError}
+          isLoading={shellState.isAuthLoading}
           onLogin={() => shellState.handleGoogleLogin(shellState.authRedirectTarget)}
         />
       ) : null}

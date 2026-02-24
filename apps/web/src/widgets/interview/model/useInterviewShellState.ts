@@ -46,6 +46,7 @@ type UseInterviewShellStateResult = {
   isAuthRequired: boolean;
   authRedirectTarget: string;
   handleGoogleLogin: (redirectTo?: string) => Promise<void>;
+  isAuthLoading: boolean;
   backendStatus: "checking" | "ok" | "error";
   backendStatusMessage: string | null;
   retryBackendHealthCheck: () => Promise<void>;
@@ -180,6 +181,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const [uiError, setUiError] = useState<string | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [backendStatus, setBackendStatus] = useState<"checking" | "ok" | "error">("checking");
   const [backendStatusMessage, setBackendStatusMessage] = useState<string | null>(null);
   const [isGuestUser, setIsGuestUser] = useState(false);
@@ -257,20 +259,27 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   }, [sessionId, step]);
 
   const handleGoogleLogin = useCallback(async (redirectTo?: string) => {
-    setUiError(null);
+    if (isAuthLoading) {
+      return;
+    }
     if (redirectTo) {
       setPostLoginRedirectTarget(redirectTo);
     } else {
       clearPostLoginRedirectTarget();
     }
+
+    setIsAuthLoading(true);
+
     try {
       const response = await getGoogleAuthUrl();
       window.location.assign(response.data.auth_url);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Google 로그인 URL 조회에 실패했습니다.";
       setUiError(message);
+    } finally {
+      setIsAuthLoading(false);
     }
-  }, []);
+  }, [isAuthLoading]);
 
   const refreshSessions = useCallback(async () => {
     const sessionList = await listSessions(30);
@@ -638,6 +647,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     isAuthRequired: uiError === getAuthRequiredMessage(),
     authRedirectTarget,
     handleGoogleLogin,
+    isAuthLoading,
     backendStatus,
     backendStatusMessage,
     retryBackendHealthCheck: runBackendHealthCheck,
