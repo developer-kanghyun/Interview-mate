@@ -23,6 +23,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'com.github.ben-manes.caffeine:caffeine'
     
     // 2. WebClient (Used as a library for OpenAI calls)
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
