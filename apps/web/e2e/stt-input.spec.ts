@@ -86,7 +86,7 @@ test("STT 미지원 브라우저에서 토스트 안내 후 재시도 가능", a
   ).toBeVisible();
 });
 
-test("STT 전사 성공 시 음성 타입 자동 제출", async ({ page }) => {
+test("STT 전사 후 자동 제출되지 않고 녹음 종료 클릭 시 음성 제출", async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(HTMLMediaElement.prototype, "play", {
       configurable: true,
@@ -99,6 +99,13 @@ test("STT 전사 성공 시 음성 타입 자동 제출", async ({ page }) => {
         return Promise.resolve();
       }
     });
+
+    let startCount = 0;
+
+    const runtimeWindow = window as Window & {
+      __sttStartCount?: number;
+    };
+    runtimeWindow.__sttStartCount = 0;
 
     class MockSpeechRecognition {
       lang = "ko-KR";
@@ -117,13 +124,17 @@ test("STT 전사 성공 시 음성 타입 자동 제출", async ({ page }) => {
       onspeechend: (() => void) | null = null;
 
       start() {
+        startCount += 1;
+        runtimeWindow.__sttStartCount = startCount;
         this.onstart?.();
-        setTimeout(() => {
-          this.onresult?.({
-            results: [[{ transcript: "음성 자동 제출 테스트" }]]
-          });
-          this.onend?.();
-        }, 50);
+        if (startCount === 1) {
+          setTimeout(() => {
+            this.onresult?.({
+              results: [[{ transcript: "음성 수동 제출 테스트" }]]
+            });
+            this.onend?.();
+          }, 50);
+        }
       }
 
       stop() {
@@ -220,8 +231,10 @@ test("STT 전사 성공 시 음성 타입 자동 제출", async ({ page }) => {
 
   let submittedInputType = "";
   let submittedAnswerText = "";
+  let submitRequestCount = 0;
 
   await page.route(`**/api/backend/api/interview/sessions/${SESSION_ID}/answers`, async (route) => {
+    submitRequestCount += 1;
     const payload = route.request().postDataJSON() as {
       input_type?: string;
       answer_text?: string;
@@ -276,8 +289,15 @@ test("STT 전사 성공 시 음성 타입 자동 제출", async ({ page }) => {
   const voiceButton = page.getByRole("button", { name: "🎤 음성 답변" });
   await voiceButton.click();
 
+  await expect.poll(() => page.evaluate(() => (window as Window & { __sttStartCount?: number }).__sttStartCount ?? 0)).toBeGreaterThanOrEqual(2);
+  await expect.poll(() => submitRequestCount).toBe(0);
+  await expect(page.getByPlaceholder("답변을 입력하세요...")).toHaveValue("음성 수동 제출 테스트");
+
+  await page.getByRole("button", { name: "⏹ 녹음 종료" }).click();
+
+  await expect.poll(() => submitRequestCount).toBe(1);
   await expect.poll(() => submittedInputType).toBe("voice");
-  await expect.poll(() => submittedAnswerText).toContain("음성 자동 제출 테스트");
+  await expect.poll(() => submittedAnswerText).toContain("음성 수동 제출 테스트");
   await expect(page.getByText("핵심을 먼저 말하고 근거를 이어가세요.")).toBeVisible();
 });
 
@@ -353,7 +373,7 @@ test("STT 녹음 중지 토글 동작", async ({ page }) => {
   await expect(startButton).toBeEnabled();
   await startButton.click();
 
-  const stopButton = page.getByRole("button", { name: "⏹ 음성 중지" });
+  const stopButton = page.getByRole("button", { name: "⏹ 녹음 종료" });
   await expect(stopButton).toBeVisible();
   await expect(stopButton).toBeEnabled();
   await stopButton.click();
