@@ -38,6 +38,8 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
         avatarState={shellState.avatarState}
         emotion={shellState.emotion}
         audioRef={shellState.ttsAudioRef}
+        isAutoplayBlocked={shellState.isAutoplayBlocked}
+        playTtsAudio={shellState.playTtsAudio}
         reactionEnabled={shellState.reactionEnabled}
         jobRoleLabel={shellState.jobRoleLabel}
         stackLabel={shellState.stackLabel}
@@ -60,37 +62,47 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
   }
 
   return (
-    <div className="min-h-dvh">
-      <div className="border-b border-white/70 bg-white/70 backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-2 px-4 py-3 md:px-6">
-          <span className="mr-2 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
-            INTERVIEW SESSION
+    <div className="min-h-dvh bg-white">
+      {/* Header */}
+      <div className="sticky top-0 z-30 border-b border-im-border bg-white/80 backdrop-blur-md">
+        <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-6 py-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-im-primary text-xs font-extrabold text-white">
+            IM
+          </div>
+          <span className="text-sm font-bold tracking-tight text-im-text-main">
+            Interview Mate
           </span>
-          <Button
-            variant={shellState.step === "setup" ? "primary" : "secondary"}
-            onClick={() => shellState.setStep("setup")}
-            disabled={isNavigationBusy}
-          >
-            Setup
-          </Button>
-          <Button
-            variant={shellState.step === "report" ? "primary" : "secondary"}
-            onClick={() => shellState.setStep("report")}
-            disabled={isNavigationBusy}
-          >
-            Report
-          </Button>
-          <Button
-            variant={shellState.step === "insights" ? "primary" : "secondary"}
-            onClick={() => void shellState.handleGoInsights()}
-            disabled={isNavigationBusy}
-          >
-            Insights
-          </Button>
+
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant={shellState.step === "setup" ? "primary" : "ghost"}
+              onClick={() => shellState.setStep("setup")}
+              disabled={isNavigationBusy}
+              className="rounded-full px-4 py-1.5 text-xs"
+            >
+              Setup
+            </Button>
+            <Button
+              variant={shellState.step === "report" ? "primary" : "ghost"}
+              onClick={() => shellState.setStep("report")}
+              disabled={isNavigationBusy}
+              className="rounded-full px-4 py-1.5 text-xs"
+            >
+              Report
+            </Button>
+            <Button
+              variant={shellState.step === "insights" ? "primary" : "ghost"}
+              onClick={() => void shellState.handleGoInsights()}
+              disabled={isNavigationBusy}
+              className="rounded-full px-4 py-1.5 text-xs"
+            >
+              Insights
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="px-2 py-4 sm:px-4 sm:py-6">
+      <div className="px-4 py-6 sm:px-6 sm:py-8">
         {shellState.backendStatus === "error" ? (
           <InlineNotice
             variant="warning"

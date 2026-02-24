@@ -59,6 +59,8 @@ type UseInterviewShellStateResult = {
   avatarState: AvatarState;
   emotion: InterviewEmotion;
   ttsAudioRef: RefObject<HTMLAudioElement>;
+  isAutoplayBlocked: boolean;
+  playTtsAudio: () => void;
   reactionEnabled: boolean;
   jobRoleLabel: string;
   stackLabel: string;
@@ -286,7 +288,11 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     setSessions(sessionList);
   }, []);
 
-  const { ttsAudioRef, stopTtsPlayback, speakInterviewer } = useInterviewerSpeech(setAvatarState);
+  const { ttsAudioRef, stopTtsPlayback, speakInterviewer: rawSpeakInterviewer, isAutoplayBlocked, playTtsAudio } = useInterviewerSpeech(setAvatarState);
+  const speakInterviewer = useCallback(
+    (text: string) => rawSpeakInterviewer(text, setupPayload.character),
+    [rawSpeakInterviewer, setupPayload.character]
+  );
   const { stopQuestionStream, startQuestionStream } = useQuestionStreaming({
     stopTtsPlayback,
     appendMessage,
@@ -660,6 +666,8 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     avatarState,
     emotion,
     ttsAudioRef,
+    isAutoplayBlocked,
+    playTtsAudio,
     reactionEnabled: setupPayload.reactionEnabled,
     jobRoleLabel: mapRoleLabel(setupPayload.jobRole),
     stackLabel: setupPayload.stack,
