@@ -26,6 +26,10 @@ type RoomViewProps = {
   playTtsAudio: () => void;
   ttsNotice: string | null;
   onDismissTtsNotice: () => void;
+  isRecording: boolean;
+  isSttSupported: boolean;
+  isSttBusy: boolean;
+  onToggleRecording: () => void;
   reactionEnabled: boolean;
   jobRoleLabel: string;
   stackLabel: string;
@@ -56,6 +60,10 @@ export function RoomView({
   playTtsAudio,
   ttsNotice,
   onDismissTtsNotice,
+  isRecording,
+  isSttSupported,
+  isSttBusy,
+  onToggleRecording,
   reactionEnabled,
   jobRoleLabel,
   stackLabel,
@@ -184,6 +192,14 @@ export function RoomView({
             <div className="mt-3 flex items-center gap-2">
               <Button variant="secondary" onClick={onPause} disabled={!canPause} className="shrink-0">
                 일시정지
+              </Button>
+              <Button
+                variant={isRecording ? "primary" : "secondary"}
+                onClick={onToggleRecording}
+                disabled={isSttBusy || !isSttSupported}
+                className="shrink-0"
+              >
+                {isRecording ? "⏹ 음성 중지" : "🎤 음성 답변"}
               </Button>
               <div className="flex-1" />
               <Button onClick={onSubmitAnswer} disabled={!canSubmitAnswer} className="min-w-[120px]">

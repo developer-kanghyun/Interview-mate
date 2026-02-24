@@ -27,6 +27,7 @@ import { useInterviewerSpeech } from "@/features/interview-session/model/useInte
 import { useQuestionStreaming } from "@/features/interview-session/model/useQuestionStreaming";
 import { useStartSession } from "@/features/interview/start-session/model/useStartSession";
 import { useFetchReport } from "@/features/interview-report/model/useFetchReport";
+import { useSpeechToText } from "@/shared/lib/useSpeechToText";
 import {
   clearPostLoginRedirectTarget,
   clearLegacyApiKeyStorage,
@@ -63,6 +64,10 @@ type UseInterviewShellStateResult = {
   playTtsAudio: () => void;
   ttsNotice: string | null;
   clearTtsNotice: () => void;
+  isRecording: boolean;
+  isSttSupported: boolean;
+  isSttBusy: boolean;
+  handleToggleRecording: () => void;
   reactionEnabled: boolean;
   jobRoleLabel: string;
   stackLabel: string;
@@ -191,6 +196,12 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   const [isGuestUser, setIsGuestUser] = useState(false);
   const [ttsNotice, setTtsNotice] = useState<string | null>(null);
   const ttsNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const {
+    isRecording,
+    isSupported: isSttSupported,
+    startRecording,
+    stopRecording
+  } = useSpeechToText();
 
   const routeStep = useMemo(
     () => options.initialStep ?? resolveStepFromPath(pathname),
@@ -316,6 +327,23 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
 
   const { ttsAudioRef, stopTtsPlayback, speakInterviewer: rawSpeakInterviewer, isAutoplayBlocked, playTtsAudio } =
     useInterviewerSpeech(setAvatarState, { onNotice: showTtsNotice });
+
+  const isSttBusy = isRecording || isSubmitting || isQuestionStreaming || isExiting;
+
+  const handleToggleRecording = useCallback(() => {
+    if (isSubmitting || isQuestionStreaming || isExiting) {
+      return;
+    }
+
+    if (isRecording) {
+      stopRecording();
+      return;
+    }
+
+    startRecording((transcript) => {
+      setAnswerText(transcript);
+    });
+  }, [isExiting, isQuestionStreaming, isRecording, isSubmitting, startRecording, stopRecording]);
   const speakInterviewer = useCallback(
     (text: string) => rawSpeakInterviewer(text, setupPayload.character),
     [rawSpeakInterviewer, setupPayload.character]
@@ -700,6 +728,10 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     playTtsAudio,
     ttsNotice,
     clearTtsNotice,
+    isRecording,
+    isSttSupported,
+    isSttBusy,
+    handleToggleRecording,
     reactionEnabled: setupPayload.reactionEnabled,
     jobRoleLabel: mapRoleLabel(setupPayload.jobRole),
     stackLabel: setupPayload.stack,
