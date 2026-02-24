@@ -237,9 +237,39 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     setSessionId((current) => (current === routeSessionId ? current : routeSessionId));
   }, [routeSessionId]);
 
-  const updateStep = useCallback((next: InterviewStep) => {
-    setStep(next);
+  const syncPathname = useCallback((nextPath: string, mode: "push" | "replace" = "push") => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (window.location.pathname === nextPath) {
+      return;
+    }
+
+    if (mode === "replace") {
+      window.history.replaceState(window.history.state, "", nextPath);
+      return;
+    }
+
+    window.history.pushState(window.history.state, "", nextPath);
   }, []);
+
+  const updateStep = useCallback((next: InterviewStep) => {
+    if (next === "setup") {
+      syncPathname("/setup");
+    } else if (next === "insights") {
+      syncPathname("/insights");
+    } else if (next === "report") {
+      if (sessionId) {
+        syncPathname(`/report/${encodeURIComponent(sessionId)}`);
+      } else {
+        syncPathname("/setup");
+        setStep("setup");
+        return;
+      }
+    }
+    setStep(next);
+  }, [sessionId, syncPathname]);
 
   const updateSetupPayload = useCallback((next: StartInterviewPayload) => {
     setSetupPayload(next);
@@ -507,6 +537,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       stopTtsPlayback();
       setUiError(null);
       clearReportFetchError();
+      syncPathname(`/report/${encodeURIComponent(targetSessionId)}`);
       setStep("report");
       setReport(null);
 
@@ -536,7 +567,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         setIsExiting(false);
       }
     },
-    [clearReportFetchError, fetchReport, isExiting, stopQuestionStream, stopRecording, stopTtsPlayback]
+    [clearReportFetchError, fetchReport, isExiting, stopQuestionStream, stopRecording, stopTtsPlayback, syncPathname]
   );
 
   const beginInterview = useCallback(
@@ -566,6 +597,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         setAnswerText("");
         setEmotion("neutral");
         setStep("room");
+        syncPathname(`/interview/${encodeURIComponent(started.sessionId)}`);
         startQuestionStream(started.sessionId);
       } catch (error) {
         const message = error instanceof Error ? error.message : "면접 시작에 실패했습니다.";
@@ -573,7 +605,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         clearStoredSessionId();
       }
     },
-    [clearReportFetchError, clearStartError, startQuestionStream, startSession]
+    [clearReportFetchError, clearStartError, startQuestionStream, startSession, syncPathname]
   );
 
   const handleStartInterview = useCallback(async () => {
@@ -617,6 +649,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
           stopQuestionStream();
           stopTtsPlayback();
           setStep("report");
+          syncPathname(`/report/${encodeURIComponent(sessionId)}`);
           setUiError(getAuthRequiredMessage());
           return;
         }
@@ -650,7 +683,8 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     sessionId,
     startQuestionStream,
     stopQuestionStream,
-    stopTtsPlayback
+    stopTtsPlayback,
+    syncPathname
   ]);
 
   const handleToggleRecording = useCallback(() => {
@@ -708,11 +742,12 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     }
     if (!sessionId) {
       clearStoredSessionId();
+      syncPathname("/setup", "replace");
       setStep("setup");
       return;
     }
     await moveToReport(sessionId);
-  }, [isExiting, moveToReport, sessionId]);
+  }, [isExiting, moveToReport, sessionId, syncPathname]);
 
   const handleRetryReport = useCallback(async () => {
     if (!sessionId) {
@@ -730,6 +765,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
 
     setUiError(null);
     setInsightsErrorMessage(null);
+    syncPathname("/insights");
     setStep("insights");
     setIsInsightsLoading(true);
 
@@ -741,7 +777,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     } finally {
       setIsInsightsLoading(false);
     }
-  }, [isInsightsLoading, refreshSessions]);
+  }, [isInsightsLoading, refreshSessions, syncPathname]);
 
   const handleRetryUiError = useCallback(async () => {
     setUiError(null);
@@ -782,13 +818,14 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
 
     setIsRetryingWeakness(true);
     try {
+      syncPathname("/setup");
       setStep("setup");
       setSetupPayload(retryPayload);
       await beginInterview(retryPayload);
     } finally {
       setIsRetryingWeakness(false);
     }
-  }, [beginInterview, isRetryingWeakness, isStarting, report, setupPayload, weakKeywords]);
+  }, [beginInterview, isRetryingWeakness, isStarting, report, setupPayload, syncPathname, weakKeywords]);
 
   return {
     step,
