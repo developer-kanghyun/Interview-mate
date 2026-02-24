@@ -45,6 +45,8 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
         isRecording={shellState.isRecording}
         isSttSupported={shellState.isSttSupported}
         isSttBusy={shellState.isSttBusy}
+        sttNotice={shellState.sttNotice}
+        onDismissSttNotice={shellState.clearSttNotice}
         onToggleRecording={shellState.handleToggleRecording}
         reactionEnabled={shellState.reactionEnabled}
         jobRoleLabel={shellState.jobRoleLabel}

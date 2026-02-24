@@ -29,6 +29,8 @@ type RoomViewProps = {
   isRecording: boolean;
   isSttSupported: boolean;
   isSttBusy: boolean;
+  sttNotice: string | null;
+  onDismissSttNotice: () => void;
   onToggleRecording: () => void;
   reactionEnabled: boolean;
   jobRoleLabel: string;
@@ -63,6 +65,8 @@ export function RoomView({
   isRecording,
   isSttSupported,
   isSttBusy,
+  sttNotice,
+  onDismissSttNotice,
   onToggleRecording,
   reactionEnabled,
   jobRoleLabel,
@@ -196,7 +200,7 @@ export function RoomView({
               <Button
                 variant={isRecording ? "primary" : "secondary"}
                 onClick={onToggleRecording}
-                disabled={isSttBusy || !isSttSupported}
+                disabled={isSttBusy}
                 className="shrink-0"
               >
                 {isRecording ? "⏹ 음성 중지" : "🎤 음성 답변"}
@@ -218,6 +222,21 @@ export function RoomView({
             message={ttsNotice}
             actions={
               <Button variant="secondary" className="h-7 px-3 text-xs" onClick={onDismissTtsNotice}>
+                닫기
+              </Button>
+            }
+          />
+        </div>
+      ) : null}
+
+      {sttNotice ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-20 z-30 flex justify-center px-4">
+          <InlineNotice
+            variant={isSttSupported ? "warning" : "info"}
+            className="pointer-events-auto max-w-xl shadow-soft"
+            message={sttNotice}
+            actions={
+              <Button variant="secondary" className="h-7 px-3 text-xs" onClick={onDismissSttNotice}>
                 닫기
               </Button>
             }

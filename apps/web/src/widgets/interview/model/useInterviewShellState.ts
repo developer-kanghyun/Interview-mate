@@ -67,6 +67,8 @@ type UseInterviewShellStateResult = {
   isRecording: boolean;
   isSttSupported: boolean;
   isSttBusy: boolean;
+  sttNotice: string | null;
+  clearSttNotice: () => void;
   handleToggleRecording: () => void;
   reactionEnabled: boolean;
   jobRoleLabel: string;
@@ -195,12 +197,16 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   const [backendStatusMessage, setBackendStatusMessage] = useState<string | null>(null);
   const [isGuestUser, setIsGuestUser] = useState(false);
   const [ttsNotice, setTtsNotice] = useState<string | null>(null);
+  const [sttNotice, setSttNotice] = useState<string | null>(null);
   const ttsNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sttNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const {
     isRecording,
     isSupported: isSttSupported,
+    speechError,
     startRecording,
-    stopRecording
+    stopRecording,
+    clearSpeechError
   } = useSpeechToText();
 
   const routeStep = useMemo(
@@ -325,6 +331,28 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     []
   );
 
+  const clearSttNotice = useCallback(() => {
+    if (sttNoticeTimerRef.current) {
+      clearTimeout(sttNoticeTimerRef.current);
+      sttNoticeTimerRef.current = null;
+    }
+    setSttNotice(null);
+  }, []);
+
+  const showSttNotice = useCallback(
+    (message: string) => {
+      if (sttNoticeTimerRef.current) {
+        clearTimeout(sttNoticeTimerRef.current);
+      }
+      setSttNotice(message);
+      sttNoticeTimerRef.current = setTimeout(() => {
+        setSttNotice(null);
+        sttNoticeTimerRef.current = null;
+      }, 5000);
+    },
+    []
+  );
+
   const { ttsAudioRef, stopTtsPlayback, speakInterviewer: rawSpeakInterviewer, isAutoplayBlocked, playTtsAudio } =
     useInterviewerSpeech(setAvatarState, { onNotice: showTtsNotice });
 
@@ -340,10 +368,12 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       return;
     }
 
+    clearSttNotice();
+    clearSpeechError();
     startRecording((transcript) => {
       setAnswerText(transcript);
     });
-  }, [isExiting, isQuestionStreaming, isRecording, isSubmitting, startRecording, stopRecording]);
+  }, [clearSpeechError, clearSttNotice, isExiting, isQuestionStreaming, isRecording, isSubmitting, startRecording, stopRecording]);
   const speakInterviewer = useCallback(
     (text: string) => rawSpeakInterviewer(text, setupPayload.character),
     [rawSpeakInterviewer, setupPayload.character]
@@ -369,8 +399,24 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       if (ttsNoticeTimerRef.current) {
         clearTimeout(ttsNoticeTimerRef.current);
       }
+      if (sttNoticeTimerRef.current) {
+        clearTimeout(sttNoticeTimerRef.current);
+      }
     };
   }, [stopQuestionStream, stopTtsPlayback]);
+
+  useEffect(() => {
+    if (!speechError) {
+      return;
+    }
+
+    if (!isSttSupported) {
+      showSttNotice("이 브라우저는 음성 인식을 지원하지 않습니다. 텍스트로 답변해 주세요.");
+    } else {
+      showSttNotice("음성 인식 실패 상태입니다. 버튼 눌러 다시 시도해 주세요.");
+    }
+    clearSpeechError();
+  }, [clearSpeechError, isSttSupported, showSttNotice, speechError]);
 
   useEffect(() => {
     void runBackendHealthCheck();
@@ -731,6 +777,8 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     isRecording,
     isSttSupported,
     isSttBusy,
+    sttNotice,
+    clearSttNotice,
     handleToggleRecording,
     reactionEnabled: setupPayload.reactionEnabled,
     jobRoleLabel: mapRoleLabel(setupPayload.jobRole),

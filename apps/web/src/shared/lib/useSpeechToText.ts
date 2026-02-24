@@ -64,11 +64,16 @@ export function useSpeechToText() {
     setIsRecording(false);
   }, []);
 
+  const clearSpeechError = useCallback(() => {
+    setSpeechError("");
+  }, []);
+
   return {
     isRecording,
     isSupported,
     speechError,
     startRecording,
-    stopRecording
+    stopRecording,
+    clearSpeechError
   };
 }
