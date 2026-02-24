@@ -4,6 +4,8 @@
 # frontend build
 **/.next/
 **/*.tsbuildinfo
+apps/web/test-results/
+apps/web/playwright-report/
 
 # backend build
 server/.gradle/
