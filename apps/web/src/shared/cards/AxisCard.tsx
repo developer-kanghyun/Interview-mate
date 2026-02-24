@@ -9,11 +9,11 @@ type AxisCardProps = {
 
 export function AxisCard({ title, score, description }: AxisCardProps) {
   return (
-    <Card className="border-slate-200 bg-white">
-      <p className="text-sm font-semibold text-slate-900">{title}</p>
-      <p className="mt-1 text-2xl font-bold text-slate-900">{score}</p>
+    <Card className="border-im-border bg-white">
+      <p className="text-sm font-bold text-im-text-main">{title}</p>
+      <p className="mt-1 text-2xl font-bold text-im-primary">{score}</p>
       <ProgressBar className="mt-3" value={score} />
-      <p className="mt-2 text-xs text-slate-600">{description}</p>
+      <p className="mt-2 text-xs text-im-text-muted">{description}</p>
     </Card>
   );
 }
