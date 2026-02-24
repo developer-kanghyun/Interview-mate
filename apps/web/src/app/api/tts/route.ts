@@ -45,6 +45,9 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
+    if (request.signal.aborted || (error instanceof Error && error.name === "AbortError")) {
+      return new NextResponse(null, { status: 204 });
+    }
     return NextResponse.json({ error: { message: "TTS 서버 요청 실패" } }, { status: 500 });
   }
 }
