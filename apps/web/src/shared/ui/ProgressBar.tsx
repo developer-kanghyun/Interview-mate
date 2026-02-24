@@ -12,8 +12,8 @@ export function ProgressBar({ value, className = "", ...props }: ProgressBarProp
   const safeValue = clampPercent(value);
   return (
     <div className={`w-full ${className}`} {...props}>
-      <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
-        <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${safeValue}%` }} />
+      <div className="h-2.5 w-full overflow-hidden rounded-full bg-im-subtle">
+        <div className="h-full rounded-full bg-im-primary transition-[width]" style={{ width: `${safeValue}%` }} />
       </div>
     </div>
   );

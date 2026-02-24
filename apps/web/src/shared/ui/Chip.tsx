@@ -7,10 +7,10 @@ type ChipProps = HTMLAttributes<HTMLSpanElement> & {
 };
 
 const variantClassMap: Record<ChipVariant, string> = {
-  default: "border-slate-300 bg-slate-100 text-slate-700",
+  default: "border-im-border bg-im-subtle text-im-text-muted",
   success: "border-emerald-200 bg-emerald-50 text-emerald-700",
   danger: "border-rose-200 bg-rose-50 text-rose-700",
-  info: "border-blue-200 bg-blue-50 text-blue-700"
+  info: "border-im-primary/20 bg-im-primary-soft text-im-primary"
 };
 
 export function Chip({ variant = "default", className = "", children, ...props }: ChipProps) {
