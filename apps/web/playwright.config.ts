@@ -15,10 +15,10 @@ export default defineConfig({
     trace: "on-first-retry"
   },
   webServer: {
-    command: "npm run dev",
+    command: "npm run dev:reset",
     port: 3000,
     cwd: __dirname,
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 120_000
   },
   projects: [
