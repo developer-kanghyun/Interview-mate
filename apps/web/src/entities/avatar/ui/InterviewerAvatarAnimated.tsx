@@ -35,8 +35,8 @@ type BlinkState = {
 };
 
 const modelUrlByCharacter: Record<AvatarCharacter, string> = {
-  luna: "/assets/avatars/rpm/luna.glb",
-  zet: "/assets/avatars/rpm/zet.glb",
+  luna: "https://models.readyplayer.me/699ebe086e4b038c0e0fc581.glb",
+  zet: "https://models.readyplayer.me/699e4ec95f0ce8d1169f9137.glb",
   iron: "/assets/avatars/rpm/iron.glb"
 };
 
