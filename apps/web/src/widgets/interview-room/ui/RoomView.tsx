@@ -8,7 +8,7 @@ import { Chip } from "@/shared/ui/Chip";
 import { InlineNotice } from "@/shared/ui/InlineNotice";
 import { Textarea } from "@/shared/ui/Textarea";
 import type { InterviewCharacter, InterviewEmotion } from "@/shared/api/interview-client";
-import type { AvatarState } from "@/entities/avatar/ui/InterviewerAvatarAnimated";
+import type { AvatarState } from "@/entities/avatar/model/avatarBehaviorMachine";
 
 const InterviewerAvatarAnimated = dynamic(
   () => import("@/entities/avatar/ui/InterviewerAvatarAnimated").then((module) => module.InterviewerAvatarAnimated),
@@ -20,6 +20,7 @@ type RoomViewProps = {
   sessionId: string;
   character: InterviewCharacter;
   avatarState: AvatarState;
+  avatarCueToken: number;
   emotion: InterviewEmotion;
   audioRef: RefObject<HTMLAudioElement>;
   isAutoplayBlocked: boolean;
@@ -56,6 +57,7 @@ export function RoomView({
   sessionId,
   character,
   avatarState,
+  avatarCueToken,
   emotion,
   audioRef,
   isAutoplayBlocked,
@@ -154,6 +156,7 @@ export function RoomView({
             <InterviewerAvatarAnimated
               character={character}
               state={avatarState}
+              cueToken={avatarCueToken}
               emotion={emotion}
               audioRef={audioRef}
               reactionEnabled={reactionEnabled}
