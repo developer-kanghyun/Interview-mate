@@ -63,27 +63,64 @@ test("게스트 1문항 완료 후 로그인 유도 및 리포트 복귀", async
     });
   });
 
+  let answerRequestCount = 0;
   await page.route(`**/api/backend/api/interview/sessions/${REPORT_SESSION_ID}/answers`, async (route) => {
+    answerRequestCount += 1;
+    if (answerRequestCount === 1) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: {
+            answer_id: "a-1",
+            session_id: REPORT_SESSION_ID,
+            question_id: "q-1",
+            input_type: "text",
+            interviewer_character: "jet",
+            evaluation: {
+              accuracy: 2.5,
+              logic: 2.6,
+              depth: 2.2,
+              delivery: 2.1,
+              total_score: 2.4,
+              followup_required: true,
+              followup_reason: "missing_core_detail",
+              followup_remaining: 1
+            },
+            coaching_message: "핵심 개념 정의를 먼저 정리하세요.",
+            followup_question: "핵심 원리를 한 문장으로 다시 설명해 주세요.",
+            interviewer_emotion: "pressure",
+            next_question: null,
+            session_status: "in_progress",
+            end_reason: null,
+            session_completed: false
+          }
+        })
+      });
+      return;
+    }
+
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
         success: true,
         data: {
-          answer_id: "a-1",
+          answer_id: "a-2",
           session_id: REPORT_SESSION_ID,
           question_id: "q-1",
           input_type: "text",
           interviewer_character: "jet",
           evaluation: {
-            accuracy: 2.5,
-            logic: 2.6,
-            depth: 2.2,
-            delivery: 2.1,
-            total_score: 2.4,
+            accuracy: 2.9,
+            logic: 3.0,
+            depth: 2.8,
+            delivery: 2.7,
+            total_score: 2.9,
             followup_required: false,
-            followup_reason: "none",
-            followup_remaining: 2
+            followup_reason: "followup_limit_reached",
+            followup_remaining: 0
           },
           coaching_message: "핵심 개념 정의를 먼저 정리하세요.",
           followup_question: null,
@@ -135,9 +172,14 @@ test("게스트 1문항 완료 후 로그인 유도 및 리포트 복귀", async
 
   await expect(page.getByText("Current Question")).toBeVisible();
 
-  const answerInput = page.getByPlaceholder("답변을 입력하세요. (텍스트/음성 STT 연동 예정)");
+  const answerInput = page.getByPlaceholder("답변을 입력하세요...");
   await answerInput.fill("트랜잭션 전파는 호출 관계에 따라 트랜잭션 경계를 제어하는 방식입니다.");
   await page.getByRole("button", { name: "답변 완료" }).click();
+  await expect.poll(() => answerRequestCount).toBe(1);
+
+  await answerInput.fill("핵심 원리는 전파 속성에 따라 기존 트랜잭션을 이어가거나 새로 시작하는 것입니다.");
+  await page.getByRole("button", { name: "답변 완료" }).click();
+  await expect.poll(() => answerRequestCount).toBe(2);
 
   const loginButton = page.getByRole("button", { name: "Google 로그인" });
   await expect(loginButton).toBeVisible();

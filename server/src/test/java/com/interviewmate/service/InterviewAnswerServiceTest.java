@@ -199,7 +199,7 @@ class InterviewAnswerServiceTest {
     }
 
     @Test
-    void testSubmitAnswerCompletesGuestSessionWithoutFollowup() {
+    void testSubmitAnswerAllowsGuestFollowupBeforeCompletion() {
         jdbcTemplate.update(
                 "INSERT INTO users (id, api_key, is_guest, created_at, updated_at) VALUES (2, 'guest-key', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
         );
@@ -220,17 +220,56 @@ class InterviewAnswerServiceTest {
         InterviewAnswerSubmitResponse response = interviewAnswerService.submitAnswer(20L, request);
 
         assertThat(response.getEvaluation()).isNotNull();
-        assertThat(response.getEvaluation().isFollowupRequired()).isFalse();
-        assertThat(response.getEvaluation().getFollowupReason()).isEqualTo("followup_limit_reached");
-        assertThat(response.getFollowupQuestion()).isNull();
+        assertThat(response.getEvaluation().isFollowupRequired()).isTrue();
+        assertThat(response.getEvaluation().getFollowupReason()).isNotEqualTo("none");
+        assertThat(response.getEvaluation().getFollowupRemaining()).isEqualTo(1);
+        assertThat(response.getFollowupQuestion()).isNotBlank();
         assertThat(response.getNextQuestion()).isNull();
-        assertThat(response.getSessionStatus()).isEqualTo("completed");
-        assertThat(response.isSessionCompleted()).isTrue();
+        assertThat(response.getSessionStatus()).isEqualTo("in_progress");
+        assertThat(response.isSessionCompleted()).isFalse();
         Integer savedFollowupCount = jdbcTemplate.queryForObject(
                 "SELECT followup_count FROM interview_session_questions WHERE id = 2000",
                 Integer.class
         );
-        assertThat(savedFollowupCount).isEqualTo(0);
+        assertThat(savedFollowupCount).isEqualTo(1);
+    }
+
+    @Test
+    void testSubmitAnswerCompletesGuestSessionWhenFollowupLimitReached() {
+        jdbcTemplate.update(
+                "INSERT INTO users (id, api_key, is_guest, created_at, updated_at) VALUES (3, 'guest-key-2', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+        );
+        jdbcTemplate.update("""
+                INSERT INTO interview_sessions (id, user_id, job_role, interviewer_character, total_questions, status, started_at, created_at, updated_at)
+                VALUES (30, 3, 'backend', 'jet', 1, 'in_progress', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """);
+        jdbcTemplate.update("""
+                INSERT INTO interview_session_questions (id, session_id, question_id, question_order, followup_count, created_at)
+                VALUES (3000, 30, 100, 1, 0, CURRENT_TIMESTAMP)
+                """);
+
+        InterviewAnswerSubmitRequest request = new InterviewAnswerSubmitRequest();
+        request.setQuestionId(100L);
+        request.setAnswerText("잘 모르겠습니다.");
+        request.setInputType("text");
+
+        InterviewAnswerSubmitResponse first = interviewAnswerService.submitAnswer(30L, request);
+        InterviewAnswerSubmitResponse second = interviewAnswerService.submitAnswer(30L, request);
+        InterviewAnswerSubmitResponse third = interviewAnswerService.submitAnswer(30L, request);
+
+        assertThat(first.getEvaluation().isFollowupRequired()).isTrue();
+        assertThat(first.getEvaluation().getFollowupRemaining()).isEqualTo(1);
+        assertThat(first.isSessionCompleted()).isFalse();
+
+        assertThat(second.getEvaluation().isFollowupRequired()).isTrue();
+        assertThat(second.getEvaluation().getFollowupRemaining()).isEqualTo(0);
+        assertThat(second.isSessionCompleted()).isFalse();
+
+        assertThat(third.getEvaluation().isFollowupRequired()).isFalse();
+        assertThat(third.getEvaluation().getFollowupReason()).isEqualTo("followup_limit_reached");
+        assertThat(third.getFollowupQuestion()).isNull();
+        assertThat(third.getSessionStatus()).isEqualTo("completed");
+        assertThat(third.isSessionCompleted()).isTrue();
     }
 
     @Test
