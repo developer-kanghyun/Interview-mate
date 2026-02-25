@@ -210,6 +210,7 @@ export function RoomView({
               disabled={isBusy}
               onFocus={handleFocusAnswer}
               onKeyDown={handleAnswerKeyDown}
+              aria-label="면접 답변 입력"
               placeholder="답변을 입력하세요..."
               className="min-h-[80px] max-h-[22dvh] resize-none sm:min-h-[100px] sm:max-h-[32vh]"
             />
