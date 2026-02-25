@@ -4,11 +4,13 @@ import * as React from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, Environment, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import type { AvatarState } from "@/entities/avatar/model/avatarBehaviorMachine";
+import { AVATAR_RELAX_POSE_CALIBRATION } from "@/entities/avatar/model/avatarPoseCalibration";
+import { AVATAR_GLB_BY_CHARACTER } from "@/shared/config/avatarAssets";
 
 export type AvatarCharacter = "zet" | "luna" | "iron";
 export type AvatarEmotion = "neutral" | "encourage" | "pressure";
+export type AvatarStageVariant = "clean_office" | "minimal";
 
 type InterviewerAvatarAnimatedProps = {
   character: AvatarCharacter;
@@ -18,6 +20,8 @@ type InterviewerAvatarAnimatedProps = {
   reactionEnabled?: boolean;
   audioRef?: React.RefObject<HTMLAudioElement>;
   debugMorph?: boolean;
+  debugScene?: boolean;
+  stageVariant?: AvatarStageVariant;
 };
 
 type MorphKey = "mouthOpen" | "smile" | "frown" | "browUp" | "blink";
@@ -34,33 +38,82 @@ type BlinkState = {
   nextAt: number;
 };
 
-const modelUrlByCharacter: Record<AvatarCharacter, string> = {
-  luna: "https://models.readyplayer.me/699ebe086e4b038c0e0fc581.glb",
-  zet: "https://models.readyplayer.me/699e4ec95f0ce8d1169f9137.glb",
-  iron: "/assets/avatars/rpm/iron.glb"
-};
-
-type MotionKey = "idle" | "talking" | "nod" | "thinking" | "clap" | "no";
-type MotionMode = "loop" | "oneshot";
-
 type ModelFrame = {
   fullHeight: number;
   headY: number;
   chestY: number;
 };
 
-const mixamoClipUrlByKey: Record<MotionKey, string> = {
-  idle: "/assets/anims/mixamo/idle.fbx",
-  talking: "/assets/anims/mixamo/talking.fbx",
-  nod: "/assets/anims/mixamo/nod.fbx",
-  thinking: "/assets/anims/mixamo/thinking.fbx",
-  clap: "/assets/anims/mixamo/clap.fbx",
-  no: "/assets/anims/mixamo/no.fbx"
+type BoneKey =
+  | "hips"
+  | "spine"
+  | "spine1"
+  | "spine2"
+  | "neck"
+  | "head"
+  | "leftShoulder"
+  | "leftArm"
+  | "leftForeArm"
+  | "leftHand"
+  | "rightShoulder"
+  | "rightArm"
+  | "rightForeArm"
+  | "rightHand"
+  | "leftEye"
+  | "rightEye";
+
+type BoneRig = Partial<Record<BoneKey, THREE.Bone>>;
+
+type BonePose = {
+  quaternion: THREE.Quaternion;
+  position: THREE.Vector3;
 };
 
-useGLTF.preload(modelUrlByCharacter.luna);
-useGLTF.preload(modelUrlByCharacter.zet);
-useGLTF.preload(modelUrlByCharacter.iron);
+type BoneEulerOffset = {
+  x: number;
+  y: number;
+  z: number;
+};
+
+type BoneEulerOffsets = Partial<Record<BoneKey, BoneEulerOffset>>;
+
+const modelUrlByCharacter: Record<AvatarCharacter, string> = AVATAR_GLB_BY_CHARACTER;
+const requiredRigBones: BoneKey[] = [
+  "head",
+  "neck",
+  "spine",
+  "spine1",
+  "spine2",
+  "leftShoulder",
+  "rightShoulder",
+  "leftArm",
+  "rightArm",
+  "leftForeArm",
+  "rightForeArm"
+];
+
+const boneNameCandidates: Record<BoneKey, string[]> = {
+  hips: ["Hips", "mixamorigHips", "Armature_Hips"],
+  spine: ["Spine", "mixamorigSpine"],
+  spine1: ["Spine1", "mixamorigSpine1"],
+  spine2: ["Spine2", "mixamorigSpine2", "Chest", "mixamorigChest"],
+  neck: ["Neck", "mixamorigNeck"],
+  head: ["Head", "mixamorigHead"],
+  leftShoulder: ["LeftShoulder", "mixamorigLeftShoulder", "Shoulder_L"],
+  leftArm: ["LeftArm", "mixamorigLeftArm", "UpperArm_L"],
+  leftForeArm: ["LeftForeArm", "mixamorigLeftForeArm", "LowerArm_L"],
+  leftHand: ["LeftHand", "mixamorigLeftHand", "Hand_L"],
+  rightShoulder: ["RightShoulder", "mixamorigRightShoulder", "Shoulder_R"],
+  rightArm: ["RightArm", "mixamorigRightArm", "UpperArm_R"],
+  rightForeArm: ["RightForeArm", "mixamorigRightForeArm", "LowerArm_R"],
+  rightHand: ["RightHand", "mixamorigRightHand", "Hand_R"],
+  leftEye: ["LeftEye", "mixamorigLeftEye", "Eye_L"],
+  rightEye: ["RightEye", "mixamorigRightEye", "Eye_R"]
+};
+
+useGLTF.preload(AVATAR_GLB_BY_CHARACTER.luna);
+useGLTF.preload(AVATAR_GLB_BY_CHARACTER.zet);
+useGLTF.preload(AVATAR_GLB_BY_CHARACTER.iron);
 
 function canUseWebGL() {
   if (typeof window === "undefined") {
@@ -95,20 +148,24 @@ function normalizeModel(modelRoot: THREE.Object3D, targetHeight = 1.72): ModelFr
   const scale = targetHeight / initialSize.y;
   modelRoot.scale.multiplyScalar(scale);
 
-  const scaledBounds = new THREE.Box3().setFromObject(modelRoot);
-  const scaledSize = new THREE.Vector3();
-  scaledBounds.getSize(scaledSize);
-  const scaledCenter = new THREE.Vector3();
-  scaledBounds.getCenter(scaledCenter);
+  const centeredBounds = new THREE.Box3().setFromObject(modelRoot);
+  const centered = new THREE.Vector3();
+  centeredBounds.getCenter(centered);
 
-  modelRoot.position.x -= scaledCenter.x;
-  modelRoot.position.z -= scaledCenter.z;
-  modelRoot.position.y -= scaledBounds.min.y;
+  modelRoot.position.x -= centered.x;
+  modelRoot.position.z -= centered.z;
+
+  const flooredBounds = new THREE.Box3().setFromObject(modelRoot);
+  modelRoot.position.y -= flooredBounds.min.y;
+
+  const finalBounds = new THREE.Box3().setFromObject(modelRoot);
+  const finalSize = new THREE.Vector3();
+  finalBounds.getSize(finalSize);
 
   return {
-    fullHeight: scaledSize.y,
-    headY: scaledBounds.max.y - scaledBounds.min.y,
-    chestY: scaledSize.y * 0.58
+    fullHeight: finalSize.y,
+    headY: finalBounds.max.y,
+    chestY: finalBounds.min.y + finalSize.y * 0.58
   };
 }
 
@@ -124,52 +181,69 @@ function smoothFactor(rate: number, delta: number) {
   return 1 - Math.exp(-rate * delta);
 }
 
-function resolveMotionForState(state: AvatarState): { key: MotionKey; mode: MotionMode } {
-  if (state === "asking") {
-    return { key: "talking", mode: "loop" };
-  }
-  if (state === "listening") {
-    return { key: "nod", mode: "loop" };
-  }
-  if (state === "thinking" || state === "confused") {
-    return { key: "thinking", mode: "loop" };
-  }
-  if (state === "celebrate") {
-    return { key: "clap", mode: "oneshot" };
-  }
-  if (state === "react_negative") {
-    return { key: "no", mode: "oneshot" };
-  }
-  return { key: "idle", mode: "loop" };
-}
-
-function normalizeMixamoTrackName(trackName: string) {
-  const [path, property] = trackName.split(".");
-  if (!path || !property) {
-    return trackName;
-  }
-
-  const node = path.split(/[|/]/).pop() ?? path;
-  const normalizedNode = node
-    .replace(/^mixamorig[:_]?/i, "")
-    .replace(/^armature[:_]?/i, "")
-    .trim();
-
-  if (!normalizedNode) {
-    return trackName;
-  }
-
-  return `${normalizedNode}.${property}`;
-}
-
-function normalizeMixamoClip(clip: THREE.AnimationClip, key: MotionKey) {
-  const tracks = clip.tracks.map((track) => {
-    const cloned = track.clone();
-    cloned.name = normalizeMixamoTrackName(cloned.name);
-    return cloned;
+function collectBones(scene: THREE.Object3D) {
+  const byName = new Map<string, THREE.Bone>();
+  scene.traverse((object) => {
+    if (object.type === "Bone") {
+      byName.set(object.name.toLowerCase(), object as THREE.Bone);
+    }
   });
 
-  return new THREE.AnimationClip(key, clip.duration, tracks);
+  const rig: BoneRig = {};
+  const basePose: Partial<Record<BoneKey, BonePose>> = {};
+
+  (Object.keys(boneNameCandidates) as BoneKey[]).forEach((key) => {
+    const candidates = boneNameCandidates[key];
+    const matchedName = candidates.find((candidate) => byName.has(candidate.toLowerCase()));
+    if (!matchedName) {
+      return;
+    }
+
+    const bone = byName.get(matchedName.toLowerCase());
+    if (!bone) {
+      return;
+    }
+
+    rig[key] = bone;
+    basePose[key] = {
+      quaternion: bone.quaternion.clone(),
+      position: bone.position.clone()
+    };
+  });
+
+  return { rig, basePose };
+}
+
+function blendBoneEuler(
+  rig: BoneRig,
+  basePose: Partial<Record<BoneKey, BonePose>>,
+  key: BoneKey,
+  euler: THREE.Euler,
+  lerpFactor: number
+) {
+  const bone = rig[key];
+  const base = basePose[key];
+  if (!bone || !base) {
+    return;
+  }
+
+  const targetQuaternion = base.quaternion.clone().multiply(new THREE.Quaternion().setFromEuler(euler));
+  bone.quaternion.slerp(targetQuaternion, lerpFactor);
+}
+
+function accumulateBoneEuler(
+  offsets: BoneEulerOffsets,
+  key: BoneKey,
+  x: number,
+  y: number,
+  z: number,
+  weight = 1
+) {
+  const current = offsets[key] ?? { x: 0, y: 0, z: 0 };
+  current.x += x * weight;
+  current.y += y * weight;
+  current.z += z * weight;
+  offsets[key] = current;
 }
 
 function fitCameraToUpperBody(camera: THREE.Camera, frame: ModelFrame) {
@@ -177,15 +251,17 @@ function fitCameraToUpperBody(camera: THREE.Camera, frame: ModelFrame) {
     return;
   }
 
-  const top = frame.headY + frame.fullHeight * 0.08;
-  const bottom = frame.chestY - frame.fullHeight * 0.24;
-  const focusY = (top + bottom) * 0.5;
-  const span = Math.max(0.3, top - bottom);
-  const halfFov = THREE.MathUtils.degToRad(camera.fov * 0.5);
-  const distance = (span * 0.62) / Math.tan(halfFov);
+  camera.fov = 25;
 
-  camera.position.set(0, focusY - span * 0.08, Math.max(0.9, distance * 2));
-  camera.lookAt(0, focusY, 0);
+  // Keep a stable "product shot" camera while nudging for model headroom consistency.
+  const baseLookY = 1.42;
+  const baseCameraY = 1.52;
+  const baseCameraZ = 1.62;
+  const targetHeadY = 1.62;
+  const headDelta = THREE.MathUtils.clamp(frame.headY - targetHeadY, -0.18, 0.18);
+
+  camera.position.set(0, baseCameraY + headDelta * 0.14, baseCameraZ + headDelta * 0.16);
+  camera.lookAt(0, baseLookY + headDelta * 0.05, 0);
   camera.updateProjectionMatrix();
 }
 
@@ -380,22 +456,66 @@ function FallbackAvatar({ state, emotion }: FallbackAvatarProps) {
   );
 }
 
-function NeutralStage() {
+function AvatarStage({ variant }: { variant: AvatarStageVariant }) {
+  if (variant === "minimal") {
+    return (
+      <group>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <planeGeometry args={[12, 12]} />
+          <meshStandardMaterial color="#eef2f6" roughness={0.95} metalness={0.02} />
+        </mesh>
+        <mesh position={[0, 2.2, -2.7]} receiveShadow>
+          <boxGeometry args={[10, 4.6, 0.08]} />
+          <meshStandardMaterial color="#f8fafc" roughness={0.92} metalness={0.01} />
+        </mesh>
+      </group>
+    );
+  }
+
   return (
     <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-        <planeGeometry args={[12, 12]} />
-        <meshStandardMaterial color="#f3f6fb" roughness={0.94} metalness={0.02} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[14, 14]} />
+        <meshStandardMaterial color="#edf1f6" roughness={0.94} metalness={0.02} />
       </mesh>
 
-      <mesh position={[0, 2.4, -2.6]} receiveShadow>
-        <boxGeometry args={[9.4, 4.8, 0.12]} />
-        <meshStandardMaterial color="#f8fafc" roughness={0.9} metalness={0.02} />
+      <mesh position={[0, 2.35, -2.95]} receiveShadow>
+        <boxGeometry args={[10.4, 5.0, 0.12]} />
+        <meshStandardMaterial color="#f8fbff" roughness={0.9} metalness={0.02} />
       </mesh>
 
-      <mesh position={[0, 1.55, -2.52]}>
-        <planeGeometry args={[4.2, 1.5]} />
-        <meshStandardMaterial color="#e9eef6" roughness={0.48} metalness={0.03} />
+      <mesh position={[0, 1.5, -2.88]}>
+        <planeGeometry args={[5.0, 1.8]} />
+        <meshStandardMaterial color="#e8eef6" roughness={0.65} metalness={0.02} />
+      </mesh>
+
+      {/* Desk top */}
+      <mesh position={[0, 0.74, -0.38]} castShadow receiveShadow>
+        <boxGeometry args={[3.15, 0.08, 1.34]} />
+        <meshStandardMaterial color="#d9e2ee" roughness={0.58} metalness={0.1} />
+      </mesh>
+      {/* Desk edge highlight for readability */}
+      <mesh position={[0, 0.775, 0.27]} receiveShadow>
+        <boxGeometry args={[3.16, 0.014, 0.06]} />
+        <meshStandardMaterial color="#cbd5e2" roughness={0.4} metalness={0.05} />
+      </mesh>
+      {/* Desk front panel */}
+      <mesh position={[0, 0.41, -0.93]} castShadow receiveShadow>
+        <boxGeometry args={[3.1, 0.63, 0.09]} />
+        <meshStandardMaterial color="#cfd8e5" roughness={0.76} metalness={0.04} />
+      </mesh>
+    </group>
+  );
+}
+
+function DebugSceneHelpers() {
+  return (
+    <group>
+      <axesHelper args={[0.8]} />
+      <gridHelper args={[4.5, 24, "#cbd5e1", "#e2e8f0"]} position={[0, 0.001, 0]} />
+      <mesh position={[0, 1.35, 0]}>
+        <sphereGeometry args={[0.02, 10, 10]} />
+        <meshStandardMaterial color="#fb923c" emissive="#fb923c" emissiveIntensity={0.4} />
       </mesh>
     </group>
   );
@@ -429,6 +549,7 @@ function WebglUnavailableAvatar({ state, emotion }: { state: AvatarState; emotio
 }
 
 type AvatarModelProps = {
+  character: AvatarCharacter;
   modelUrl: string;
   state: AvatarState;
   cueToken: number;
@@ -438,15 +559,9 @@ type AvatarModelProps = {
   debugMorph: boolean;
 };
 
-function AvatarModel({ modelUrl, state, cueToken, emotion, reactionEnabled, audioRef, debugMorph }: AvatarModelProps) {
+function AvatarModel({ character, modelUrl, state, cueToken, emotion, reactionEnabled, audioRef, debugMorph }: AvatarModelProps) {
   const { camera } = useThree();
   const modelFrameRef = React.useRef<ModelFrame | null>(null);
-  const mixerRef = React.useRef<THREE.AnimationMixer | null>(null);
-  const motionActionRef = React.useRef<Partial<Record<MotionKey, THREE.AnimationAction>>>({});
-  const activeMotionKeyRef = React.useRef<MotionKey | null>(null);
-  const latestStateRef = React.useRef<AvatarState>(state);
-  const lastMotionStateRef = React.useRef<AvatarState>(state);
-  const lastCueTokenForOneShotRef = React.useRef(cueToken);
   const gltf = useGLTF(modelUrl) as { scene: THREE.Group };
   const modelScene = React.useMemo(() => {
     const cloned = gltf.scene.clone(true);
@@ -455,6 +570,9 @@ function AvatarModel({ modelUrl, state, cueToken, emotion, reactionEnabled, audi
   }, [gltf.scene]);
   const morphBindingsRef = React.useRef<MorphBinding[]>([]);
   const rootGroupRef = React.useRef<THREE.Group | null>(null);
+  const boneRigRef = React.useRef<BoneRig>({});
+  const boneBasePoseRef = React.useRef<Partial<Record<BoneKey, BonePose>>>({});
+  const missingBoneWarnedRef = React.useRef(false);
   const mouthEnvelopeRef = React.useRef(0);
   const cuePulseRef = React.useRef(0);
   const lastCueTokenRef = React.useRef(cueToken);
@@ -482,7 +600,20 @@ function AvatarModel({ modelUrl, state, cueToken, emotion, reactionEnabled, audi
       mesh.castShadow = true;
       mesh.receiveShadow = true;
     });
-  }, [modelScene]);
+    const { rig, basePose } = collectBones(modelScene);
+    boneRigRef.current = rig;
+    boneBasePoseRef.current = basePose;
+
+    const missingBones = requiredRigBones.filter((boneKey) => !rig[boneKey]);
+    if (missingBones.length > 0 && !missingBoneWarnedRef.current) {
+      missingBoneWarnedRef.current = true;
+      console.warn("[InterviewerAvatarAnimated] missing rig bones:", {
+        character,
+        modelUrl,
+        missingBones
+      });
+    }
+  }, [character, modelScene, modelUrl]);
 
   React.useEffect(() => {
     const modelFrame = modelFrameRef.current;
@@ -491,133 +622,6 @@ function AvatarModel({ modelUrl, state, cueToken, emotion, reactionEnabled, audi
     }
     fitCameraToUpperBody(camera, modelFrame);
   }, [camera, modelScene]);
-
-  React.useEffect(() => {
-    const mixer = new THREE.AnimationMixer(modelScene);
-    mixerRef.current = mixer;
-    motionActionRef.current = {};
-    activeMotionKeyRef.current = null;
-
-    const loader = new FBXLoader();
-    let cancelled = false;
-
-    const loadClip = (key: MotionKey) =>
-      new Promise<{ key: MotionKey; clip: THREE.AnimationClip | null }>((resolve) => {
-        loader.load(
-          mixamoClipUrlByKey[key],
-          (fbx) => {
-            const rawClip = fbx.animations?.[0] ?? null;
-            resolve({
-              key,
-              clip: rawClip ? normalizeMixamoClip(rawClip, key) : null
-            });
-          },
-          undefined,
-          () => {
-            resolve({ key, clip: null });
-          }
-        );
-      });
-
-    const configureAction = (action: THREE.AnimationAction, mode: MotionMode) => {
-      if (mode === "oneshot") {
-        action.reset();
-        action.setLoop(THREE.LoopOnce, 1);
-        action.clampWhenFinished = true;
-      } else {
-        action.reset();
-        action.setLoop(THREE.LoopRepeat, Infinity);
-        action.clampWhenFinished = false;
-      }
-    };
-
-    const playMotion = (key: MotionKey, mode: MotionMode) => {
-      const actions = motionActionRef.current;
-      const nextAction = actions[key];
-      if (!nextAction) {
-        return;
-      }
-
-      const previousKey = activeMotionKeyRef.current;
-      if (previousKey && previousKey !== key) {
-        actions[previousKey]?.fadeOut(0.2);
-      } else if (previousKey === key && mode === "loop") {
-        return;
-      }
-
-      configureAction(nextAction, mode);
-      nextAction.fadeIn(0.2).play();
-      activeMotionKeyRef.current = key;
-    };
-
-    void Promise.all((Object.keys(mixamoClipUrlByKey) as MotionKey[]).map((key) => loadClip(key))).then((results) => {
-      if (cancelled) {
-        return;
-      }
-
-      for (const { key, clip } of results) {
-        if (!clip) {
-          continue;
-        }
-        motionActionRef.current[key] = mixer.clipAction(clip, modelScene);
-      }
-
-      const currentMotion = resolveMotionForState(latestStateRef.current);
-      playMotion(currentMotion.key, currentMotion.mode);
-    });
-
-    return () => {
-      cancelled = true;
-      mixer.stopAllAction();
-      mixer.uncacheRoot(modelScene);
-      mixerRef.current = null;
-      motionActionRef.current = {};
-      activeMotionKeyRef.current = null;
-    };
-  }, [modelScene]);
-
-  React.useEffect(() => {
-    const actions = motionActionRef.current;
-    if (Object.keys(actions).length === 0) {
-      return;
-    }
-
-    const { key, mode } = resolveMotionForState(state);
-    const nextAction = actions[key];
-    if (!nextAction) {
-      return;
-    }
-
-    const isOneShot = mode === "oneshot";
-    const shouldRetrigger =
-      lastMotionStateRef.current !== state ||
-      (isOneShot && cueToken !== lastCueTokenForOneShotRef.current);
-
-    if (!shouldRetrigger) {
-      return;
-    }
-
-    const previousKey = activeMotionKeyRef.current;
-    if (previousKey && previousKey !== key) {
-      actions[previousKey]?.fadeOut(0.18);
-    }
-
-    if (isOneShot) {
-      nextAction.reset();
-      nextAction.setLoop(THREE.LoopOnce, 1);
-      nextAction.clampWhenFinished = true;
-      nextAction.fadeIn(0.18).play();
-      lastCueTokenForOneShotRef.current = cueToken;
-    } else {
-      nextAction.reset();
-      nextAction.setLoop(THREE.LoopRepeat, Infinity);
-      nextAction.clampWhenFinished = false;
-      nextAction.fadeIn(0.18).play();
-    }
-
-    activeMotionKeyRef.current = key;
-    lastMotionStateRef.current = state;
-  }, [cueToken, state]);
 
   React.useEffect(() => {
     const audioElement = audioRef?.current;
@@ -669,39 +673,42 @@ function AvatarModel({ modelUrl, state, cueToken, emotion, reactionEnabled, audi
     cuePulseRef.current = 1;
   }, [cueToken]);
 
-  React.useEffect(() => {
-    latestStateRef.current = state;
-  }, [state]);
-
   useFrame(({ clock }, delta) => {
     const elapsed = clock.getElapsedTime();
-    mixerRef.current?.update(delta);
     const blinkState = blinkStateRef.current;
     const group = rootGroupRef.current;
+    const rig = boneRigRef.current;
+    const basePose = boneBasePoseRef.current;
     const hasMorphBindings = morphBindingsRef.current.length > 0;
     cuePulseRef.current = Math.max(0, cuePulseRef.current - delta * 1.9);
     const cuePulse = cuePulseRef.current;
+    const boneLerp = smoothFactor(10, delta);
+    const relaxCalibration = AVATAR_RELAX_POSE_CALIBRATION[character].relax;
+    const poseOffsets: BoneEulerOffsets = {};
 
     if (hasMorphBindings) {
       const audioAmplitude = readAudioAmplitude(analyserRef, analyserDataRef, audioRef);
       const audioElement = audioRef?.current;
       const isAudioPlaying = Boolean(audioElement && !audioElement.paused && !audioElement.ended);
-      const silenceGate = 0.02;
+      const silenceGate = 0.05;
       const gatedAmplitude = Math.max(0, audioAmplitude - silenceGate);
-      const audioTarget = clamp01(gatedAmplitude * 1.42 + Math.max(0, Math.sin(elapsed * 18)) * 0.04);
+      const audioTarget = clamp01(gatedAmplitude * 1.2 + Math.max(0, Math.sin(elapsed * 18)) * 0.035);
       const fakeLipSync =
         state === "asking"
           ? clamp01((Math.sin(elapsed * 8.2) + 1) * 0.16 + (Math.sin(elapsed * 14.6) + 1) * 0.06)
           : 0;
-      const idleMouthGain = state === "asking" ? 1 : state === "celebrate" ? 0.9 : state === "listening" ? 0.18 : 0.12;
-      const speakingGain = state === "asking" ? 1 : state === "celebrate" ? 0.72 : state === "listening" ? 0.2 : 0.15;
+      const idleMouthGain = state === "asking" ? 0.58 : state === "celebrate" ? 0.32 : state === "listening" ? 0.05 : 0.045;
+      const speakingGain = state === "asking" ? 1 : state === "celebrate" ? 0.52 : state === "listening" ? 0.12 : 0.09;
       const targetMouth = isAudioPlaying ? audioTarget * speakingGain : fakeLipSync * idleMouthGain;
       const isOpeningMouth = targetMouth > mouthEnvelopeRef.current;
-      const smoothing = smoothFactor(isOpeningMouth ? 20 : 7, delta);
+      const smoothing = smoothFactor(isOpeningMouth ? 14 : 30, delta);
       mouthEnvelopeRef.current = THREE.MathUtils.lerp(mouthEnvelopeRef.current, targetMouth, smoothing);
 
       let mouthOpen = mouthEnvelopeRef.current;
       if (isAudioPlaying && mouthOpen < 0.025) {
+        mouthOpen = 0;
+      }
+      if (!isAudioPlaying && mouthOpen < 0.01) {
         mouthOpen = 0;
       }
 
@@ -761,26 +768,78 @@ function AvatarModel({ modelUrl, state, cueToken, emotion, reactionEnabled, audi
       }
     }
 
-    if (group) {
-      const seatedBaseY = -0.1;
-      const seatedBaseZ = -0.16;
-      const seatedLeanX = 0.09;
-      const askingBob = state === "asking" ? Math.sin(elapsed * 5.4) * 0.009 : 0;
-      const listeningNod = state === "listening" ? Math.sin(elapsed * 2.8) * 0.03 : 0;
-      const confusedTilt = state === "confused" ? Math.sin(elapsed * 6.2) * (0.05 + cuePulse * 0.03) : 0;
-      const celebrateBounce = state === "celebrate" ? Math.abs(Math.sin(elapsed * 8.2)) * (0.012 + cuePulse * 0.01) : 0;
-      const celebrateSwing = state === "celebrate" ? Math.sin(elapsed * 5.6) * (0.04 + cuePulse * 0.02) : 0;
-      const targetPosY = seatedBaseY + (state === "thinking" ? -0.01 : 0) + askingBob + celebrateBounce;
-      const targetPosZ = seatedBaseZ + (state === "thinking" ? -0.01 : 0);
-      const targetRotX = seatedLeanX + (state === "thinking" ? 0.07 : listeningNod);
-      const targetRotY = state === "asking" ? Math.sin(elapsed * 1.3) * 0.03 : confusedTilt + celebrateSwing;
-      const targetRotZ = state === "confused" ? Math.sin(elapsed * 3.8) * 0.08 : state === "celebrate" ? Math.sin(elapsed * 7.2) * 0.03 : 0;
+    const breath = Math.sin(elapsed * 1.8) * 0.03;
+    const subtleTurn = Math.sin(elapsed * 0.9) * 0.03;
 
-      group.position.y = THREE.MathUtils.lerp(group.position.y, targetPosY, delta * 1.5);
-      group.position.z = THREE.MathUtils.lerp(group.position.z, targetPosZ, delta * 1.5);
-      group.rotation.x = THREE.MathUtils.lerp(group.rotation.x, targetRotX, delta * 1.5);
-      group.rotation.y = THREE.MathUtils.lerp(group.rotation.y, targetRotY, delta * 1.5);
-      group.rotation.z = THREE.MathUtils.lerp(group.rotation.z, targetRotZ, delta * 1.5);
+    accumulateBoneEuler(poseOffsets, "spine", breath * 0.08, subtleTurn * 0.08, 0);
+    accumulateBoneEuler(poseOffsets, "spine1", breath * 0.12, subtleTurn * 0.12, 0);
+    accumulateBoneEuler(poseOffsets, "spine2", breath * 0.16, subtleTurn * 0.16, 0);
+    accumulateBoneEuler(poseOffsets, "neck", 0, subtleTurn * 0.45, 0);
+    accumulateBoneEuler(poseOffsets, "head", 0.02, subtleTurn * 0.56, 0);
+
+    // Apply per-character relaxed arm baseline first (RPM local axes vary by avatar).
+    (Object.entries(relaxCalibration) as Array<[keyof typeof relaxCalibration, (typeof relaxCalibration)[keyof typeof relaxCalibration]]>).forEach(
+      ([key, offset]) => {
+        if (!offset) {
+          return;
+        }
+        accumulateBoneEuler(poseOffsets, key as BoneKey, offset.x, offset.y, offset.z);
+      }
+    );
+
+    if (state === "listening") {
+      const nod = Math.sin(elapsed * 6.2) * 0.32;
+      accumulateBoneEuler(poseOffsets, "head", 0.08 + nod, subtleTurn * 0.42, 0);
+      accumulateBoneEuler(poseOffsets, "neck", nod * 0.6, subtleTurn * 0.28, 0);
+      accumulateBoneEuler(poseOffsets, "spine2", nod * 0.11, 0, 0);
+    } else if (state === "asking") {
+      const gesture = 0.44 + Math.sin(elapsed * 4.9) * 0.3;
+      const wrist = Math.sin(elapsed * 6.4) * 0.24;
+      accumulateBoneEuler(poseOffsets, "rightShoulder", -0.12, -0.08, -0.04);
+      accumulateBoneEuler(poseOffsets, "rightArm", -0.22, -0.3, -0.48);
+      accumulateBoneEuler(poseOffsets, "rightForeArm", -0.54, -0.18, -0.4 - gesture);
+      accumulateBoneEuler(poseOffsets, "rightHand", wrist * 0.28, 0, -wrist * 0.16);
+      accumulateBoneEuler(poseOffsets, "spine2", 0.06, subtleTurn * 0.48, 0);
+      accumulateBoneEuler(poseOffsets, "head", 0.03, subtleTurn * 1.75, 0);
+    } else if (state === "thinking") {
+      const wave = Math.sin(elapsed * 1.8);
+      const hold = Math.abs(wave) < 0.3 ? Math.sign(wave || 1) * 0.28 : wave * 0.28;
+      accumulateBoneEuler(poseOffsets, "head", 0.11, subtleTurn * 0.28, hold);
+      accumulateBoneEuler(poseOffsets, "neck", 0.06, subtleTurn * 0.14, hold * 0.55);
+      accumulateBoneEuler(poseOffsets, "spine2", 0.05, 0, hold * 0.22);
+    } else if (state === "confused") {
+      const wave = Math.sin(elapsed * 2.4);
+      const tilt = (Math.abs(wave) < 0.28 ? Math.sign(wave || 1) * 0.33 : wave * 0.33) * (1 + cuePulse * 0.35);
+      accumulateBoneEuler(poseOffsets, "head", 0.08, subtleTurn * 0.52, tilt);
+      accumulateBoneEuler(poseOffsets, "neck", 0.03, subtleTurn * 0.24, tilt * 0.5);
+    } else if (state === "celebrate") {
+      const clapWave = Math.max(0, Math.sin(elapsed * 10.6)) * (0.48 + cuePulse * 0.5);
+      accumulateBoneEuler(poseOffsets, "leftArm", -0.22, 0.2, 0.44 - clapWave * 0.5);
+      accumulateBoneEuler(poseOffsets, "rightArm", -0.22, -0.2, -0.44 + clapWave * 0.5);
+      accumulateBoneEuler(poseOffsets, "leftForeArm", -0.62, 0.08, 0.34 - clapWave * 0.55);
+      accumulateBoneEuler(poseOffsets, "rightForeArm", -0.62, -0.08, -0.34 + clapWave * 0.55);
+      accumulateBoneEuler(poseOffsets, "head", 0.04 + Math.sin(elapsed * 5.8) * 0.1, subtleTurn * 0.28, 0);
+    } else if (state === "react_negative") {
+      const shake = Math.sin(elapsed * 6.4) * 0.38;
+      accumulateBoneEuler(poseOffsets, "head", 0.03, shake, 0);
+      accumulateBoneEuler(poseOffsets, "neck", 0.01, shake * 0.42, 0);
+      accumulateBoneEuler(poseOffsets, "spine2", -0.04, 0, 0);
+    }
+
+    (Object.entries(poseOffsets) as Array<[BoneKey, BoneEulerOffset]>).forEach(([key, offset]) => {
+      blendBoneEuler(rig, basePose, key, new THREE.Euler(offset.x, offset.y, offset.z), boneLerp);
+    });
+
+    if (group) {
+      const baseY = -0.05;
+      const targetY = baseY + Math.sin(elapsed * 1.8) * 0.0024 + (state === "celebrate" ? Math.abs(Math.sin(elapsed * 7.8)) * 0.006 : 0);
+      const targetZ = -0.12;
+      const targetX = 0.007;
+      group.position.y = THREE.MathUtils.lerp(group.position.y, targetY, delta * 2.2);
+      group.position.z = THREE.MathUtils.lerp(group.position.z, targetZ, delta * 2.2);
+      group.rotation.x = THREE.MathUtils.lerp(group.rotation.x, targetX, delta * 2.2);
+      group.rotation.y = THREE.MathUtils.lerp(group.rotation.y, 0, delta * 2.2);
+      group.rotation.z = THREE.MathUtils.lerp(group.rotation.z, 0, delta * 2.2);
     }
   });
 
@@ -831,7 +890,9 @@ export function InterviewerAvatarAnimated({
   cueToken = 0,
   reactionEnabled = true,
   audioRef,
-  debugMorph = false
+  debugMorph = false,
+  debugScene = false,
+  stageVariant = "clean_office"
 }: InterviewerAvatarAnimatedProps) {
   const webglAvailable = React.useMemo(() => canUseWebGL(), []);
   const modelUrl = modelUrlByCharacter[character];
@@ -846,18 +907,20 @@ export function InterviewerAvatarAnimated({
 
   return (
     <div className="h-full w-full" data-avatar-state={state} data-avatar-cue={cueToken}>
-      <Canvas dpr={[1, 1.75]} gl={{ alpha: true, antialias: true }} shadows camera={{ position: [0, 1.1, 1.24], fov: 34 }}>
-        <hemisphereLight intensity={0.5} color="#ffffff" groundColor="#e2e8f0" />
-        <ambientLight intensity={0.58} />
-        <directionalLight castShadow intensity={0.86} position={[2.2, 3.2, 2.3]} shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
-        <directionalLight intensity={0.32} position={[-1.8, 2.2, -1.2]} />
-        <spotLight position={[0.4, 3.1, 1.6]} angle={0.45} penumbra={0.8} intensity={0.22} />
+      <Canvas dpr={[1, 1.75]} gl={{ alpha: true, antialias: true }} shadows camera={{ position: [0, 1.52, 1.62], fov: 25 }}>
+        <hemisphereLight intensity={0.46} color="#ffffff" groundColor="#dde5f0" />
+        <ambientLight intensity={0.56} />
+        <directionalLight castShadow intensity={0.8} position={[2.2, 3.0, 2.2]} shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
+        <directionalLight intensity={0.28} position={[-1.5, 2.1, -1.1]} />
+        <spotLight position={[0.25, 3.0, 1.45]} angle={0.44} penumbra={0.78} intensity={0.2} />
 
-        <NeutralStage />
+        <AvatarStage variant={stageVariant} />
+        {debugScene ? <DebugSceneHelpers /> : null}
 
         <SceneErrorBoundary key={modelUrl} fallback={<FallbackAvatar state={state} emotion={emotion} />}>
           <React.Suspense fallback={<FallbackAvatar state={state} emotion={emotion} />}>
             <AvatarModel
+              character={character}
               modelUrl={modelUrl}
               state={state}
               cueToken={cueToken}
@@ -870,8 +933,8 @@ export function InterviewerAvatarAnimated({
         </SceneErrorBoundary>
 
         <Environment preset="studio" background={false} />
-        <ContactShadows position={[0, 0.002, 0]} opacity={0.2} blur={2.4} scale={6.8} far={4.8} />
-        <OrbitControls target={[0, 1.05, 0]} enablePan={false} enableRotate={false} enableZoom={false} />
+        <ContactShadows position={[0, 0.002, 0]} opacity={0.23} blur={2.5} scale={6.4} far={4.4} />
+        <OrbitControls target={[0, 1.42, 0]} enablePan={false} enableRotate={false} enableZoom={false} />
       </Canvas>
     </div>
   );
