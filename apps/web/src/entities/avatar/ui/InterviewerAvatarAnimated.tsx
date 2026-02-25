@@ -173,6 +173,76 @@ function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
 }
 
+function toneDownHairSpecular(
+  material: THREE.Material | undefined,
+  meshName: string,
+  enabled: boolean
+) {
+  if (!material) {
+    return;
+  }
+
+  const isHairMaterial =
+    material.name.toLowerCase().includes("hair") || meshName.toLowerCase().includes("hair");
+  if (!isHairMaterial || !(material instanceof THREE.MeshStandardMaterial)) {
+    return;
+  }
+
+  const base = material.userData.__imHairBase as
+    | {
+        roughness: number;
+        metalness: number;
+        envMapIntensity?: number;
+        specularIntensity?: number;
+      }
+    | undefined;
+
+  if (!base) {
+    material.userData.__imHairBase = {
+      roughness: material.roughness,
+      metalness: material.metalness,
+      envMapIntensity: material.envMapIntensity,
+      specularIntensity: (material as THREE.MeshPhysicalMaterial).specularIntensity
+    };
+  }
+
+  const resolvedBase = (material.userData.__imHairBase ??
+    {}) as Required<NonNullable<typeof base>>;
+  if (!enabled) {
+    material.roughness = resolvedBase.roughness;
+    material.metalness = resolvedBase.metalness;
+    if (typeof resolvedBase.envMapIntensity === "number") {
+      material.envMapIntensity = resolvedBase.envMapIntensity;
+    }
+    if (
+      typeof resolvedBase.specularIntensity === "number" &&
+      material instanceof THREE.MeshPhysicalMaterial
+    ) {
+      material.specularIntensity = resolvedBase.specularIntensity;
+    }
+    material.needsUpdate = true;
+    return;
+  }
+
+  // Shine perception ~= env/metal/specular. Half those terms, then raise roughness mildly.
+  material.metalness = resolvedBase.metalness * 0.5;
+  if (typeof resolvedBase.envMapIntensity === "number") {
+    material.envMapIntensity = resolvedBase.envMapIntensity * 0.5;
+  }
+  if (
+    typeof resolvedBase.specularIntensity === "number" &&
+    material instanceof THREE.MeshPhysicalMaterial
+  ) {
+    material.specularIntensity = resolvedBase.specularIntensity * 0.5;
+  }
+  material.roughness = THREE.MathUtils.clamp(
+    resolvedBase.roughness + (1 - resolvedBase.roughness) * 0.35,
+    0,
+    1
+  );
+  material.needsUpdate = true;
+}
+
 function randomInRange(min: number, max: number) {
   return Math.random() * (max - min) + min;
 }
@@ -251,16 +321,16 @@ function fitCameraToUpperBody(camera: THREE.Camera, frame: ModelFrame) {
     return;
   }
 
-  camera.fov = 25;
+  camera.fov = 23;
 
   // Keep a stable "product shot" camera while nudging for model headroom consistency.
-  const baseLookY = 1.42;
-  const baseCameraY = 1.52;
-  const baseCameraZ = 1.62;
-  const targetHeadY = 1.62;
+  const baseLookY = 1.58;
+  const baseCameraY = 1.72;
+  const baseCameraZ = 1.36;
+  const targetHeadY = 1.67;
   const headDelta = THREE.MathUtils.clamp(frame.headY - targetHeadY, -0.18, 0.18);
 
-  camera.position.set(0, baseCameraY + headDelta * 0.14, baseCameraZ + headDelta * 0.16);
+  camera.position.set(0, baseCameraY + headDelta * 0.12, baseCameraZ + headDelta * 0.12);
   camera.lookAt(0, baseLookY + headDelta * 0.05, 0);
   camera.updateProjectionMatrix();
 }
@@ -592,6 +662,7 @@ function AvatarModel({ character, modelUrl, state, cueToken, emotion, reactionEn
   }, [debugMorph, modelScene]);
 
   React.useEffect(() => {
+    const shouldToneDownHair = character === "zet" || character === "iron";
     modelScene.traverse((object) => {
       const mesh = object as THREE.Mesh;
       if (!mesh.isMesh) {
@@ -599,6 +670,11 @@ function AvatarModel({ character, modelUrl, state, cueToken, emotion, reactionEn
       }
       mesh.castShadow = true;
       mesh.receiveShadow = true;
+
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      for (const material of materials) {
+        toneDownHairSpecular(material, mesh.name, shouldToneDownHair);
+      }
     });
     const { rig, basePose } = collectBones(modelScene);
     boneRigRef.current = rig;
@@ -831,7 +907,7 @@ function AvatarModel({ character, modelUrl, state, cueToken, emotion, reactionEn
     });
 
     if (group) {
-      const baseY = -0.05;
+      const baseY = 0.1;
       const targetY = baseY + Math.sin(elapsed * 1.8) * 0.0024 + (state === "celebrate" ? Math.abs(Math.sin(elapsed * 7.8)) * 0.006 : 0);
       const targetZ = -0.12;
       const targetX = 0.007;
@@ -907,7 +983,7 @@ export function InterviewerAvatarAnimated({
 
   return (
     <div className="h-full w-full" data-avatar-state={state} data-avatar-cue={cueToken}>
-      <Canvas dpr={[1, 1.75]} gl={{ alpha: true, antialias: true }} shadows camera={{ position: [0, 1.52, 1.62], fov: 25 }}>
+      <Canvas dpr={[1, 1.75]} gl={{ alpha: true, antialias: true }} shadows camera={{ position: [0, 1.72, 1.36], fov: 23 }}>
         <hemisphereLight intensity={0.46} color="#ffffff" groundColor="#dde5f0" />
         <ambientLight intensity={0.56} />
         <directionalLight castShadow intensity={0.8} position={[2.2, 3.0, 2.2]} shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
@@ -934,7 +1010,7 @@ export function InterviewerAvatarAnimated({
 
         <Environment preset="studio" background={false} />
         <ContactShadows position={[0, 0.002, 0]} opacity={0.23} blur={2.5} scale={6.4} far={4.4} />
-        <OrbitControls target={[0, 1.42, 0]} enablePan={false} enableRotate={false} enableZoom={false} />
+        <OrbitControls target={[0, 1.58, 0]} enablePan={false} enableRotate={false} enableZoom={false} />
       </Canvas>
     </div>
   );
