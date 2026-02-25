@@ -64,16 +64,18 @@ export function ReportView({
 
   if (!report) {
     return (
-      <div className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-8">
-        <InlineNotice variant="info" message="표시할 리포트가 없습니다. 면접을 완료한 뒤 다시 시도해 주세요." />
-        <div className="flex flex-wrap justify-end gap-2 rounded-[2rem] border border-im-border/60 bg-white p-3 shadow-sm">
-          <Button variant="secondary" onClick={onRestart} disabled={isBusy}>
-            설정으로 이동
-          </Button>
-          <Button onClick={onRetry} disabled={isBusy}>
-            다시 시도
-          </Button>
+      <div className="mx-auto flex w-full max-w-2xl flex-col items-center justify-center py-20 px-4 text-center">
+        <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-im-subtle text-4xl shadow-card">
+          📝
         </div>
+        <h2 className="mb-2 text-xl font-bold text-im-text-main">진행한 면접이 없습니다</h2>
+        <p className="mb-8 text-sm leading-relaxed text-im-text-muted">
+          리포트를 확인하시려면 먼저 모의 면접을 완료해야 합니다.<br />
+          당신의 실력을 점검하고 상세한 피드백을 받아보세요!
+        </p>
+        <Button onClick={onRestart} disabled={isBusy} className="px-8 shadow-glow">
+          🚀 새로운 면접 시작하기
+        </Button>
       </div>
     );
   }

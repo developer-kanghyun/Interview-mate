@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { getMyProfile, getGoogleAuthUrl } from "@/shared/api/interview";
@@ -69,6 +70,12 @@ export default function HomePage() {
               className="rounded-full px-5 py-2 text-base font-bold text-im-text-main transition-colors hover:bg-im-surface"
             >
               면접
+            </Link>
+            <Link
+              href="/report"
+              className="rounded-full px-5 py-2 text-base font-bold text-im-text-main transition-colors hover:bg-im-surface"
+            >
+              리포트
             </Link>
             <Link
               href="/insights"
@@ -142,15 +149,9 @@ export default function HomePage() {
               >
                 <Link
                   href="/setup"
-                  className="flex h-14 min-w-[220px] items-center justify-center gap-2 rounded-full bg-im-primary px-8 text-base font-bold text-white shadow-glow transition-[background-color,transform,box-shadow] hover:-translate-y-0.5 hover:bg-im-primary-hover active:scale-95"
+                  className="flex h-16 min-w-[260px] items-center justify-center gap-2 rounded-full bg-im-primary px-10 text-lg font-extrabold text-white shadow-glow transition-[background-color,transform,box-shadow] hover:-translate-y-1 hover:bg-im-primary-hover active:scale-95"
                 >
-                  무료로 시작하기
-                </Link>
-                <Link
-                  href="/insights"
-                  className="flex h-14 min-w-[200px] items-center justify-center rounded-full border border-im-border bg-white px-8 text-base font-bold text-im-text-main transition-[background-color,border-color,color,transform] hover:border-im-primary/30 hover:bg-im-surface"
-                >
-                  내 인사이트 보기
+                  시작하기
                 </Link>
               </motion.div>
             </motion.article>
@@ -161,9 +162,12 @@ export default function HomePage() {
               className="relative overflow-hidden rounded-[2.5rem] border border-im-primary/15 bg-im-subtle p-0 shadow-sm lg:col-span-5 flex flex-col justify-center items-center group"
             >
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 z-10" />
-              <img
+              <Image
                 src="/images/interview_scene.png"
                 alt="AI 모의면접 - 밝고 긍정적인 분위기의 면접 장면"
+                fill
+                priority
+                sizes="(min-width: 1024px) 40vw, 100vw"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
               <div className="absolute bottom-6 left-6 right-6 z-20 rounded-2xl bg-white/90 p-4 shadow-lg backdrop-blur-md opacity-0 translate-y-4 transition-all duration-500 group-hover:opacity-100 group-hover:translate-y-0">

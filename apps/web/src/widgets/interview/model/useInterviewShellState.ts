@@ -135,7 +135,7 @@ function resolveStepFromPath(pathname: string | null): InterviewStep | null {
   if (pathname === "/insights") {
     return "insights";
   }
-  if (/^\/report\/[^/]+$/.test(pathname)) {
+  if (pathname === "/report" || /^\/report\/[^/]+$/.test(pathname)) {
     return "report";
   }
   if (/^\/interview\/[^/]+$/.test(pathname)) {
@@ -275,8 +275,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       if (sessionId) {
         syncPathname(`/report/${encodeURIComponent(sessionId)}`);
       } else {
-        setUiError("현재 조회할 면접 리포트가 없습니다. 과거 기록은 '학습' 탭에서 확인해주세요.");
-        return;
+        syncPathname("/report");
       }
     }
     setStep(next);
