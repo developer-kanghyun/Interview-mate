@@ -33,13 +33,14 @@ type BlinkState = {
   nextAt: number;
 };
 
-const RPM_ZET_URL =
-  "https://models.readyplayer.me/6991ab973781699417b88855.glb?quality=high&morphTargets=ARKit,Oculus%20Visemes";
+const RPM_ZET_URL = "https://models.readyplayer.me/699e4f524d98c76821a813f9.glb";
+const RPM_LUNA_URL = "https://models.readyplayer.me/699e4ec95f0ce8d1169f9137.glb";
+const RPM_IRON_URL = "https://models.readyplayer.me/699e59acdea6e53d0cf3052e.glb";
 
 const modelUrlByCharacter: Record<AvatarCharacter, string> = {
   zet: RPM_ZET_URL,
-  luna: RPM_ZET_URL,
-  iron: RPM_ZET_URL
+  luna: RPM_LUNA_URL,
+  iron: RPM_IRON_URL
 };
 
 const localModelUrlByCharacter: Record<AvatarCharacter, string> = {
