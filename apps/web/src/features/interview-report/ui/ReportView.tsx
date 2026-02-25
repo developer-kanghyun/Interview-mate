@@ -33,7 +33,9 @@ export function ReportView({
   if (isLoading) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <p className="text-sm text-im-text-muted">리포트를 불러오는 중입니다. 잠시만 기다려 주세요.</p>
+        <div className="rounded-[2rem] border border-im-border/60 bg-white p-6 text-sm text-im-text-muted shadow-sm">
+          리포트를 불러오는 중입니다. 잠시만 기다려 주세요.
+        </div>
       </div>
     );
   }
@@ -43,7 +45,7 @@ export function ReportView({
     return (
       <div className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-8">
         <InlineNotice variant="error" message={errorMessage} />
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2 rounded-[2rem] border border-im-border/60 bg-white p-3 shadow-sm">
           {shouldShowLogin ? (
             <Button variant="secondary" onClick={onLogin} disabled={isBusy}>
               Google 로그인
@@ -64,7 +66,7 @@ export function ReportView({
     return (
       <div className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-8">
         <InlineNotice variant="info" message="표시할 리포트가 없습니다. 면접을 완료한 뒤 다시 시도해 주세요." />
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2 rounded-[2rem] border border-im-border/60 bg-white p-3 shadow-sm">
           <Button variant="secondary" onClick={onRestart} disabled={isBusy}>
             설정으로 이동
           </Button>
@@ -79,9 +81,9 @@ export function ReportView({
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-8">
       {/* Report Header */}
-      <header className="text-center">
+      <header className="rounded-[2rem] border border-im-border/60 bg-white p-8 text-center shadow-sm">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-im-primary">Report</p>
-        <h1 className="mt-2 text-2xl font-bold text-im-text-main sm:text-3xl">면접 리포트</h1>
+        <h1 className="mt-2 text-2xl font-black tracking-tight text-im-text-main sm:text-3xl">면접 리포트</h1>
         <p className="mt-2 text-sm text-im-text-muted">세션 종료 후 생성된 4축 평가와 질문별 피드백입니다.</p>
       </header>
 
@@ -105,7 +107,7 @@ export function ReportView({
       <SubCard title="질문별 피드백">
         <ul className="grid gap-3">
           {report.questionFeedback.map((item) => (
-            <li key={item.questionId} className="rounded-2xl border border-im-border bg-im-subtle p-4">
+            <li key={item.questionId} className="rounded-2xl border border-im-border bg-im-subtle p-4 transition-[background-color,border-color,box-shadow] hover:border-im-primary/30 hover:bg-im-primary/5 hover:shadow-glow">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-bold text-im-text-muted">Q{item.order}</p>
                 <Chip variant={item.totalScore >= 75 ? "success" : item.totalScore >= 60 ? "info" : "danger"}>
@@ -129,12 +131,12 @@ export function ReportView({
       />
 
       {/* Actions */}
-      <div className="flex flex-wrap justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2 rounded-[2rem] border border-im-border/60 bg-white p-3 shadow-sm">
         <Button variant="secondary" onClick={onRestart} disabled={isBusy}>
           새 면접 시작
         </Button>
         <Button onClick={onGoInsights} disabled={isBusy || isGoingInsights}>
-          {isGoingInsights ? "인사이트 불러오는 중..." : "인사이트 보기"}
+          {isGoingInsights ? "인사이트 불러오는 중…" : "인사이트 보기"}
         </Button>
       </div>
     </div>
