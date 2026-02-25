@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, Environment, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import type { AvatarState } from "@/entities/avatar/model/avatarBehaviorMachine";
 
 export type AvatarCharacter = "zet" | "luna" | "iron";
@@ -33,21 +34,33 @@ type BlinkState = {
   nextAt: number;
 };
 
-const RPM_ZET_URL = "https://models.readyplayer.me/699e4f524d98c76821a813f9.glb";
-const RPM_LUNA_URL = "https://models.readyplayer.me/699e4ec95f0ce8d1169f9137.glb";
-const RPM_IRON_URL = "https://models.readyplayer.me/699e59acdea6e53d0cf3052e.glb";
-
 const modelUrlByCharacter: Record<AvatarCharacter, string> = {
-  zet: RPM_ZET_URL,
-  luna: RPM_LUNA_URL,
-  iron: RPM_IRON_URL
+  luna: "/assets/avatars/rpm/luna.glb",
+  zet: "/assets/avatars/rpm/zet.glb",
+  iron: "/assets/avatars/rpm/iron.glb"
 };
 
-const localModelUrlByCharacter: Record<AvatarCharacter, string> = {
-  zet: "/models/zet.glb",
-  luna: "/models/luna.glb",
-  iron: "/models/iron.glb"
+type MotionKey = "idle" | "talking" | "nod" | "thinking" | "clap" | "no";
+type MotionMode = "loop" | "oneshot";
+
+type ModelFrame = {
+  fullHeight: number;
+  headY: number;
+  chestY: number;
 };
+
+const mixamoClipUrlByKey: Record<MotionKey, string> = {
+  idle: "/assets/anims/mixamo/idle.fbx",
+  talking: "/assets/anims/mixamo/talking.fbx",
+  nod: "/assets/anims/mixamo/nod.fbx",
+  thinking: "/assets/anims/mixamo/thinking.fbx",
+  clap: "/assets/anims/mixamo/clap.fbx",
+  no: "/assets/anims/mixamo/no.fbx"
+};
+
+useGLTF.preload(modelUrlByCharacter.luna);
+useGLTF.preload(modelUrlByCharacter.zet);
+useGLTF.preload(modelUrlByCharacter.iron);
 
 function canUseWebGL() {
   if (typeof window === "undefined") {
@@ -66,39 +79,37 @@ function canUseWebGL() {
   }
 }
 
-function isLikelyBinaryModelContentType(contentType: string | null) {
-  if (!contentType) {
-    return false;
-  }
-  const normalized = contentType.toLowerCase();
-  return normalized.includes("model/gltf-binary") || normalized.includes("application/octet-stream") || normalized.includes("binary");
-}
-
-function normalizeModel(modelRoot: THREE.Object3D, targetHeight = 2.25) {
+function normalizeModel(modelRoot: THREE.Object3D, targetHeight = 1.72): ModelFrame | null {
   const initialBounds = new THREE.Box3().setFromObject(modelRoot);
   if (initialBounds.isEmpty()) {
-    return;
+    return null;
   }
 
   const initialSize = new THREE.Vector3();
-  const initialCenter = new THREE.Vector3();
   initialBounds.getSize(initialSize);
-  initialBounds.getCenter(initialCenter);
 
   if (initialSize.y <= 0) {
-    return;
+    return null;
   }
 
   const scale = targetHeight / initialSize.y;
   modelRoot.scale.multiplyScalar(scale);
 
   const scaledBounds = new THREE.Box3().setFromObject(modelRoot);
+  const scaledSize = new THREE.Vector3();
+  scaledBounds.getSize(scaledSize);
   const scaledCenter = new THREE.Vector3();
   scaledBounds.getCenter(scaledCenter);
 
   modelRoot.position.x -= scaledCenter.x;
   modelRoot.position.z -= scaledCenter.z;
   modelRoot.position.y -= scaledBounds.min.y;
+
+  return {
+    fullHeight: scaledSize.y,
+    headY: scaledBounds.max.y - scaledBounds.min.y,
+    chestY: scaledSize.y * 0.58
+  };
 }
 
 function clamp01(value: number) {
@@ -111,6 +122,71 @@ function randomInRange(min: number, max: number) {
 
 function smoothFactor(rate: number, delta: number) {
   return 1 - Math.exp(-rate * delta);
+}
+
+function resolveMotionForState(state: AvatarState): { key: MotionKey; mode: MotionMode } {
+  if (state === "asking") {
+    return { key: "talking", mode: "loop" };
+  }
+  if (state === "listening") {
+    return { key: "nod", mode: "loop" };
+  }
+  if (state === "thinking" || state === "confused") {
+    return { key: "thinking", mode: "loop" };
+  }
+  if (state === "celebrate") {
+    return { key: "clap", mode: "oneshot" };
+  }
+  if (state === "react_negative") {
+    return { key: "no", mode: "oneshot" };
+  }
+  return { key: "idle", mode: "loop" };
+}
+
+function normalizeMixamoTrackName(trackName: string) {
+  const [path, property] = trackName.split(".");
+  if (!path || !property) {
+    return trackName;
+  }
+
+  const node = path.split(/[|/]/).pop() ?? path;
+  const normalizedNode = node
+    .replace(/^mixamorig[:_]?/i, "")
+    .replace(/^armature[:_]?/i, "")
+    .trim();
+
+  if (!normalizedNode) {
+    return trackName;
+  }
+
+  return `${normalizedNode}.${property}`;
+}
+
+function normalizeMixamoClip(clip: THREE.AnimationClip, key: MotionKey) {
+  const tracks = clip.tracks.map((track) => {
+    const cloned = track.clone();
+    cloned.name = normalizeMixamoTrackName(cloned.name);
+    return cloned;
+  });
+
+  return new THREE.AnimationClip(key, clip.duration, tracks);
+}
+
+function fitCameraToUpperBody(camera: THREE.Camera, frame: ModelFrame) {
+  if (!(camera instanceof THREE.PerspectiveCamera)) {
+    return;
+  }
+
+  const top = frame.headY + frame.fullHeight * 0.08;
+  const bottom = frame.chestY - frame.fullHeight * 0.24;
+  const focusY = (top + bottom) * 0.5;
+  const span = Math.max(0.3, top - bottom);
+  const halfFov = THREE.MathUtils.degToRad(camera.fov * 0.5);
+  const distance = (span * 0.62) / Math.tan(halfFov);
+
+  camera.position.set(0, focusY - span * 0.08, Math.max(0.9, distance * 2));
+  camera.lookAt(0, focusY, 0);
+  camera.updateProjectionMatrix();
 }
 
 function normalizeMorphName(name: string) {
@@ -304,22 +380,22 @@ function FallbackAvatar({ state, emotion }: FallbackAvatarProps) {
   );
 }
 
-function OfficeStage() {
+function NeutralStage() {
   return (
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-        <planeGeometry args={[18, 18]} />
-        <meshStandardMaterial color="#fff4ec" roughness={0.9} metalness={0.05} />
+        <planeGeometry args={[12, 12]} />
+        <meshStandardMaterial color="#f3f6fb" roughness={0.94} metalness={0.02} />
       </mesh>
 
-      <mesh position={[0, 2.35, -3.7]} receiveShadow>
-        <boxGeometry args={[12, 4.8, 0.18]} />
-        <meshStandardMaterial color="#ffe8d6" roughness={0.9} metalness={0.04} />
+      <mesh position={[0, 2.4, -2.6]} receiveShadow>
+        <boxGeometry args={[9.4, 4.8, 0.12]} />
+        <meshStandardMaterial color="#f8fafc" roughness={0.9} metalness={0.02} />
       </mesh>
 
-      <mesh position={[0, 1.8, -3.58]}>
-        <planeGeometry args={[5.8, 2.2]} />
-        <meshStandardMaterial color="#ffd4b8" roughness={0.4} metalness={0.1} />
+      <mesh position={[0, 1.55, -2.52]}>
+        <planeGeometry args={[4.2, 1.5]} />
+        <meshStandardMaterial color="#e9eef6" roughness={0.48} metalness={0.03} />
       </mesh>
     </group>
   );
@@ -341,7 +417,7 @@ function WebglUnavailableAvatar({ state, emotion }: { state: AvatarState; emotio
               : "대기";
 
   return (
-    <div className="relative flex h-full w-full items-center justify-center bg-[linear-gradient(180deg,#fffaf6_0%,#fff4ec_100%)]">
+    <div className="relative flex h-full w-full items-center justify-center bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)]">
       <div className={`flex h-44 w-44 items-center justify-center rounded-full bg-white text-5xl shadow-soft ring-4 ${ringColor}`}>
         🙂
       </div>
@@ -363,10 +439,18 @@ type AvatarModelProps = {
 };
 
 function AvatarModel({ modelUrl, state, cueToken, emotion, reactionEnabled, audioRef, debugMorph }: AvatarModelProps) {
+  const { camera } = useThree();
+  const modelFrameRef = React.useRef<ModelFrame | null>(null);
+  const mixerRef = React.useRef<THREE.AnimationMixer | null>(null);
+  const motionActionRef = React.useRef<Partial<Record<MotionKey, THREE.AnimationAction>>>({});
+  const activeMotionKeyRef = React.useRef<MotionKey | null>(null);
+  const latestStateRef = React.useRef<AvatarState>(state);
+  const lastMotionStateRef = React.useRef<AvatarState>(state);
+  const lastCueTokenForOneShotRef = React.useRef(cueToken);
   const gltf = useGLTF(modelUrl) as { scene: THREE.Group };
   const modelScene = React.useMemo(() => {
     const cloned = gltf.scene.clone(true);
-    normalizeModel(cloned);
+    modelFrameRef.current = normalizeModel(cloned);
     return cloned;
   }, [gltf.scene]);
   const morphBindingsRef = React.useRef<MorphBinding[]>([]);
@@ -383,7 +467,6 @@ function AvatarModel({ modelUrl, state, cueToken, emotion, reactionEnabled, audi
 
   const analyserRef = React.useRef<AnalyserNode | null>(null);
   const analyserDataRef = React.useRef<Uint8Array | null>(null);
-  const audioContextRef = React.useRef<AudioContext | null>(null);
 
   React.useEffect(() => {
     const bindings = collectMorphBindings(modelScene, debugMorph);
@@ -402,6 +485,141 @@ function AvatarModel({ modelUrl, state, cueToken, emotion, reactionEnabled, audi
   }, [modelScene]);
 
   React.useEffect(() => {
+    const modelFrame = modelFrameRef.current;
+    if (!modelFrame) {
+      return;
+    }
+    fitCameraToUpperBody(camera, modelFrame);
+  }, [camera, modelScene]);
+
+  React.useEffect(() => {
+    const mixer = new THREE.AnimationMixer(modelScene);
+    mixerRef.current = mixer;
+    motionActionRef.current = {};
+    activeMotionKeyRef.current = null;
+
+    const loader = new FBXLoader();
+    let cancelled = false;
+
+    const loadClip = (key: MotionKey) =>
+      new Promise<{ key: MotionKey; clip: THREE.AnimationClip | null }>((resolve) => {
+        loader.load(
+          mixamoClipUrlByKey[key],
+          (fbx) => {
+            const rawClip = fbx.animations?.[0] ?? null;
+            resolve({
+              key,
+              clip: rawClip ? normalizeMixamoClip(rawClip, key) : null
+            });
+          },
+          undefined,
+          () => {
+            resolve({ key, clip: null });
+          }
+        );
+      });
+
+    const configureAction = (action: THREE.AnimationAction, mode: MotionMode) => {
+      if (mode === "oneshot") {
+        action.reset();
+        action.setLoop(THREE.LoopOnce, 1);
+        action.clampWhenFinished = true;
+      } else {
+        action.reset();
+        action.setLoop(THREE.LoopRepeat, Infinity);
+        action.clampWhenFinished = false;
+      }
+    };
+
+    const playMotion = (key: MotionKey, mode: MotionMode) => {
+      const actions = motionActionRef.current;
+      const nextAction = actions[key];
+      if (!nextAction) {
+        return;
+      }
+
+      const previousKey = activeMotionKeyRef.current;
+      if (previousKey && previousKey !== key) {
+        actions[previousKey]?.fadeOut(0.2);
+      } else if (previousKey === key && mode === "loop") {
+        return;
+      }
+
+      configureAction(nextAction, mode);
+      nextAction.fadeIn(0.2).play();
+      activeMotionKeyRef.current = key;
+    };
+
+    void Promise.all((Object.keys(mixamoClipUrlByKey) as MotionKey[]).map((key) => loadClip(key))).then((results) => {
+      if (cancelled) {
+        return;
+      }
+
+      for (const { key, clip } of results) {
+        if (!clip) {
+          continue;
+        }
+        motionActionRef.current[key] = mixer.clipAction(clip, modelScene);
+      }
+
+      const currentMotion = resolveMotionForState(latestStateRef.current);
+      playMotion(currentMotion.key, currentMotion.mode);
+    });
+
+    return () => {
+      cancelled = true;
+      mixer.stopAllAction();
+      mixer.uncacheRoot(modelScene);
+      mixerRef.current = null;
+      motionActionRef.current = {};
+      activeMotionKeyRef.current = null;
+    };
+  }, [modelScene]);
+
+  React.useEffect(() => {
+    const actions = motionActionRef.current;
+    if (Object.keys(actions).length === 0) {
+      return;
+    }
+
+    const { key, mode } = resolveMotionForState(state);
+    const nextAction = actions[key];
+    if (!nextAction) {
+      return;
+    }
+
+    const isOneShot = mode === "oneshot";
+    const shouldRetrigger =
+      lastMotionStateRef.current !== state ||
+      (isOneShot && cueToken !== lastCueTokenForOneShotRef.current);
+
+    if (!shouldRetrigger) {
+      return;
+    }
+
+    const previousKey = activeMotionKeyRef.current;
+    if (previousKey && previousKey !== key) {
+      actions[previousKey]?.fadeOut(0.18);
+    }
+
+    if (isOneShot) {
+      nextAction.reset();
+      nextAction.setLoop(THREE.LoopOnce, 1);
+      nextAction.clampWhenFinished = true;
+      nextAction.fadeIn(0.18).play();
+      lastCueTokenForOneShotRef.current = cueToken;
+    } else {
+      nextAction.reset();
+      nextAction.setLoop(THREE.LoopRepeat, Infinity);
+      nextAction.clampWhenFinished = false;
+      nextAction.fadeIn(0.18).play();
+    }
+
+    activeMotionKeyRef.current = key;
+    lastMotionStateRef.current = state;
+  }, [cueToken, state]);
+
+  React.useEffect(() => {
     const audioElement = audioRef?.current;
     if (!audioElement) {
       return;
@@ -418,11 +636,9 @@ function AvatarModel({ modelUrl, state, cueToken, emotion, reactionEnabled, audi
       analyser.connect(audioContext.destination);
       analyserRef.current = analyser;
       analyserDataRef.current = new Uint8Array(analyser.frequencyBinCount);
-      audioContextRef.current = audioContext;
     } catch {
       analyserRef.current = null;
       analyserDataRef.current = null;
-      audioContextRef.current = null;
     }
 
     const handlePlay = () => {
@@ -442,7 +658,6 @@ function AvatarModel({ modelUrl, state, cueToken, emotion, reactionEnabled, audi
       void audioContext.close();
       analyserRef.current = null;
       analyserDataRef.current = null;
-      audioContextRef.current = null;
     };
   }, [audioRef]);
 
@@ -454,8 +669,13 @@ function AvatarModel({ modelUrl, state, cueToken, emotion, reactionEnabled, audi
     cuePulseRef.current = 1;
   }, [cueToken]);
 
+  React.useEffect(() => {
+    latestStateRef.current = state;
+  }, [state]);
+
   useFrame(({ clock }, delta) => {
     const elapsed = clock.getElapsedTime();
+    mixerRef.current?.update(delta);
     const blinkState = blinkStateRef.current;
     const group = rootGroupRef.current;
     const hasMorphBindings = morphBindingsRef.current.length > 0;
@@ -474,7 +694,8 @@ function AvatarModel({ modelUrl, state, cueToken, emotion, reactionEnabled, audi
           ? clamp01((Math.sin(elapsed * 8.2) + 1) * 0.16 + (Math.sin(elapsed * 14.6) + 1) * 0.06)
           : 0;
       const idleMouthGain = state === "asking" ? 1 : state === "celebrate" ? 0.9 : state === "listening" ? 0.18 : 0.12;
-      const targetMouth = isAudioPlaying ? audioTarget : fakeLipSync * idleMouthGain;
+      const speakingGain = state === "asking" ? 1 : state === "celebrate" ? 0.72 : state === "listening" ? 0.2 : 0.15;
+      const targetMouth = isAudioPlaying ? audioTarget * speakingGain : fakeLipSync * idleMouthGain;
       const isOpeningMouth = targetMouth > mouthEnvelopeRef.current;
       const smoothing = smoothFactor(isOpeningMouth ? 20 : 7, delta);
       mouthEnvelopeRef.current = THREE.MathUtils.lerp(mouthEnvelopeRef.current, targetMouth, smoothing);
@@ -613,48 +834,7 @@ export function InterviewerAvatarAnimated({
   debugMorph = false
 }: InterviewerAvatarAnimatedProps) {
   const webglAvailable = React.useMemo(() => canUseWebGL(), []);
-  const primaryModelUrl = modelUrlByCharacter[character];
-  const fallbackModelUrl = localModelUrlByCharacter[character];
-  const [activeModelUrl, setActiveModelUrl] = React.useState(primaryModelUrl);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    const abortController = new AbortController();
-    const timeoutId = window.setTimeout(() => abortController.abort(), 3200);
-
-    setActiveModelUrl(primaryModelUrl);
-
-    const verifyPrimaryModel = async () => {
-      if (!primaryModelUrl || primaryModelUrl.startsWith("/")) {
-        return;
-      }
-
-      try {
-        const response = await fetch(primaryModelUrl, {
-          method: "HEAD",
-          cache: "no-store",
-          signal: abortController.signal
-        });
-
-        const looksValid = response.ok && isLikelyBinaryModelContentType(response.headers.get("content-type"));
-        if (!looksValid && !cancelled) {
-          setActiveModelUrl(fallbackModelUrl);
-        }
-      } catch {
-        if (!cancelled) {
-          setActiveModelUrl(fallbackModelUrl);
-        }
-      }
-    };
-
-    void verifyPrimaryModel();
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timeoutId);
-      abortController.abort();
-    };
-  }, [fallbackModelUrl, primaryModelUrl]);
+  const modelUrl = modelUrlByCharacter[character];
 
   if (!webglAvailable) {
     return (
@@ -666,20 +846,19 @@ export function InterviewerAvatarAnimated({
 
   return (
     <div className="h-full w-full" data-avatar-state={state} data-avatar-cue={cueToken}>
-      <Canvas dpr={[1, 1.75]} gl={{ alpha: true }} shadows camera={{ position: [0, 1.52, 1.55], fov: 32 }}>
-        <color attach="background" args={["#fffaf6"]} />
-        <hemisphereLight intensity={0.85} color="#ffffff" groundColor="#cbd5e1" />
-        <ambientLight intensity={0.6} />
-        <directionalLight castShadow intensity={0.9} position={[2.8, 3.8, 2.4]} shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
-        <directionalLight intensity={0.5} position={[-2.2, 2.4, -1.5]} />
-        <spotLight position={[0, 3.8, 2.2]} angle={0.42} penumbra={0.6} intensity={0.4} />
+      <Canvas dpr={[1, 1.75]} gl={{ alpha: true, antialias: true }} shadows camera={{ position: [0, 1.1, 1.24], fov: 34 }}>
+        <hemisphereLight intensity={0.5} color="#ffffff" groundColor="#e2e8f0" />
+        <ambientLight intensity={0.58} />
+        <directionalLight castShadow intensity={0.86} position={[2.2, 3.2, 2.3]} shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
+        <directionalLight intensity={0.32} position={[-1.8, 2.2, -1.2]} />
+        <spotLight position={[0.4, 3.1, 1.6]} angle={0.45} penumbra={0.8} intensity={0.22} />
 
-        <OfficeStage />
+        <NeutralStage />
 
-        <SceneErrorBoundary key={activeModelUrl} fallback={<FallbackAvatar state={state} emotion={emotion} />}>
+        <SceneErrorBoundary key={modelUrl} fallback={<FallbackAvatar state={state} emotion={emotion} />}>
           <React.Suspense fallback={<FallbackAvatar state={state} emotion={emotion} />}>
             <AvatarModel
-              modelUrl={activeModelUrl}
+              modelUrl={modelUrl}
               state={state}
               cueToken={cueToken}
               emotion={emotion}
@@ -691,8 +870,8 @@ export function InterviewerAvatarAnimated({
         </SceneErrorBoundary>
 
         <Environment preset="studio" background={false} />
-        <ContactShadows position={[0, 0.005, 0]} opacity={0.4} blur={2.8} scale={9} far={6} />
-        <OrbitControls target={[0, 1.38, 0]} enablePan={false} enableRotate={false} enableZoom={false} />
+        <ContactShadows position={[0, 0.002, 0]} opacity={0.2} blur={2.4} scale={6.8} far={4.8} />
+        <OrbitControls target={[0, 1.05, 0]} enablePan={false} enableRotate={false} enableZoom={false} />
       </Canvas>
     </div>
   );
