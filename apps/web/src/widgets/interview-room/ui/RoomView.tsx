@@ -151,7 +151,7 @@ export function RoomView({
       {/* Main Content: 2-Column Split */}
       <main className="flex min-h-0 flex-1">
         {/* Left Column: Avatar (large) */}
-        <section className="relative hidden w-[45%] shrink-0 border-r border-im-border bg-im-subtle lg:block">
+        <section className="relative hidden min-h-0 w-[45%] shrink-0 overflow-hidden border-r border-im-border bg-im-subtle lg:block">
           <div className="absolute inset-0">
             <InterviewerAvatarAnimated
               character={character}
