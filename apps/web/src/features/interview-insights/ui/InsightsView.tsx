@@ -36,9 +36,9 @@ export function InsightsView({
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-8">
       {/* Insights Header */}
-      <header className="text-center">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-im-primary">Insights</p>
-        <h1 className="mt-2 text-2xl font-bold text-im-text-main sm:text-3xl">인사이트 / 히스토리</h1>
+      <header className="rounded-[2rem] border border-im-border/60 bg-white p-8 text-center shadow-sm">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-im-primary">study</p>
+        <h1 className="mt-2 text-2xl font-black tracking-tight text-im-text-main sm:text-3xl">학습하기</h1>
         <p className="mt-2 text-sm text-im-text-muted">
           최근 30일 세션 이력과 약점 키워드를 바탕으로 복습 루프를 이어갑니다.
         </p>
@@ -48,8 +48,8 @@ export function InsightsView({
       <SubCard title="세션 목록">
         <ul className="grid gap-3">
           {isLoading ? (
-            <li className="rounded-2xl border border-im-border bg-im-subtle p-4 text-sm text-im-text-muted">
-              최근 30일 세션 기록을 불러오는 중입니다...
+            <li className="rounded-2xl border border-im-border/50 bg-im-subtle p-4 text-sm text-im-text-muted">
+              최근 30일 세션 기록을 불러오는 중입니다…
             </li>
           ) : errorMessage ? (
             <li>
@@ -64,12 +64,12 @@ export function InsightsView({
               />
             </li>
           ) : sessions.length === 0 ? (
-            <li className="rounded-2xl border border-dashed border-gray-300 p-4 text-sm text-im-text-muted">
+            <li className="rounded-2xl border border-dashed border-im-border bg-white p-4 text-sm text-im-text-muted">
               최근 30일 세션 기록이 없습니다. 새 면접을 시작해 기록을 쌓아보세요.
             </li>
           ) : (
             sessions.map((session) => (
-              <li key={session.sessionId} className="rounded-2xl border border-im-border bg-white p-4 transition-colors hover:bg-im-subtle">
+              <li key={session.sessionId} className="rounded-2xl border border-im-border bg-white p-4 transition-[background-color,border-color,transform] hover:-translate-y-0.5 hover:border-im-primary/30 hover:bg-im-primary/5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-bold text-im-text-main">
                     {session.role === "backend" ? "백엔드" : "프론트엔드"} · {session.stack}
@@ -114,12 +114,12 @@ export function InsightsView({
       </div>
 
       {/* Actions */}
-      <div className="flex flex-wrap justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2 rounded-[2rem] border border-im-border/60 bg-white p-3 shadow-sm">
         <Button variant="secondary" onClick={onBackSetup} disabled={isActionBusy}>
           면접 탭으로
         </Button>
         <Button onClick={() => void onRetryWeakness()} disabled={isActionBusy}>
-          {isRetryingWeakness ? "재시작 준비 중..." : "약점 기반 다시 연습"}
+          {isRetryingWeakness ? "재시작 준비 중…" : "약점 기반 다시 연습"}
         </Button>
       </div>
     </div>

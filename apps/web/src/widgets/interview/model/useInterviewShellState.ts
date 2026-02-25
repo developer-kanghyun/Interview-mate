@@ -53,6 +53,7 @@ type UseInterviewShellStateResult = {
   isAuthRequired: boolean;
   authRedirectTarget: string;
   handleGoogleLogin: (redirectTo?: string) => Promise<void>;
+  handleGoogleLogout: () => Promise<void>;
   isAuthLoading: boolean;
   backendStatus: "checking" | "ok" | "error";
   backendStatusMessage: string | null;
@@ -274,8 +275,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       if (sessionId) {
         syncPathname(`/report/${encodeURIComponent(sessionId)}`);
       } else {
-        syncPathname("/setup");
-        setStep("setup");
+        setUiError("현재 조회할 면접 리포트가 없습니다. 과거 기록은 '학습' 탭에서 확인해주세요.");
         return;
       }
     }
@@ -350,6 +350,20 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         setUiError(message);
       }
     } finally {
+      setIsAuthLoading(false);
+    }
+  }, [isAuthLoading]);
+
+  const handleGoogleLogout = useCallback(async () => {
+    if (isAuthLoading) {
+      return;
+    }
+    setIsAuthLoading(true);
+    try {
+      window.location.assign("/api/v1/users/logout");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "로그아웃에 실패했습니다.";
+      setUiError(message);
       setIsAuthLoading(false);
     }
   }, [isAuthLoading]);
@@ -900,6 +914,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     isAuthRequired: uiError === getAuthRequiredMessage(),
     authRedirectTarget,
     handleGoogleLogin,
+    handleGoogleLogout,
     isAuthLoading,
     backendStatus,
     backendStatusMessage,
