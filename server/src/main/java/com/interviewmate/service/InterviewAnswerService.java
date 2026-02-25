@@ -75,10 +75,8 @@ public class InterviewAnswerService {
         InterviewAnswerSubmitResponse.NextQuestionDto nextQuestion = null;
         String sessionStatus = InterviewSessionStatus.IN_PROGRESS;
         boolean sessionCompleted = false;
-        boolean isGuestSession = sessionQuestion.getSession().getUser().isGuestUser();
-
         if (followupRequired) {
-            if (isGuestSession || sessionQuestion.getFollowupCount() >= MAX_FOLLOWUP_PER_QUESTION) {
+            if (sessionQuestion.getFollowupCount() >= MAX_FOLLOWUP_PER_QUESTION) {
                 followupRequired = false;
                 followupReason = "followup_limit_reached";
             } else {
@@ -119,9 +117,7 @@ public class InterviewAnswerService {
         String coachingMessage = buildCoachingMessage(evaluationResult, followupReason);
         savedAnswer.setCoachingMessage(coachingMessage);
         interviewAnswerRepository.save(savedAnswer);
-        int followupRemaining = isGuestSession
-                ? 0
-                : Math.max(0, MAX_FOLLOWUP_PER_QUESTION - sessionQuestion.getFollowupCount());
+        int followupRemaining = Math.max(0, MAX_FOLLOWUP_PER_QUESTION - sessionQuestion.getFollowupCount());
 
         return InterviewAnswerSubmitResponse.builder()
                 .answerId(String.valueOf(savedAnswer.getId()))
