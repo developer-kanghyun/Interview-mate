@@ -141,7 +141,7 @@ test("게스트 1문항 완료 후 로그인 유도 및 리포트 복귀", async
       body: JSON.stringify({
         success: true,
         data: {
-          auth_url: "/auth/google/callback?code=fake-code",
+          auth_url: `/auth/google/callback?code=fake-code&redirectTo=${encodeURIComponent(`/report/${REPORT_SESSION_ID}`)}`,
           state: "fake-state"
         }
       })
@@ -181,9 +181,9 @@ test("게스트 1문항 완료 후 로그인 유도 및 리포트 복귀", async
   await page.getByRole("button", { name: "답변 완료" }).click();
   await expect.poll(() => answerRequestCount).toBe(2);
 
-  const loginButton = page.getByRole("button", { name: "Google 로그인" });
-  await expect(loginButton).toBeVisible();
-  await loginButton.click();
+  const loginButtons = page.getByRole("button", { name: "Google 로그인" });
+  await expect(loginButtons.last()).toBeVisible();
+  await loginButtons.last().click();
 
   await expect(page).toHaveURL(new RegExp(`/report/${REPORT_SESSION_ID}$`));
 });
