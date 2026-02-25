@@ -75,6 +75,6 @@ tts:
   google:
     api-key: ${GOOGLE_TTS_API_KEY:}
   voice-by-character:
-    zet: ko-KR-Neural2-c
-    luna: ko-KR-Neural2-b
-    iron: ko-KR-Neural2-d
+    zet: ko-KR-Chirp3-HD-Charon
+    luna: ko-KR-Chirp3-HD-Despina
+    iron: ko-KR-Neural2-C
