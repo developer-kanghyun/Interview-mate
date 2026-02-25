@@ -36,6 +36,7 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
         sessionId={shellState.sessionId}
         character={shellState.character}
         avatarState={shellState.avatarState}
+        avatarCueToken={shellState.avatarCueToken}
         emotion={shellState.emotion}
         audioRef={shellState.ttsAudioRef}
         isAutoplayBlocked={shellState.isAutoplayBlocked}

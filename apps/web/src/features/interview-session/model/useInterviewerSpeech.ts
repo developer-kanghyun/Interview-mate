@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from "react";
-import type { AvatarState } from "@/entities/avatar/ui/InterviewerAvatarAnimated";
+import type { AvatarState } from "@/entities/avatar/model/avatarBehaviorMachine";
 
 type UseInterviewerSpeechOptions = {
   onNotice?: (message: string) => void;

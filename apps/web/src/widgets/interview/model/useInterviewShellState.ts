@@ -14,7 +14,6 @@ import {
 } from "@/shared/api/interview-client";
 import { getGoogleAuthUrl, getGuestAccess, getMyProfile } from "@/shared/api/interview";
 import type { ChatMessage } from "@/shared/chat/ChatBoard";
-import type { AvatarState } from "@/entities/avatar/ui/InterviewerAvatarAnimated";
 import {
   defaultSetupPayload,
   interviewerNameMap,
@@ -28,6 +27,13 @@ import { useQuestionStreaming } from "@/features/interview-session/model/useQues
 import { useStartSession } from "@/features/interview/start-session/model/useStartSession";
 import { useFetchReport } from "@/features/interview-report/model/useFetchReport";
 import { useSpeechToText } from "@/shared/lib/useSpeechToText";
+import {
+  getAvatarTransientDurationMs,
+  resolveAvatarReportState,
+  resolveAvatarTransientStateFromAnswer,
+  type AvatarState,
+  type AvatarTransientState
+} from "@/entities/avatar/model/avatarBehaviorMachine";
 import {
   clearPostLoginRedirectTarget,
   clearLegacyApiKeyStorage,
@@ -58,6 +64,7 @@ type UseInterviewShellStateResult = {
   interviewerName: string;
   character: InterviewCharacter;
   avatarState: AvatarState;
+  avatarCueToken: number;
   emotion: InterviewEmotion;
   ttsAudioRef: RefObject<HTMLAudioElement>;
   isAutoplayBlocked: boolean;
@@ -194,6 +201,8 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   const [isRetryingWeakness, setIsRetryingWeakness] = useState(false);
   const [emotion, setEmotion] = useState<InterviewEmotion>("neutral");
   const [avatarState, setAvatarState] = useState<AvatarState>("idle");
+  const [activeAvatarCue, setActiveAvatarCue] = useState<AvatarTransientState | null>(null);
+  const [avatarCueToken, setAvatarCueToken] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const [uiError, setUiError] = useState<string | null>(null);
@@ -205,6 +214,8 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   const [sttNotice, setSttNotice] = useState<string | null>(null);
   const ttsNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sttNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const avatarCueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastFollowupCountRef = useRef(0);
   const {
     isRecording,
     isSupported: isSttSupported,
@@ -392,6 +403,27 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     []
   );
 
+  const triggerAvatarCue = useCallback((cue: AvatarTransientState) => {
+    if (avatarCueTimerRef.current) {
+      clearTimeout(avatarCueTimerRef.current);
+    }
+
+    setActiveAvatarCue(cue);
+    setAvatarCueToken((current) => current + 1);
+    avatarCueTimerRef.current = setTimeout(() => {
+      setActiveAvatarCue(null);
+      avatarCueTimerRef.current = null;
+    }, getAvatarTransientDurationMs(cue));
+  }, []);
+
+  const clearAvatarCue = useCallback(() => {
+    if (avatarCueTimerRef.current) {
+      clearTimeout(avatarCueTimerRef.current);
+      avatarCueTimerRef.current = null;
+    }
+    setActiveAvatarCue(null);
+  }, []);
+
   const { ttsAudioRef, stopTtsPlayback, speakInterviewer: rawSpeakInterviewer, isAutoplayBlocked, playTtsAudio } =
     useInterviewerSpeech(setAvatarState, { onNotice: showTtsNotice });
 
@@ -424,6 +456,9 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       }
       if (sttNoticeTimerRef.current) {
         clearTimeout(sttNoticeTimerRef.current);
+      }
+      if (avatarCueTimerRef.current) {
+        clearTimeout(avatarCueTimerRef.current);
       }
     };
   }, [stopQuestionStream, stopRecording, stopTtsPlayback]);
@@ -558,7 +593,8 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         }
 
         setReport(nextReport);
-        setAvatarState(nextReport.totalScore >= 75 ? "react_positive" : "react_negative");
+        clearAvatarCue();
+        setAvatarState(resolveAvatarReportState(nextReport.totalScore));
         clearStoredSessionId();
       } catch (error) {
         const message = error instanceof Error ? error.message : "리포트 조회에 실패했습니다.";
@@ -567,7 +603,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         setIsExiting(false);
       }
     },
-    [clearReportFetchError, fetchReport, isExiting, stopQuestionStream, stopRecording, stopTtsPlayback, syncPathname]
+    [clearAvatarCue, clearReportFetchError, fetchReport, isExiting, stopQuestionStream, stopRecording, stopTtsPlayback, syncPathname]
   );
 
   const beginInterview = useCallback(
@@ -592,10 +628,13 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
             meta: "세션 시작"
           }
         ]);
+        clearAvatarCue();
         setFollowupCount(0);
+        lastFollowupCountRef.current = 0;
         setQuestionOrder(1);
         setAnswerText("");
         setEmotion("neutral");
+        setAvatarState("idle");
         setStep("room");
         syncPathname(`/interview/${encodeURIComponent(started.sessionId)}`);
         startQuestionStream(started.sessionId);
@@ -605,7 +644,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         clearStoredSessionId();
       }
     },
-    [clearReportFetchError, clearStartError, startQuestionStream, startSession, syncPathname]
+    [clearAvatarCue, clearReportFetchError, clearStartError, startQuestionStream, startSession, syncPathname]
   );
 
   const handleStartInterview = useCallback(async () => {
@@ -634,8 +673,23 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
 
     try {
       const response = await submitAnswer(sessionId, submittedAnswer, inputType);
+      const previousFollowupCount = lastFollowupCountRef.current;
       setEmotion(response.suggestedEmotion);
       setFollowupCount(response.followupCount);
+      lastFollowupCountRef.current = response.followupCount;
+
+      const nextCue = resolveAvatarTransientStateFromAnswer({
+        previousFollowupCount,
+        nextFollowupCount: response.followupCount,
+        totalScore: response.totalScore,
+        suggestedEmotion: response.suggestedEmotion
+      });
+
+      if (nextCue) {
+        triggerAvatarCue(nextCue);
+      } else {
+        clearAvatarCue();
+      }
 
       appendMessage({
         id: `coach-${Date.now()}`,
@@ -678,8 +732,10 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     isGuestUser,
     isSubmitting,
     answerText,
+    clearAvatarCue,
     moveToReport,
     questionOrder,
+    triggerAvatarCue,
     sessionId,
     startQuestionStream,
     stopQuestionStream,
@@ -710,10 +766,13 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
 
     clearSttNotice();
     clearSpeechError();
+    clearAvatarCue();
+    setAvatarState("listening");
     startRecording((transcript) => {
       setAnswerText(transcript);
     });
   }, [
+    clearAvatarCue,
     clearSpeechError,
     clearSttNotice,
     showSttNotice,
@@ -727,6 +786,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   ]);
 
   const handlePause = useCallback(() => {
+    clearAvatarCue();
     setAvatarState("idle");
     appendMessage({
       id: `pause-${Date.now()}`,
@@ -734,7 +794,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       content: "일시정지 상태입니다. 준비되면 답변 완료 버튼으로 계속 진행하세요.",
       meta: "pause"
     });
-  }, [appendMessage]);
+  }, [appendMessage, clearAvatarCue]);
 
   const handleExit = useCallback(async () => {
     if (isExiting) {
@@ -793,6 +853,10 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   }, [handleGoInsights, moveToReport, runBackendHealthCheck, sessionId, step]);
 
   const weakKeywords = useMemo(() => report?.weakKeywords ?? [], [report]);
+  const effectiveAvatarState = useMemo(
+    () => activeAvatarCue ?? avatarState,
+    [activeAvatarCue, avatarState]
+  );
   const studyGuide = useMemo(
     () =>
       report?.studyGuide ?? [
@@ -846,7 +910,8 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     sessionId,
     interviewerName: interviewerNameMap[setupPayload.character],
     character: setupPayload.character,
-    avatarState,
+    avatarState: effectiveAvatarState,
+    avatarCueToken,
     emotion,
     ttsAudioRef,
     isAutoplayBlocked,

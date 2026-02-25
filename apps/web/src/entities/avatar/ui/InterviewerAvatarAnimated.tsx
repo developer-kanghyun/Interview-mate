@@ -4,21 +4,16 @@ import * as React from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, Environment, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import type { AvatarState } from "@/entities/avatar/model/avatarBehaviorMachine";
 
 export type AvatarCharacter = "zet" | "luna" | "iron";
-export type AvatarState =
-  | "idle"
-  | "asking"
-  | "listening"
-  | "thinking"
-  | "react_positive"
-  | "react_negative";
 export type AvatarEmotion = "neutral" | "encourage" | "pressure";
 
 type InterviewerAvatarAnimatedProps = {
   character: AvatarCharacter;
   state: AvatarState;
   emotion: AvatarEmotion;
+  cueToken?: number;
   reactionEnabled?: boolean;
   audioRef?: React.RefObject<HTMLAudioElement>;
   debugMorph?: boolean;
@@ -52,6 +47,23 @@ const localModelUrlByCharacter: Record<AvatarCharacter, string> = {
   luna: "/models/luna.glb",
   iron: "/models/iron.glb"
 };
+
+function canUseWebGL() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  try {
+    const canvas = document.createElement("canvas");
+    const context =
+      canvas.getContext("webgl2") ||
+      canvas.getContext("webgl") ||
+      canvas.getContext("experimental-webgl");
+    return Boolean(context);
+  } catch {
+    return false;
+  }
+}
 
 function isLikelyBinaryModelContentType(contentType: string | null) {
   if (!contentType) {
@@ -235,15 +247,17 @@ function FallbackAvatar({ state, emotion }: FallbackAvatarProps) {
       const targetX = state === "thinking" ? 0.18 : state === "listening" ? Math.sin(elapsed * 2.4) * 0.045 : 0.08;
       const targetYRot = state === "asking" ? Math.sin(elapsed * 1.4) * 0.045 : 0;
 
-      group.position.y = THREE.MathUtils.lerp(group.position.y, targetY, delta * 3.2);
-      group.rotation.x = THREE.MathUtils.lerp(group.rotation.x, targetX, delta * 3.2);
-      group.rotation.y = THREE.MathUtils.lerp(group.rotation.y, targetYRot, delta * 3.2);
+      group.position.y = THREE.MathUtils.lerp(group.position.y, targetY, delta * 1.8);
+      group.rotation.x = THREE.MathUtils.lerp(group.rotation.x, targetX, delta * 1.8);
+      group.rotation.y = THREE.MathUtils.lerp(group.rotation.y, targetYRot, delta * 1.8);
     }
 
     if (bust) {
-      const scaleBoost = state === "react_positive" ? 1.05 : state === "react_negative" ? 0.95 : 1;
+      const scaleBoost = state === "celebrate" ? 1.05 : state === "react_negative" ? 0.95 : 1;
       const pulse = state === "asking" ? 1 + Math.sin(elapsed * 7.2) * 0.012 : 1;
-      bust.scale.setScalar(THREE.MathUtils.lerp(bust.scale.x, scaleBoost * pulse, delta * 5));
+      const tiltZ = state === "confused" ? Math.sin(elapsed * 5.6) * 0.08 : 0;
+      bust.rotation.z = THREE.MathUtils.lerp(bust.rotation.z, tiltZ, delta * 2.4);
+      bust.scale.setScalar(THREE.MathUtils.lerp(bust.scale.x, scaleBoost * pulse, delta * 3));
     }
   });
 
@@ -294,66 +308,60 @@ function OfficeStage() {
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[18, 18]} />
-        <meshStandardMaterial color="#0f172a" roughness={0.94} metalness={0.02} />
+        <meshStandardMaterial color="#fff4ec" roughness={0.9} metalness={0.05} />
       </mesh>
 
       <mesh position={[0, 2.35, -3.7]} receiveShadow>
         <boxGeometry args={[12, 4.8, 0.18]} />
-        <meshStandardMaterial color="#1e293b" roughness={0.88} metalness={0.04} />
+        <meshStandardMaterial color="#ffe8d6" roughness={0.9} metalness={0.04} />
       </mesh>
 
       <mesh position={[0, 1.8, -3.58]}>
         <planeGeometry args={[5.8, 2.2]} />
-        <meshStandardMaterial color="#334155" roughness={0.35} metalness={0.2} />
+        <meshStandardMaterial color="#ffd4b8" roughness={0.4} metalness={0.1} />
       </mesh>
-
-      <group position={[0, 0, 0.58]}>
-        <mesh position={[0, 0.9, 0]} castShadow receiveShadow>
-          <boxGeometry args={[2.8, 0.09, 1.16]} />
-          <meshStandardMaterial color="#334155" roughness={0.62} metalness={0.2} />
-        </mesh>
-        <mesh position={[-1.12, 0.45, -0.44]} castShadow>
-          <boxGeometry args={[0.1, 0.9, 0.1]} />
-          <meshStandardMaterial color="#1f2937" roughness={0.72} metalness={0.12} />
-        </mesh>
-        <mesh position={[1.12, 0.45, -0.44]} castShadow>
-          <boxGeometry args={[0.1, 0.9, 0.1]} />
-          <meshStandardMaterial color="#1f2937" roughness={0.72} metalness={0.12} />
-        </mesh>
-        <mesh position={[0, 1.15, -0.3]} castShadow>
-          <boxGeometry args={[0.88, 0.52, 0.08]} />
-          <meshStandardMaterial color="#0f172a" roughness={0.52} metalness={0.18} />
-        </mesh>
-      </group>
-
-      <group position={[0, 0, -0.44]}>
-        <mesh position={[0, 0.52, -0.06]} castShadow receiveShadow>
-          <boxGeometry args={[0.64, 0.1, 0.62]} />
-          <meshStandardMaterial color="#374151" roughness={0.82} metalness={0.08} />
-        </mesh>
-        <mesh position={[0, 0.96, -0.28]} castShadow>
-          <boxGeometry args={[0.64, 0.76, 0.08]} />
-          <meshStandardMaterial color="#4b5563" roughness={0.82} metalness={0.08} />
-        </mesh>
-        <mesh position={[0, 0.26, -0.06]} castShadow>
-          <cylinderGeometry args={[0.05, 0.06, 0.44, 18]} />
-          <meshStandardMaterial color="#9ca3af" roughness={0.44} metalness={0.52} />
-        </mesh>
-      </group>
     </group>
+  );
+}
+
+function WebglUnavailableAvatar({ state, emotion }: { state: AvatarState; emotion: AvatarEmotion }) {
+  const ringColor = emotion === "encourage" ? "ring-emerald-300" : emotion === "pressure" ? "ring-rose-300" : "ring-im-primary/30";
+  const badgeText =
+    state === "asking"
+      ? "질문 중"
+      : state === "listening"
+        ? "경청 중"
+        : state === "thinking"
+          ? "분석 중"
+          : state === "confused"
+            ? "재질문"
+            : state === "celebrate"
+              ? "긍정 반응"
+              : "대기";
+
+  return (
+    <div className="relative flex h-full w-full items-center justify-center bg-[linear-gradient(180deg,#fffaf6_0%,#fff4ec_100%)]">
+      <div className={`flex h-44 w-44 items-center justify-center rounded-full bg-white text-5xl shadow-soft ring-4 ${ringColor}`}>
+        🙂
+      </div>
+      <span className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full border border-im-border bg-white/90 px-3 py-1 text-xs font-semibold text-im-text-main">
+        {badgeText}
+      </span>
+    </div>
   );
 }
 
 type AvatarModelProps = {
   modelUrl: string;
   state: AvatarState;
+  cueToken: number;
   emotion: AvatarEmotion;
   reactionEnabled: boolean;
   audioRef?: React.RefObject<HTMLAudioElement>;
   debugMorph: boolean;
 };
 
-function AvatarModel({ modelUrl, state, emotion, reactionEnabled, audioRef, debugMorph }: AvatarModelProps) {
+function AvatarModel({ modelUrl, state, cueToken, emotion, reactionEnabled, audioRef, debugMorph }: AvatarModelProps) {
   const gltf = useGLTF(modelUrl) as { scene: THREE.Group };
   const modelScene = React.useMemo(() => {
     const cloned = gltf.scene.clone(true);
@@ -363,11 +371,13 @@ function AvatarModel({ modelUrl, state, emotion, reactionEnabled, audioRef, debu
   const morphBindingsRef = React.useRef<MorphBinding[]>([]);
   const rootGroupRef = React.useRef<THREE.Group | null>(null);
   const mouthEnvelopeRef = React.useRef(0);
+  const cuePulseRef = React.useRef(0);
+  const lastCueTokenRef = React.useRef(cueToken);
   const blinkStateRef = React.useRef<BlinkState>({
     active: false,
     startAt: 0,
     duration: 0.14,
-    nextAt: randomInRange(1.2, 2.8)
+    nextAt: randomInRange(3.0, 6.0)
   });
 
   const analyserRef = React.useRef<AnalyserNode | null>(null);
@@ -435,11 +445,21 @@ function AvatarModel({ modelUrl, state, emotion, reactionEnabled, audioRef, debu
     };
   }, [audioRef]);
 
+  React.useEffect(() => {
+    if (cueToken === lastCueTokenRef.current) {
+      return;
+    }
+    lastCueTokenRef.current = cueToken;
+    cuePulseRef.current = 1;
+  }, [cueToken]);
+
   useFrame(({ clock }, delta) => {
     const elapsed = clock.getElapsedTime();
     const blinkState = blinkStateRef.current;
     const group = rootGroupRef.current;
     const hasMorphBindings = morphBindingsRef.current.length > 0;
+    cuePulseRef.current = Math.max(0, cuePulseRef.current - delta * 1.9);
+    const cuePulse = cuePulseRef.current;
 
     if (hasMorphBindings) {
       const audioAmplitude = readAudioAmplitude(analyserRef, analyserDataRef, audioRef);
@@ -452,9 +472,10 @@ function AvatarModel({ modelUrl, state, emotion, reactionEnabled, audioRef, debu
         state === "asking"
           ? clamp01((Math.sin(elapsed * 8.2) + 1) * 0.16 + (Math.sin(elapsed * 14.6) + 1) * 0.06)
           : 0;
-      const targetMouth = isAudioPlaying ? audioTarget : fakeLipSync;
+      const idleMouthGain = state === "asking" ? 1 : state === "celebrate" ? 0.9 : state === "listening" ? 0.18 : 0.12;
+      const targetMouth = isAudioPlaying ? audioTarget : fakeLipSync * idleMouthGain;
       const isOpeningMouth = targetMouth > mouthEnvelopeRef.current;
-      const smoothing = smoothFactor(isOpeningMouth ? 18 : 8, delta);
+      const smoothing = smoothFactor(isOpeningMouth ? 20 : 7, delta);
       mouthEnvelopeRef.current = THREE.MathUtils.lerp(mouthEnvelopeRef.current, targetMouth, smoothing);
 
       let mouthOpen = mouthEnvelopeRef.current;
@@ -477,10 +498,15 @@ function AvatarModel({ modelUrl, state, emotion, reactionEnabled, audioRef, debu
         browUp = Math.max(browUp, 0.14);
       } else if (state === "listening") {
         mouthOpen *= 0.15;
-      } else if (state === "react_positive") {
+      } else if (state === "celebrate") {
         smile = Math.max(smile, 0.62);
         frown = 0;
-        mouthOpen = Math.max(mouthOpen, 0.18);
+        mouthOpen = Math.max(mouthOpen, 0.15 + cuePulse * 0.08);
+      } else if (state === "confused") {
+        browUp = Math.max(browUp, 0.36);
+        frown = Math.max(frown, 0.22);
+        smile = Math.min(smile, 0.08);
+        mouthOpen = Math.max(mouthOpen, 0.03);
       } else if (state === "react_negative") {
         frown = Math.max(frown, 0.62);
         smile = 0;
@@ -498,7 +524,7 @@ function AvatarModel({ modelUrl, state, emotion, reactionEnabled, audioRef, debu
         const progress = (elapsed - blinkState.startAt) / blinkState.duration;
         if (progress >= 1) {
           blinkState.active = false;
-          blinkState.nextAt = elapsed + randomInRange(1, 3);
+          blinkState.nextAt = elapsed + randomInRange(3.0, 6.0);
         } else {
           blinkValue = progress < 0.5 ? progress * 2 : (1 - progress) * 2;
         }
@@ -519,15 +545,20 @@ function AvatarModel({ modelUrl, state, emotion, reactionEnabled, audioRef, debu
       const seatedLeanX = 0.09;
       const askingBob = state === "asking" ? Math.sin(elapsed * 5.4) * 0.009 : 0;
       const listeningNod = state === "listening" ? Math.sin(elapsed * 2.8) * 0.03 : 0;
-      const targetPosY = seatedBaseY + (state === "thinking" ? -0.01 : 0) + askingBob;
+      const confusedTilt = state === "confused" ? Math.sin(elapsed * 6.2) * (0.05 + cuePulse * 0.03) : 0;
+      const celebrateBounce = state === "celebrate" ? Math.abs(Math.sin(elapsed * 8.2)) * (0.012 + cuePulse * 0.01) : 0;
+      const celebrateSwing = state === "celebrate" ? Math.sin(elapsed * 5.6) * (0.04 + cuePulse * 0.02) : 0;
+      const targetPosY = seatedBaseY + (state === "thinking" ? -0.01 : 0) + askingBob + celebrateBounce;
       const targetPosZ = seatedBaseZ + (state === "thinking" ? -0.01 : 0);
       const targetRotX = seatedLeanX + (state === "thinking" ? 0.07 : listeningNod);
-      const targetRotY = state === "asking" ? Math.sin(elapsed * 1.3) * 0.03 : 0;
+      const targetRotY = state === "asking" ? Math.sin(elapsed * 1.3) * 0.03 : confusedTilt + celebrateSwing;
+      const targetRotZ = state === "confused" ? Math.sin(elapsed * 3.8) * 0.08 : state === "celebrate" ? Math.sin(elapsed * 7.2) * 0.03 : 0;
 
-      group.position.y = THREE.MathUtils.lerp(group.position.y, targetPosY, delta * 3);
-      group.position.z = THREE.MathUtils.lerp(group.position.z, targetPosZ, delta * 3);
-      group.rotation.x = THREE.MathUtils.lerp(group.rotation.x, targetRotX, delta * 3);
-      group.rotation.y = THREE.MathUtils.lerp(group.rotation.y, targetRotY, delta * 3);
+      group.position.y = THREE.MathUtils.lerp(group.position.y, targetPosY, delta * 1.5);
+      group.position.z = THREE.MathUtils.lerp(group.position.z, targetPosZ, delta * 1.5);
+      group.rotation.x = THREE.MathUtils.lerp(group.rotation.x, targetRotX, delta * 1.5);
+      group.rotation.y = THREE.MathUtils.lerp(group.rotation.y, targetRotY, delta * 1.5);
+      group.rotation.z = THREE.MathUtils.lerp(group.rotation.z, targetRotZ, delta * 1.5);
     }
   });
 
@@ -575,10 +606,12 @@ export function InterviewerAvatarAnimated({
   character,
   state,
   emotion,
+  cueToken = 0,
   reactionEnabled = true,
   audioRef,
   debugMorph = false
 }: InterviewerAvatarAnimatedProps) {
+  const webglAvailable = React.useMemo(() => canUseWebGL(), []);
   const primaryModelUrl = modelUrlByCharacter[character];
   const fallbackModelUrl = localModelUrlByCharacter[character];
   const [activeModelUrl, setActiveModelUrl] = React.useState(primaryModelUrl);
@@ -622,14 +655,23 @@ export function InterviewerAvatarAnimated({
     };
   }, [fallbackModelUrl, primaryModelUrl]);
 
+  if (!webglAvailable) {
+    return (
+      <div className="h-full w-full" data-avatar-state={state} data-avatar-cue={cueToken}>
+        <WebglUnavailableAvatar state={state} emotion={emotion} />
+      </div>
+    );
+  }
+
   return (
-    <div className="h-full w-full">
-      <Canvas dpr={[1, 1.75]} gl={{ alpha: true }} shadows camera={{ position: [0, 1.48, 1.78], fov: 27 }}>
-        <hemisphereLight intensity={0.54} color="#f8fafc" groundColor="#0f172a" />
-        <ambientLight intensity={0.32} />
-        <directionalLight castShadow intensity={1.1} position={[2.8, 3.8, 2.4]} shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
-        <directionalLight castShadow intensity={0.34} position={[-2.2, 2.4, -1.5]} />
-        <spotLight position={[0, 3.8, 2.2]} angle={0.42} penumbra={0.34} intensity={0.28} />
+    <div className="h-full w-full" data-avatar-state={state} data-avatar-cue={cueToken}>
+      <Canvas dpr={[1, 1.75]} gl={{ alpha: true }} shadows camera={{ position: [0, 1.52, 1.55], fov: 32 }}>
+        <color attach="background" args={["#fffaf6"]} />
+        <hemisphereLight intensity={0.85} color="#ffffff" groundColor="#cbd5e1" />
+        <ambientLight intensity={0.6} />
+        <directionalLight castShadow intensity={0.9} position={[2.8, 3.8, 2.4]} shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
+        <directionalLight intensity={0.5} position={[-2.2, 2.4, -1.5]} />
+        <spotLight position={[0, 3.8, 2.2]} angle={0.42} penumbra={0.6} intensity={0.4} />
 
         <OfficeStage />
 
@@ -638,6 +680,7 @@ export function InterviewerAvatarAnimated({
             <AvatarModel
               modelUrl={activeModelUrl}
               state={state}
+              cueToken={cueToken}
               emotion={emotion}
               reactionEnabled={reactionEnabled}
               audioRef={audioRef}
@@ -646,7 +689,7 @@ export function InterviewerAvatarAnimated({
           </React.Suspense>
         </SceneErrorBoundary>
 
-        <Environment preset="studio" />
+        <Environment preset="studio" background={false} />
         <ContactShadows position={[0, 0.005, 0]} opacity={0.4} blur={2.8} scale={9} far={6} />
         <OrbitControls target={[0, 1.38, 0]} enablePan={false} enableRotate={false} enableZoom={false} />
       </Canvas>

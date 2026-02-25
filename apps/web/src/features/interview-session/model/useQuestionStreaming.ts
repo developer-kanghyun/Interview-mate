@@ -3,7 +3,7 @@
 import { useCallback, useRef, type Dispatch, type SetStateAction } from "react";
 import { streamQuestion } from "@/shared/api/interview-client";
 import type { ChatMessage } from "@/shared/chat/ChatBoard";
-import type { AvatarState } from "@/entities/avatar/ui/InterviewerAvatarAnimated";
+import type { AvatarState } from "@/entities/avatar/model/avatarBehaviorMachine";
 
 type UseQuestionStreamingParams = {
   stopTtsPlayback: () => void;
