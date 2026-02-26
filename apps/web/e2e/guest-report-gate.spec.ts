@@ -133,9 +133,9 @@ test("게스트 1문항 완료 후 로그인 유도 및 리포트 복귀", async
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("button", { name: "면접 시작" }).click();
 
-  await expect(page.getByText("Current Question")).toBeVisible();
+  await expect(page.getByText("트랜잭션 전파를 설명해 주세요.")).toBeVisible();
 
-  const answerInput = page.getByPlaceholder("답변을 입력하세요. (텍스트/음성 STT 연동 예정)");
+  const answerInput = page.getByPlaceholder(/답변을 입력하세요/);
   await answerInput.fill("트랜잭션 전파는 호출 관계에 따라 트랜잭션 경계를 제어하는 방식입니다.");
   await page.getByRole("button", { name: "답변 완료" }).click();
 
