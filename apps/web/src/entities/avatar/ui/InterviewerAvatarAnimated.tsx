@@ -426,9 +426,11 @@ function applyMorph(binding: MorphBinding, key: MorphKey, value: number, smoothi
   }
 }
 
+type TimeDomainDataBuffer = Parameters<AnalyserNode["getByteTimeDomainData"]>[0];
+
 function readAudioAmplitude(
   analyserRef: React.MutableRefObject<AnalyserNode | null>,
-  dataRef: React.MutableRefObject<Uint8Array | null>,
+  dataRef: React.MutableRefObject<TimeDomainDataBuffer | null>,
   audioRef?: React.RefObject<HTMLAudioElement>
 ) {
   const analyser = analyserRef.current;
@@ -655,7 +657,7 @@ function AvatarModel({ character, modelUrl, state, cueToken, emotion, reactionEn
   });
 
   const analyserRef = React.useRef<AnalyserNode | null>(null);
-  const analyserDataRef = React.useRef<Uint8Array | null>(null);
+  const analyserDataRef = React.useRef<TimeDomainDataBuffer | null>(null);
 
   React.useEffect(() => {
     const bindings = collectMorphBindings(modelScene, debugMorph);
@@ -716,7 +718,7 @@ function AvatarModel({ character, modelUrl, state, cueToken, emotion, reactionEn
       source.connect(analyser);
       analyser.connect(audioContext.destination);
       analyserRef.current = analyser;
-      analyserDataRef.current = new Uint8Array(analyser.frequencyBinCount);
+      analyserDataRef.current = new Uint8Array(analyser.frequencyBinCount) as TimeDomainDataBuffer;
     } catch {
       analyserRef.current = null;
       analyserDataRef.current = null;
