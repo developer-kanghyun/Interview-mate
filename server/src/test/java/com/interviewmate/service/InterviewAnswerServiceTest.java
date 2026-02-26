@@ -1,5 +1,8 @@
 package com.interviewmate.service;
 
+import com.interviewmate.application.ai.usecase.AdaptNextQuestionUseCase;
+import com.interviewmate.application.ai.usecase.GenerateFollowupQuestionUseCase;
+import com.interviewmate.application.ai.usecase.GenerateRealtimeCoachingUseCase;
 import com.interviewmate.dto.request.InterviewAnswerSubmitRequest;
 import com.interviewmate.dto.response.InterviewAnswerSubmitResponse;
 import com.interviewmate.global.error.AppException;
@@ -12,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -22,6 +26,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -48,6 +53,15 @@ class InterviewAnswerServiceTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @MockBean
+    private GenerateFollowupQuestionUseCase generateFollowupQuestionUseCase;
+
+    @MockBean
+    private GenerateRealtimeCoachingUseCase generateRealtimeCoachingUseCase;
+
+    @MockBean
+    private AdaptNextQuestionUseCase adaptNextQuestionUseCase;
 
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine");
@@ -90,6 +104,34 @@ class InterviewAnswerServiceTest {
                 INSERT INTO interview_session_questions (id, session_id, question_id, question_order, followup_count, created_at)
                 VALUES (1001, 10, 101, 2, 0, CURRENT_TIMESTAMP)
                 """);
+
+        when(generateFollowupQuestionUseCase.execute(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()
+        ))
+                .thenReturn("핵심 근거를 더 구체적으로 설명해 주세요.");
+        when(generateRealtimeCoachingUseCase.execute(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()
+        ))
+                .thenReturn("핵심은 좋습니다. 다음 답변에서는 근거를 더 명확히 제시해보세요.");
+        when(adaptNextQuestionUseCase.execute(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()
+        ))
+                .thenAnswer(invocation -> invocation.getArgument(3, String.class));
     }
 
     @Test
@@ -189,7 +231,7 @@ class InterviewAnswerServiceTest {
         assertThat(response.getEvaluation().isFollowupRequired()).isTrue();
         assertThat(response.getFollowupQuestion()).isNotBlank();
         assertThat(response.getEvaluation().getFollowupRemaining()).isEqualTo(1);
-        assertThat(response.getCoachingMessage()).contains("다음 답변");
+        assertThat(response.getCoachingMessage()).isNotBlank();
 
         Integer savedFollowupCount = jdbcTemplate.queryForObject(
                 "SELECT followup_count FROM interview_session_questions WHERE id = 1000",

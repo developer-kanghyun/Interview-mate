@@ -1,18 +1,22 @@
 package com.interviewmate.service;
 
+import com.interviewmate.application.ai.usecase.AdaptNextQuestionUseCase;
 import com.interviewmate.application.ai.usecase.EvaluateAnswerUseCase;
 import com.interviewmate.application.ai.usecase.GenerateFollowupQuestionUseCase;
+import com.interviewmate.application.ai.usecase.GenerateRealtimeCoachingUseCase;
 import com.interviewmate.dto.request.InterviewAnswerSubmitRequest;
 import com.interviewmate.dto.response.InterviewAnswerSubmitResponse;
 import com.interviewmate.domain.interview.policy.InterviewerEmotion;
 import com.interviewmate.domain.interview.policy.InterviewSessionEndReason;
 import com.interviewmate.domain.interview.policy.InterviewSessionStatus;
 import com.interviewmate.entity.InterviewAnswer;
+import com.interviewmate.entity.InterviewSession;
 import com.interviewmate.entity.InterviewSessionQuestion;
 import com.interviewmate.domain.ai.AnswerEvaluationResult;
 import com.interviewmate.global.error.AppException;
 import com.interviewmate.global.error.ErrorCode;
 import com.interviewmate.repository.InterviewAnswerRepository;
+import com.interviewmate.repository.InterviewQuestionRepository;
 import com.interviewmate.repository.InterviewSessionQuestionRepository;
 import com.interviewmate.repository.InterviewSessionRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,8 +35,11 @@ public class InterviewAnswerService {
     private final InterviewSessionQuestionRepository interviewSessionQuestionRepository;
     private final InterviewSessionRepository interviewSessionRepository;
     private final InterviewAnswerRepository interviewAnswerRepository;
+    private final InterviewQuestionRepository interviewQuestionRepository;
     private final EvaluateAnswerUseCase evaluateAnswerUseCase;
     private final GenerateFollowupQuestionUseCase generateFollowupQuestionUseCase;
+    private final GenerateRealtimeCoachingUseCase generateRealtimeCoachingUseCase;
+    private final AdaptNextQuestionUseCase adaptNextQuestionUseCase;
 
     @Transactional
     public InterviewAnswerSubmitResponse submitAnswer(Long sessionId, InterviewAnswerSubmitRequest request) {
@@ -80,10 +87,14 @@ public class InterviewAnswerService {
                 followupRequired = false;
                 followupReason = "followup_limit_reached";
             } else {
+                String recentAnswerSummary = summarizeRecentAnswers(sessionQuestion.getSession(), request.getAnswerText());
                 followupQuestion = generateFollowupQuestionUseCase.execute(
                         sessionQuestion.getSession().getJobRole(),
+                        sessionQuestion.getSession().getStack(),
+                        sessionQuestion.getSession().getDifficulty(),
                         sessionQuestion.getQuestion().getContent(),
-                        request.getAnswerText()
+                        request.getAnswerText(),
+                        recentAnswerSummary
                 );
                 sessionQuestion.incrementFollowupCount();
                 interviewSessionQuestionRepository.save(sessionQuestion);
@@ -104,6 +115,19 @@ public class InterviewAnswerService {
                 sessionStatus = InterviewSessionStatus.COMPLETED;
                 sessionCompleted = true;
             } else {
+                if (!nextSessionQuestion.getQuestion().isActive()) {
+                    String adaptedNextQuestion = adaptNextQuestionUseCase.execute(
+                            sessionQuestion.getSession().getJobRole(),
+                            sessionQuestion.getSession().getStack(),
+                            sessionQuestion.getSession().getDifficulty(),
+                            nextSessionQuestion.getQuestion().getContent(),
+                            summarizeRecentAnswers(sessionQuestion.getSession(), request.getAnswerText())
+                    );
+                    if (adaptedNextQuestion != null && !adaptedNextQuestion.isBlank()) {
+                        nextSessionQuestion.getQuestion().setContent(adaptedNextQuestion);
+                        interviewQuestionRepository.save(nextSessionQuestion.getQuestion());
+                    }
+                }
                 sessionStatus = InterviewSessionStatus.IN_PROGRESS;
                 nextQuestion = InterviewAnswerSubmitResponse.NextQuestionDto.builder()
                         .questionId(String.valueOf(nextSessionQuestion.getQuestion().getId()))
@@ -111,10 +135,18 @@ public class InterviewAnswerService {
                         .category(nextSessionQuestion.getQuestion().getQuestionCategory())
                         .difficulty(nextSessionQuestion.getQuestion().getDifficulty())
                         .content(nextSessionQuestion.getQuestion().getContent())
-                        .build();
+                .build();
             }
         }
-        String coachingMessage = buildCoachingMessage(evaluationResult, followupReason);
+        String coachingMessage = generateRealtimeCoachingUseCase.execute(
+                sessionQuestion.getSession().getJobRole(),
+                sessionQuestion.getSession().getStack(),
+                sessionQuestion.getSession().getDifficulty(),
+                sessionQuestion.getQuestion().getContent(),
+                request.getAnswerText(),
+                evaluationResult,
+                followupReason
+        );
         savedAnswer.setCoachingMessage(coachingMessage);
         interviewAnswerRepository.save(savedAnswer);
         int followupRemaining = Math.max(0, MAX_FOLLOWUP_PER_QUESTION - sessionQuestion.getFollowupCount());
@@ -146,35 +178,29 @@ public class InterviewAnswerService {
                 .build();
     }
 
-    private String buildCoachingMessage(AnswerEvaluationResult evaluationResult, String followupReason) {
-        String weakestAxis = "정확성";
-        double weakestScore = evaluationResult.getAccuracy();
+    private String summarizeRecentAnswers(InterviewSession session, String currentAnswer) {
+        List<InterviewAnswer> answers = interviewAnswerRepository.findBySessionQuestion_Session_IdOrderByCreatedAtAsc(session.getId());
+        int fromIndex = Math.max(answers.size() - 2, 0);
+        StringBuilder summary = new StringBuilder();
+        for (int index = fromIndex; index < answers.size(); index++) {
+            String answerText = abbreviate(answers.get(index).getAnswerText());
+            summary.append("답변").append(index - fromIndex + 1).append(": ").append(answerText).append(" | ");
+        }
+        if (summary.length() == 0 && currentAnswer != null) {
+            summary.append("현재 답변: ").append(abbreviate(currentAnswer));
+        }
+        return summary.toString().trim();
+    }
 
-        if (evaluationResult.getLogic() < weakestScore) {
-            weakestAxis = "논리성";
-            weakestScore = evaluationResult.getLogic();
+    private String abbreviate(String value) {
+        if (value == null) {
+            return "";
         }
-        if (evaluationResult.getDepth() < weakestScore) {
-            weakestAxis = "깊이";
-            weakestScore = evaluationResult.getDepth();
+        String normalized = value.replaceAll("\\s+", " ").trim();
+        if (normalized.length() <= 180) {
+            return normalized;
         }
-        if (evaluationResult.getDelivery() < weakestScore) {
-            weakestAxis = "전달력";
-        }
-
-        if (evaluationResult.isFollowupRequired()) {
-            String focusPoint = "핵심 근거";
-            if ("factual_error_or_uncertainty".equals(followupReason)) {
-                focusPoint = "정확한 개념 정의";
-            } else if ("missing_core_detail".equals(followupReason)) {
-                focusPoint = "핵심 원리와 예시";
-            } else if ("weak_reasoning".equals(followupReason)) {
-                focusPoint = "근거 중심의 추론";
-            }
-            return "다음 답변에서는 " + focusPoint + "를 먼저 말하고, 결론-근거-예시 순서로 3문장 이상 구성해보세요.";
-        }
-
-        return "강점은 유지하고 " + weakestAxis + "을(를) 조금 더 보강해보세요. 다음 답변에서는 핵심 키워드와 실무 예시를 함께 제시하면 더 좋아집니다.";
+        return normalized.substring(0, 180) + "...";
     }
 
     private String resolveInterviewerEmotion(InterviewSessionQuestion sessionQuestion, AnswerEvaluationResult evaluationResult) {
