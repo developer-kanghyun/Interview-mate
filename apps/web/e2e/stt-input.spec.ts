@@ -132,6 +132,13 @@ test("STT 전사 후 자동 제출되지 않고 녹음 종료 클릭 시 음성 
             });
             this.onend?.();
           }, 50);
+        } else if (startCount === 2) {
+          setTimeout(() => {
+            this.onresult?.({
+              results: [[{ transcript: "상태 동기화 기준도 설명하겠습니다" }]]
+            });
+            this.onend?.();
+          }, 50);
         }
       }
 
@@ -286,14 +293,14 @@ test("STT 전사 후 자동 제출되지 않고 녹음 종료 클릭 시 음성 
 
   await expect.poll(() => page.evaluate(() => (window as Window & { __sttStartCount?: number }).__sttStartCount ?? 0)).toBeGreaterThanOrEqual(2);
   await expect.poll(() => submitRequestCount).toBe(0);
-  await expect(roomSelectors.answerInput(page)).toHaveValue("음성 수동 제출 테스트");
+  await expect(roomSelectors.answerInput(page)).toHaveValue("음성 수동 제출 테스트 상태 동기화 기준도 설명하겠습니다");
 
   await expect(voiceButton).toHaveText("녹음 종료");
   await voiceButton.click();
 
   await expect.poll(() => submitRequestCount).toBe(1);
   await expect.poll(() => submittedInputType).toBe("voice");
-  await expect.poll(() => submittedAnswerText).toContain("음성 수동 제출 테스트");
+  await expect.poll(() => submittedAnswerText).toBe("음성 수동 제출 테스트 상태 동기화 기준도 설명하겠습니다");
   await expect(page.getByText("핵심을 먼저 말하고 근거를 이어가세요.")).toBeVisible();
 });
 

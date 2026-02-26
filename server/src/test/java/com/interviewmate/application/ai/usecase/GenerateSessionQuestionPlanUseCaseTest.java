@@ -85,4 +85,15 @@ class GenerateSessionQuestionPlanUseCaseTest {
                 .extracting(GenerateSessionQuestionPlanUseCase.GeneratedQuestion::content)
                 .allMatch(content -> content.contains("Kotlin") || content.contains("Swift") || content.contains("React Native"));
     }
+
+    @Test
+    void executeFallbackQuestionsDoNotExposeInternalOrderSuffix() {
+        when(aiChatPort.requestSingleResponse(anyString(), anyString())).thenThrow(new RuntimeException("timeout"));
+
+        List<GenerateSessionQuestionPlanUseCase.GeneratedQuestion> result = useCase.execute("frontend", "Kotlin,Swift,React Native", "jobseeker", 3);
+
+        assertThat(result)
+                .extracting(GenerateSessionQuestionPlanUseCase.GeneratedQuestion::content)
+                .noneMatch(content -> content.matches(".*\\(\\d+\\)$"));
+    }
 }

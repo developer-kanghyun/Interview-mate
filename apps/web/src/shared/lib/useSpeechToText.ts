@@ -9,6 +9,21 @@ type SpeechRecognitionWindow = Window & {
   webkitSpeechRecognition?: SpeechRecognitionConstructor;
 };
 
+function mergeTranscript(previous: string, nextChunk: string) {
+  const normalizedChunk = nextChunk.trim();
+  if (!normalizedChunk) {
+    return previous.trim();
+  }
+  const normalizedPrevious = previous.trim();
+  if (!normalizedPrevious) {
+    return normalizedChunk;
+  }
+  if (normalizedPrevious.endsWith(normalizedChunk)) {
+    return normalizedPrevious;
+  }
+  return `${normalizedPrevious} ${normalizedChunk}`;
+}
+
 export function useSpeechToText() {
   const [isRecording, setIsRecording] = useState(false);
   const [isSupported, setIsSupported] = useState(true);
@@ -56,8 +71,9 @@ export function useSpeechToText() {
       if (!transcript) {
         return;
       }
-      latestTranscriptRef.current = transcript;
-      transcriptHandlerRef.current?.(transcript);
+      const mergedTranscript = mergeTranscript(latestTranscriptRef.current, transcript);
+      latestTranscriptRef.current = mergedTranscript;
+      transcriptHandlerRef.current?.(mergedTranscript);
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
