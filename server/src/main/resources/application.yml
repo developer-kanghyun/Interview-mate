@@ -48,6 +48,8 @@ openai:
   response-timeout-ms: 60000
 
 app:
+  interview:
+    seed-enabled: ${APP_INTERVIEW_SEED_ENABLED:false}
   chat:
     context-size: ${APP_CHAT_CONTEXT_SIZE:10}
   rate-limit:

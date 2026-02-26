@@ -119,6 +119,8 @@ class InterviewSessionControllerTest {
 
         InterviewSessionStartRequest request = new InterviewSessionStartRequest();
         request.setJobRole("backend");
+        request.setStack("Spring Boot");
+        request.setDifficulty("jobseeker");
 
         mockMvc.perform(post("/api/interview/sessions/start")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -138,6 +140,8 @@ class InterviewSessionControllerTest {
     void testStartInterviewSessionWithInvalidRoleReturns400() throws Exception {
         InterviewSessionStartRequest request = new InterviewSessionStartRequest();
         request.setJobRole("ios");
+        request.setStack("Spring Boot");
+        request.setDifficulty("jobseeker");
 
         mockMvc.perform(post("/api/interview/sessions/start")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -152,7 +156,40 @@ class InterviewSessionControllerTest {
     void testStartInterviewSessionWithInvalidCharacterReturns400() throws Exception {
         InterviewSessionStartRequest request = new InterviewSessionStartRequest();
         request.setJobRole("backend");
+        request.setStack("Spring Boot");
+        request.setDifficulty("jobseeker");
         request.setInterviewerCharacter("alpha");
+
+        mockMvc.perform(post("/api/interview/sessions/start")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-API-Key", "test-key")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+    }
+
+    @Test
+    void testStartInterviewSessionWithoutStackReturns400() throws Exception {
+        InterviewSessionStartRequest request = new InterviewSessionStartRequest();
+        request.setJobRole("backend");
+        request.setDifficulty("jobseeker");
+
+        mockMvc.perform(post("/api/interview/sessions/start")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-API-Key", "test-key")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+    }
+
+    @Test
+    void testStartInterviewSessionWithInvalidDifficultyReturns400() throws Exception {
+        InterviewSessionStartRequest request = new InterviewSessionStartRequest();
+        request.setJobRole("backend");
+        request.setStack("Spring Boot");
+        request.setDifficulty("senior");
 
         mockMvc.perform(post("/api/interview/sessions/start")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -244,6 +244,8 @@ function readResponseData<T>(response: { success: boolean; data: T }, fallbackMe
 export async function startInterview(payload: StartInterviewPayload): Promise<StartInterviewResponse> {
   const startResponse = await startInterviewSession({
     jobRole: payload.jobRole,
+    stack: payload.stack,
+    difficulty: payload.difficulty,
     interviewerCharacter: mapCharacterToApi(payload.character)
   });
 

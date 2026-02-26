@@ -22,8 +22,11 @@ class GenerateFollowupQuestionUseCaseTest {
 
         String followupQuestion = useCase.execute(
                 "backend",
+                "Spring Boot",
+                "jobseeker",
                 "트랜잭션과 락을 설명해보세요.",
-                "데이터 정합성을 위해 트랜잭션을 사용합니다."
+                "데이터 정합성을 위해 트랜잭션을 사용합니다.",
+                "이전 답변 요약"
         );
 
         assertThat(followupQuestion).contains("트랜잭션");
@@ -40,8 +43,11 @@ class GenerateFollowupQuestionUseCaseTest {
 
         String followupQuestion = useCase.execute(
                 "backend",
+                "Spring Boot",
+                "jobseeker",
                 "트랜잭션과 락을 설명해보세요.",
-                "잘 모르겠습니다."
+                "잘 모르겠습니다.",
+                "이전 답변 요약"
         );
 
         assertThat(followupQuestion).contains("핵심 근거");
