@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { ClientProviders } from "@/app/ClientProviders";
 
 export const metadata: Metadata = {
   title: "Interview Mate",
@@ -10,7 +11,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <body className="min-h-dvh overflow-x-hidden bg-white font-display text-im-text-main">
-        {children}
+        <ClientProviders>{children}</ClientProviders>
       </body>
     </html>
   );

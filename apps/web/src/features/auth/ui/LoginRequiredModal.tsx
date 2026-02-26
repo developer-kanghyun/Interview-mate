@@ -10,7 +10,12 @@ type LoginRequiredModalProps = {
 export function LoginRequiredModal({ message, onLogin, onClose, isLoading = false }: LoginRequiredModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-white/80 bg-white p-5 shadow-glass">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="로그인 필요"
+        className="w-full max-w-md rounded-2xl border border-white/80 bg-white p-5 shadow-glass"
+      >
         <div className="space-y-2">
           <p className="text-lg font-bold text-slate-900">로그인이 필요합니다</p>
           <p className="text-sm leading-6 text-slate-600">{message}</p>

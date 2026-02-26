@@ -1,10 +1,9 @@
 "use client";
 
 import { Button } from "@/shared/ui/Button";
-import { Select } from "@/shared/ui/Select";
 import { Chip } from "@/shared/ui/Chip";
-import { useMemo, useState } from "react";
-import InterviewerAvatarAnimated from "@/shared/ui/InterviewerAvatarAnimated";
+import { useState } from "react";
+import Image from "next/image";
 import type { InterviewCharacter, InterviewRole, StartInterviewPayload } from "@/shared/api/interview-client";
 import { motion } from "framer-motion";
 
@@ -16,10 +15,27 @@ type SetupViewProps = {
   canStart?: boolean;
 };
 
-const stackOptionsMap: Record<InterviewRole, string[]> = {
-  backend: ["Spring Boot", "NestJS", "Node.js"],
-  frontend: ["React", "Next.js", "Vue"]
+type VisualJobId = "frontend" | "backend" | "app" | "cloud" | "data" | "design";
+
+const stacksByJobId: Record<VisualJobId, string[]> = {
+  frontend: ["React", "Next.js", "Vue", "Angular", "JavaScript", "TypeScript", "CSS", "Tailwind"],
+  backend:  ["Spring Boot", "NestJS", "Node.js", "Django", "FastAPI", "Go", "Kotlin", "Java"],
+  app:      ["Swift", "Kotlin", "React Native", "Flutter", "Android", "iOS"],
+  cloud:    ["AWS", "GCP", "Azure", "Kubernetes", "Docker", "Terraform", "CI/CD"],
+  data:     ["Python", "SQL", "Pandas", "Spark", "Airflow", "TensorFlow", "PyTorch"],
+  design:   ["Figma", "Adobe XD", "UX Research", "Google Analytics", "SEO", "Copywriting"],
 };
+
+const jobToRole: Record<VisualJobId, InterviewRole> = {
+  frontend: "frontend",
+  backend:  "backend",
+  app:      "frontend",
+  cloud:    "backend",
+  data:     "backend",
+  design:   "frontend",
+};
+
+const MAX_STACKS = 3;
 
 const characterOptions: Array<{
   key: InterviewCharacter;
@@ -45,8 +61,12 @@ const characterOptions: Array<{
 
 export function SetupView({ value, onChange, onStart, isStarting, canStart = true }: SetupViewProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const stackOptions = useMemo(() => stackOptionsMap[value.jobRole], [value.jobRole]);
+  const [selectedStacks, setSelectedStacks] = useState<string[]>([]);
+  const [visualJobId, setVisualJobId] = useState<VisualJobId>("frontend");
   const isSetupBusy = isStarting;
+
+  const currentStackOptions = stacksByJobId[visualJobId];
+
 
   const nextStep = () => {
     setStep((previous) => (previous === 3 ? 3 : ((previous + 1) as 1 | 2 | 3)));
@@ -111,9 +131,7 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
                   { id: "design", label: "디자인 / 마케팅", role: "frontend" }
                 ] as const
               ).map((job) => {
-                // Since our system currently relies on "frontend" or "backend" for InterviewRole tracking,
-                // we'll visually show the specific selected "id", but pass the appropriate payload.
-                const isSelected = value.jobRole === job.role && (value as any)._visualJobRole === job.id;
+                const isSelected = visualJobId === job.id;
 
                 return (
                   <button
@@ -125,14 +143,16 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
                         ? "border-im-primary bg-white ring-1 ring-im-primary shadow-sm"
                         : "border-im-border bg-white hover:-translate-y-0.5 hover:border-im-primary/30 hover:shadow-glow"
                     }`}
-                    onClick={() =>
+                    onClick={() => {
+                      const newJobId = job.id as VisualJobId;
+                      setVisualJobId(newJobId);
+                      setSelectedStacks([]);
                       onChange({
                         ...value,
-                        jobRole: job.role,
-                        stack: stackOptionsMap[job.role][0],
-                        _visualJobRole: job.id // Store visual state temporarily, gets ignored by API
-                      } as StartInterviewPayload)
-                    }
+                        jobRole: jobToRole[newJobId],
+                        stack: "",
+                      } as StartInterviewPayload);
+                    }}
                   >
                     <p className={`text-base font-bold ${isSelected ? "text-im-primary" : "text-im-text-main"} tracking-tight`}>
                       {job.label}
@@ -158,23 +178,53 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
                 기술 스택과 난이도를 알려주세요.
               </h1>
             </div>
-            <div className="grid w-full gap-5">
-              <label className="grid gap-1.5">
-                <span className="text-xs font-bold text-im-text-muted">기술 스택</span>
-                <Select
-                  value={value.stack}
-                  disabled={isSetupBusy}
-                  onChange={(event) => onChange({ ...value, stack: event.target.value })}
-                >
-                  {stackOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </Select>
-              </label>
+            <div className="grid w-full gap-6">
+              {/* Stack Multi-Select */}
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-im-text-muted">기술 스택 (최대 {MAX_STACKS}개)</span>
+                  <span className={`text-xs font-semibold ${
+                    selectedStacks.length === MAX_STACKS ? "text-im-primary" : "text-im-text-muted"
+                  }`}>
+                    {selectedStacks.length} / {MAX_STACKS}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {currentStackOptions.map((stack) => {
+                    const isChosen = selectedStacks.includes(stack);
+                    const isDisabled = isSetupBusy || (!isChosen && selectedStacks.length >= MAX_STACKS);
+                    return (
+                      <button
+                        key={stack}
+                        type="button"
+                        disabled={isDisabled}
+                        onClick={() => {
+                          const next = selectedStacks.includes(stack)
+                            ? selectedStacks.filter((s) => s !== stack)
+                            : [...selectedStacks, stack].slice(0, MAX_STACKS);
+                          setSelectedStacks(next);
+                          onChange({ ...value, stack: next.join(",") });
+                        }}
+                        className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition-[background-color,border-color,color,opacity] ${
+                          isChosen
+                            ? "border-im-primary bg-im-primary text-white shadow-sm"
+                            : isDisabled
+                            ? "cursor-not-allowed border-im-border bg-white text-im-text-muted opacity-40"
+                            : "border-im-border bg-white text-im-text-main hover:border-im-primary/50 hover:bg-im-surface"
+                        }`}
+                      >
+                        {stack}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedStacks.length === 0 && (
+                  <p className="text-xs text-im-text-muted">면접에서 다룰 스택을 선택해주세요.</p>
+                )}
+              </div>
 
-              <label className="grid gap-1.5">
+              {/* Difficulty */}
+              <label className="grid gap-2">
                 <span className="text-xs font-bold text-im-text-muted">면접 난이도</span>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {(["jobseeker", "junior"] as const).map((difficulty) => (
@@ -229,10 +279,20 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
                   onClick={() => onChange({ ...value, character: character.key })}
                 >
                   <div className="flex items-center gap-4">
-                    <div className="shrink-0">
-                      <InterviewerAvatarAnimated
-                        character={character.key === "zet" ? "jet" : character.key}
-                        emotion="neutral"
+                    <div
+                      className={`shrink-0 relative h-20 w-20 overflow-hidden rounded-xl border border-im-border/50 bg-gradient-to-b ${
+                        character.key === "luna"
+                          ? "from-sky-50 to-sky-100"
+                          : character.key === "iron"
+                          ? "from-rose-50 to-rose-100"
+                          : "from-indigo-50 to-indigo-100"
+                      }`}
+                    >
+                      <Image
+                        src={`/images/avatars/${character.key}.png`}
+                        alt={`${character.name} 아바타`}
+                        fill
+                        className="object-cover"
                       />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -254,7 +314,7 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
         {/* Actions */}
       <div className="mt-7 flex items-center justify-between gap-3 border-t border-im-border/50 pt-4">
         <Button variant="ghost" onClick={previousStep} disabled={step === 1 || isSetupBusy} className="px-6">
-          ← 이전
+          이전
         </Button>
 
         {step < 3 ? (

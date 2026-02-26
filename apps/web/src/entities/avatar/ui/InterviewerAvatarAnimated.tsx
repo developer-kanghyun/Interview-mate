@@ -22,6 +22,7 @@ type InterviewerAvatarAnimatedProps = {
   debugMorph?: boolean;
   debugScene?: boolean;
   stageVariant?: AvatarStageVariant;
+  cameraZoom?: number;
 };
 
 type MorphKey = "mouthOpen" | "smile" | "frown" | "browUp" | "blink";
@@ -968,7 +969,8 @@ export function InterviewerAvatarAnimated({
   audioRef,
   debugMorph = false,
   debugScene = false,
-  stageVariant = "clean_office"
+  stageVariant = "clean_office",
+  cameraZoom = 1
 }: InterviewerAvatarAnimatedProps) {
   const webglAvailable = React.useMemo(() => canUseWebGL(), []);
   const modelUrl = modelUrlByCharacter[character];
@@ -983,7 +985,7 @@ export function InterviewerAvatarAnimated({
 
   return (
     <div className="h-full w-full" data-avatar-state={state} data-avatar-cue={cueToken}>
-      <Canvas dpr={[1, 1.75]} gl={{ alpha: true, antialias: true }} shadows camera={{ position: [0, 1.72, 1.36], fov: 23 }}>
+      <Canvas dpr={[1, 1.75]} gl={{ alpha: true, antialias: true }} shadows camera={{ position: [0, 1.72, 1.36], fov: 23, zoom: cameraZoom }}>
         <hemisphereLight intensity={0.46} color="#ffffff" groundColor="#dde5f0" />
         <ambientLight intensity={0.56} />
         <directionalLight castShadow intensity={0.8} position={[2.2, 3.0, 2.2]} shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
