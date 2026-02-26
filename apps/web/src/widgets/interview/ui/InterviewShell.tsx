@@ -5,6 +5,7 @@ import { RoomView } from "@/widgets/interview-room/ui/RoomView";
 import { ReportView } from "@/features/interview-report/ui/ReportView";
 import { InsightsView } from "@/features/interview-insights/ui/InsightsView";
 import { LoginRequiredModal } from "@/features/auth/ui/LoginRequiredModal";
+import { ResumeSessionModal } from "@/features/interview-session/ui/ResumeSessionModal";
 import { Button } from "@/shared/ui/Button";
 import { InlineNotice } from "@/shared/ui/InlineNotice";
 import { useInterviewShellState } from "@/widgets/interview/model/useInterviewShellState";
@@ -27,13 +28,12 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
     shellState.isRetryingWeakness ||
     shellState.isExiting ||
     shellState.isSubmitting ||
-    shellState.isAuthLoading;
+    shellState.isAuthLoading ||
+    shellState.isResumeResolving;
 
   if (shellState.step === "room" && shellState.sessionId) {
     return (
       <RoomView
-        interviewerName={shellState.interviewerName}
-        sessionId={shellState.sessionId}
         character={shellState.character}
         avatarState={shellState.avatarState}
         avatarCueToken={shellState.avatarCueToken}
@@ -41,13 +41,8 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
         audioRef={shellState.ttsAudioRef}
         isAutoplayBlocked={shellState.isAutoplayBlocked}
         playTtsAudio={shellState.playTtsAudio}
-        ttsNotice={shellState.ttsNotice}
-        onDismissTtsNotice={shellState.clearTtsNotice}
         isRecording={shellState.isRecording}
-        isSttSupported={shellState.isSttSupported}
         isSttBusy={shellState.isSttBusy}
-        sttNotice={shellState.sttNotice}
-        onDismissSttNotice={shellState.clearSttNotice}
         onToggleRecording={shellState.handleToggleRecording}
         reactionEnabled={shellState.reactionEnabled}
         jobRoleLabel={shellState.jobRoleLabel}
@@ -55,15 +50,14 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
         difficultyLabel={shellState.difficultyLabel}
         questionOrder={shellState.questionOrder}
         totalQuestions={shellState.totalQuestions}
-        followupCount={shellState.followupCount}
         streamingQuestionText={shellState.streamingQuestionText}
         isQuestionStreaming={shellState.isQuestionStreaming}
+        isResumeResolving={shellState.isResumeResolving}
         messages={shellState.messages}
         answerText={shellState.answerText}
         onChangeAnswer={shellState.setAnswerText}
         isSubmitting={shellState.isSubmitting}
         onSubmitAnswer={shellState.handleSubmitAnswer}
-        onPause={shellState.handlePause}
         isExiting={shellState.isExiting}
         onExit={shellState.handleExit}
       />
@@ -154,24 +148,6 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
           />
         ) : null}
 
-        {shellState.uiError && !shellState.isAuthRequired ? (
-          <InlineNotice
-            variant="error"
-            className="mb-4"
-            message={shellState.uiError}
-            actions={
-              <>
-                <Button variant="secondary" onClick={() => void shellState.handleRetryUiError()} disabled={isNavigationBusy}>
-                  다시 시도
-                </Button>
-                <Button variant="secondary" onClick={shellState.clearUiError} disabled={isNavigationBusy}>
-                  닫기
-                </Button>
-              </>
-            }
-          />
-        ) : null}
-
         {shellState.step === "setup" ? (
           <SetupView
             value={shellState.setupPayload}
@@ -217,6 +193,16 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
           onClose={shellState.clearUiError}
           isLoading={shellState.isAuthLoading}
           onLogin={() => shellState.handleGoogleLogin(shellState.authRedirectTarget)}
+        />
+      ) : null}
+
+      {shellState.isResumePromptOpen && shellState.resumeCandidateSessionId ? (
+        <ResumeSessionModal
+          sessionId={shellState.resumeCandidateSessionId}
+          isGuest={shellState.isResumeCandidateGuest}
+          isLoading={shellState.isResumeResolving || shellState.isAuthLoading}
+          onContinue={() => void shellState.handleContinueResumeCandidate()}
+          onStartNew={shellState.handleDismissResumeCandidate}
         />
       ) : null}
     </div>

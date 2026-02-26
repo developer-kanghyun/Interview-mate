@@ -134,6 +134,16 @@ function mapCharacterToApi(character: InterviewCharacter): "luna" | "jet" | "iro
   return character;
 }
 
+function mapCharacterFromApi(character: "luna" | "jet" | "iron" | null | undefined): InterviewCharacter {
+  if (character === "jet") {
+    return "zet";
+  }
+  if (character === "luna") {
+    return "luna";
+  }
+  return "iron";
+}
+
 function mapEmotion(value: string | null | undefined): InterviewEmotion {
   if (value === "encourage") {
     return "encourage";
@@ -267,6 +277,42 @@ export async function startInterview(payload: StartInterviewPayload): Promise<St
     sessionId: data.session_id,
     startedAt: toIsoDate(data.started_at)
   };
+}
+
+export function hasInterviewRuntimeState(sessionId: string) {
+  return streamStateBySessionId.has(sessionId);
+}
+
+export async function restoreInterviewSession(sessionId: string): Promise<void> {
+  const stateResponse = await getInterviewSessionState(sessionId);
+  const state = readResponseData(stateResponse, "세션 상태 조회 실패");
+
+  if (mapStatus(state.status) !== "in_progress" || !state.current_question) {
+    throw new Error("재개 가능한 진행중 세션이 없습니다. 새 면접을 시작해 주세요.");
+  }
+
+  const role = mapRole(state.job_role);
+  streamStateBySessionId.set(sessionId, {
+    payload: {
+      jobRole: role,
+      stack: defaultStackByRole(role),
+      difficulty: "jobseeker",
+      questionCount: state.total_questions,
+      timerSeconds: 120,
+      character: mapCharacterFromApi(state.interviewer_character),
+      reactionEnabled: true
+    },
+    startedAt: toIsoDate(state.updated_at),
+    totalQuestions: state.total_questions,
+    status: "in_progress",
+    answeredQuestions: state.answered_questions,
+    currentQuestion: {
+      questionId: state.current_question.question_id,
+      order: state.current_question.question_order,
+      content: state.current_question.content,
+      followupCount: state.current_question.followup_count
+    }
+  });
 }
 
 function buildQuestionStreamPrompt(questionContent: string) {

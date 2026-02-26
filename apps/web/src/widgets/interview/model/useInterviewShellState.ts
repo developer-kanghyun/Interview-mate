@@ -1,10 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+  type SetStateAction
+} from "react";
 import { usePathname } from "next/navigation";
 import {
+  hasInterviewRuntimeState,
   listSessions,
   pingBackendHealth,
+  restoreInterviewSession,
   submitAnswer,
   type InterviewCharacter,
   type InterviewEmotion,
@@ -12,7 +22,7 @@ import {
   type SessionHistoryItem,
   type StartInterviewPayload
 } from "@/shared/api/interview-client";
-import { getGoogleAuthUrl, getGuestAccess, getMyProfile } from "@/shared/api/interview";
+import { getGoogleAuthUrl, getGuestAccess, getInterviewSessionState, getLatestActiveInterviewSession, getMyProfile } from "@/shared/api/interview";
 import type { ChatMessage } from "@/shared/chat/ChatBoard";
 import {
   defaultSetupPayload,
@@ -39,17 +49,16 @@ import {
   clearLegacyApiKeyStorage,
   clearStoredSessionId,
   getAuthRequiredMessage,
-  getStoredSessionId,
   setPostLoginRedirectTarget,
   setStoredSessionId
 } from "@/shared/auth/session";
+import { useToast } from "@/shared/ui/toast/useToast";
 
 type UseInterviewShellStateResult = {
   step: InterviewStep;
   setStep: (next: InterviewStep) => void;
   uiError: string | null;
   clearUiError: () => void;
-  handleRetryUiError: () => Promise<void>;
   isAuthRequired: boolean;
   authRedirectTarget: string;
   handleGoogleLogin: (redirectTo?: string) => Promise<void>;
@@ -70,13 +79,9 @@ type UseInterviewShellStateResult = {
   ttsAudioRef: RefObject<HTMLAudioElement>;
   isAutoplayBlocked: boolean;
   playTtsAudio: () => void;
-  ttsNotice: string | null;
-  clearTtsNotice: () => void;
   isRecording: boolean;
   isSttSupported: boolean;
   isSttBusy: boolean;
-  sttNotice: string | null;
-  clearSttNotice: () => void;
   handleToggleRecording: () => void;
   reactionEnabled: boolean;
   jobRoleLabel: string;
@@ -108,6 +113,12 @@ type UseInterviewShellStateResult = {
   studyGuide: string[];
   isRetryingWeakness: boolean;
   handleRetryWeakness: () => Promise<void>;
+  resumeCandidateSessionId: string | null;
+  isResumePromptOpen: boolean;
+  isResumeCandidateGuest: boolean;
+  isResumeResolving: boolean;
+  handleContinueResumeCandidate: () => Promise<void>;
+  handleDismissResumeCandidate: () => void;
 };
 
 type RetryPreset = {
@@ -184,8 +195,40 @@ function buildRetryPreset(weakKeywords: string[], fallback: StartInterviewPayloa
   };
 }
 
+function mapRoleFromApi(role: string | null | undefined): StartInterviewPayload["jobRole"] {
+  return role === "frontend" ? "frontend" : "backend";
+}
+
+function mapCharacterFromApi(character: "luna" | "jet" | "iron" | null | undefined): InterviewCharacter {
+  if (character === "jet") {
+    return "zet";
+  }
+  if (character === "luna") {
+    return "luna";
+  }
+  return "iron";
+}
+
+function buildSetupPayloadFromSessionState(
+  state: Awaited<ReturnType<typeof getInterviewSessionState>>["data"]
+): StartInterviewPayload {
+  const jobRole = mapRoleFromApi(state.job_role);
+  return {
+    jobRole,
+    stack: jobRole === "backend" ? "Spring Boot" : "Next.js",
+    difficulty: "jobseeker",
+    questionCount: state.total_questions,
+    timerSeconds: 120,
+    character: mapCharacterFromApi(state.interviewer_character),
+    reactionEnabled: true
+  };
+}
+
+const COACH_WARNING_SCORE_THRESHOLD = 70;
+
 export function useInterviewShellState(options: UseInterviewShellStateOptions = {}): UseInterviewShellStateResult {
   const pathname = usePathname();
+  const { pushToast } = useToast();
   const [step, setStep] = useState<InterviewStep>("setup");
   const [setupPayload, setSetupPayload] = useState<StartInterviewPayload>(defaultSetupPayload);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -207,15 +250,19 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const [uiError, setUiError] = useState<string | null>(null);
+  const [toastError, setToastError] = useState<{ message: string; dedupeKey?: string } | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [backendStatus, setBackendStatus] = useState<"checking" | "ok" | "error">("checking");
   const [backendStatusMessage, setBackendStatusMessage] = useState<string | null>(null);
   const [isGuestUser, setIsGuestUser] = useState(false);
-  const [ttsNotice, setTtsNotice] = useState<string | null>(null);
-  const [sttNotice, setSttNotice] = useState<string | null>(null);
-  const ttsNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sttNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [resumeCandidateSessionId, setResumeCandidateSessionId] = useState<string | null>(null);
+  const [isResumePromptOpen, setIsResumePromptOpen] = useState(false);
+  const [isResumeCandidateGuest, setIsResumeCandidateGuest] = useState(false);
+  const [isResumeResolving, setIsResumeResolving] = useState(false);
   const avatarCueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const uiErrorRef = useRef<string | null>(null);
+  const autoRestoreAttemptedSessionRef = useRef<string | null>(null);
+  const startQuestionStreamRef = useRef<((sessionId: string) => void) | null>(null);
   const lastFollowupCountRef = useRef(0);
   const {
     isRecording,
@@ -236,6 +283,10 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   );
 
   useEffect(() => {
+    uiErrorRef.current = uiError;
+  }, [uiError]);
+
+  useEffect(() => {
     if (!routeStep) {
       return;
     }
@@ -248,6 +299,13 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     }
     setSessionId((current) => (current === routeSessionId ? current : routeSessionId));
   }, [routeSessionId]);
+
+  useEffect(() => {
+    if (step === "room") {
+      return;
+    }
+    autoRestoreAttemptedSessionRef.current = null;
+  }, [step]);
 
   const syncPathname = useCallback((nextPath: string, mode: "push" | "replace" = "push") => {
     if (typeof window === "undefined") {
@@ -288,6 +346,40 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   const updateAnswerText = useCallback((value: string) => {
     setAnswerText(value);
   }, []);
+
+  const showToast = useCallback(
+    (options: {
+      message: string;
+      variant?: "info" | "success" | "warning" | "error";
+      dedupeKey?: string;
+      title?: string;
+    }) => {
+      pushToast({
+        message: options.message,
+        variant: options.variant,
+        dedupeKey: options.dedupeKey,
+        title: options.title
+      });
+    },
+    [pushToast]
+  );
+
+  const showToastError = useCallback((message: string, dedupeKey?: string) => {
+    setToastError({ message, dedupeKey });
+  }, []);
+
+  useEffect(() => {
+    if (!toastError) {
+      return;
+    }
+
+    showToast({
+      message: toastError.message,
+      variant: "error",
+      dedupeKey: toastError.dedupeKey ?? `error:${toastError.message}`
+    });
+    setToastError(null);
+  }, [showToast, toastError]);
 
   const clearUiError = useCallback(() => {
     setUiError(null);
@@ -344,14 +436,14 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     } catch (error) {
       const message = error instanceof Error ? error.message : "Google 로그인 URL 조회에 실패했습니다.";
       if (message.includes("Google OAuth Client ID")) {
-        setUiError("Google 로그인 설정이 올바르지 않습니다. 서버 OAuth 환경변수를 확인해 주세요.");
+        showToastError("Google 로그인 설정이 올바르지 않습니다. 서버 OAuth 환경변수를 확인해 주세요.", "auth:oauth");
       } else {
-        setUiError(message);
+        showToastError(message, "auth:google-login-url");
       }
     } finally {
       setIsAuthLoading(false);
     }
-  }, [isAuthLoading]);
+  }, [isAuthLoading, showToastError]);
 
   const handleGoogleLogout = useCallback(async () => {
     if (isAuthLoading) {
@@ -359,62 +451,141 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     }
     setIsAuthLoading(true);
     try {
+      clearStoredSessionId();
+      setResumeCandidateSessionId(null);
+      setIsResumeCandidateGuest(false);
+      setIsResumePromptOpen(false);
       window.location.assign("/api/v1/users/logout");
     } catch (error) {
       const message = error instanceof Error ? error.message : "로그아웃에 실패했습니다.";
-      setUiError(message);
+      showToastError(message, "auth:logout");
       setIsAuthLoading(false);
     }
-  }, [isAuthLoading]);
+  }, [isAuthLoading, showToastError]);
 
   const refreshSessions = useCallback(async () => {
     const sessionList = await listSessions(30);
     setSessions(sessionList);
   }, []);
 
-  const clearTtsNotice = useCallback(() => {
-    if (ttsNoticeTimerRef.current) {
-      clearTimeout(ttsNoticeTimerRef.current);
-      ttsNoticeTimerRef.current = null;
-    }
-    setTtsNotice(null);
-  }, []);
-
-  const showTtsNotice = useCallback(
-    (message: string) => {
-      if (ttsNoticeTimerRef.current) {
-        clearTimeout(ttsNoticeTimerRef.current);
+  const syncResumeCandidate = useCallback(
+    async (isGuestCandidate: boolean) => {
+      if (routeSessionId || routeStep === "room") {
+        return;
       }
-      setTtsNotice(message);
-      ttsNoticeTimerRef.current = setTimeout(() => {
-        setTtsNotice(null);
-        ttsNoticeTimerRef.current = null;
-      }, 5000);
+
+      try {
+        const latestActiveResponse = await getLatestActiveInterviewSession();
+        const latestActive = latestActiveResponse.data;
+        const latestSession = latestActive.session;
+        if (!latestActive.has_active_session) {
+          return;
+        }
+
+        if (!latestSession || latestSession.status !== "in_progress" || !latestSession.current_question) {
+          setResumeCandidateSessionId(null);
+          setIsResumeCandidateGuest(false);
+          setIsResumePromptOpen(false);
+          showToastError("이전 세션은 재개할 수 없습니다. 새 면접을 시작해 주세요.", "resume:invalid");
+          return;
+        }
+
+        setResumeCandidateSessionId(latestSession.session_id);
+        setIsResumeCandidateGuest(isGuestCandidate);
+      } catch {
+        // latest-active 탐색 실패는 무시하고 일반 시작 흐름 유지
+      }
     },
-    []
+    [routeSessionId, routeStep, showToastError]
   );
 
-  const clearSttNotice = useCallback(() => {
-    if (sttNoticeTimerRef.current) {
-      clearTimeout(sttNoticeTimerRef.current);
-      sttNoticeTimerRef.current = null;
-    }
-    setSttNotice(null);
-  }, []);
-
-  const showSttNotice = useCallback(
-    (message: string) => {
-      if (sttNoticeTimerRef.current) {
-        clearTimeout(sttNoticeTimerRef.current);
+  const restoreSessionIntoRoom = useCallback(
+    async (
+      targetSessionId: string,
+      options?: {
+        stepFallbackMessage?: string;
       }
-      setSttNotice(message);
-      sttNoticeTimerRef.current = setTimeout(() => {
-        setSttNotice(null);
-        sttNoticeTimerRef.current = null;
-      }, 5000);
+    ) => {
+      setIsResumeResolving(true);
+      setUiError(null);
+
+      try {
+        const stateResponse = await getInterviewSessionState(targetSessionId);
+        const state = stateResponse.data;
+        if (state.status !== "in_progress" || !state.current_question) {
+          throw new Error("재개 가능한 진행중 세션이 없습니다. 새 면접을 시작해 주세요.");
+        }
+
+        await restoreInterviewSession(targetSessionId);
+
+        setSessionId(targetSessionId);
+        setSetupPayload(buildSetupPayloadFromSessionState(state));
+        setQuestionOrder(state.current_question.question_order);
+        setFollowupCount(state.current_question.followup_count);
+        lastFollowupCountRef.current = state.current_question.followup_count;
+        setAnswerText("");
+        setReport(null);
+        setMessages([]);
+        if (avatarCueTimerRef.current) {
+          clearTimeout(avatarCueTimerRef.current);
+          avatarCueTimerRef.current = null;
+        }
+        setActiveAvatarCue(null);
+        setEmotion("neutral");
+        setAvatarState("idle");
+        setStep("room");
+        syncPathname(`/interview/${encodeURIComponent(targetSessionId)}`, "replace");
+        startQuestionStreamRef.current?.(targetSessionId);
+        clearStoredSessionId();
+        setResumeCandidateSessionId(null);
+        setIsResumeCandidateGuest(false);
+        setIsResumePromptOpen(false);
+      } catch (error) {
+        const fallbackMessage = options?.stepFallbackMessage ?? "이전 세션 재개에 실패했습니다. 새 면접을 시작해 주세요.";
+        const message = error instanceof Error ? error.message : fallbackMessage;
+        setStep("setup");
+        syncPathname("/setup", "replace");
+        setResumeCandidateSessionId(null);
+        setIsResumeCandidateGuest(false);
+        setIsResumePromptOpen(false);
+        showToastError(message || fallbackMessage, "resume:restore-failed");
+      } finally {
+        setIsResumeResolving(false);
+      }
     },
-    []
+    [showToastError, syncPathname]
   );
+
+  const handleContinueResumeCandidate = useCallback(async () => {
+    if (!resumeCandidateSessionId || isResumeResolving) {
+      return;
+    }
+
+    if (isResumeCandidateGuest) {
+      setIsResumeResolving(true);
+      setIsResumePromptOpen(false);
+      try {
+        await handleGoogleLogin(`/interview/${encodeURIComponent(resumeCandidateSessionId)}`);
+      } finally {
+        setIsResumeResolving(false);
+      }
+      return;
+    }
+
+    await restoreSessionIntoRoom(resumeCandidateSessionId);
+  }, [
+    handleGoogleLogin,
+    isResumeCandidateGuest,
+    isResumeResolving,
+    restoreSessionIntoRoom,
+    resumeCandidateSessionId
+  ]);
+
+  const handleDismissResumeCandidate = useCallback(() => {
+    setIsResumePromptOpen(false);
+    setResumeCandidateSessionId(null);
+    setIsResumeCandidateGuest(false);
+  }, []);
 
   const triggerAvatarCue = useCallback((cue: AvatarTransientState) => {
     if (avatarCueTimerRef.current) {
@@ -438,24 +609,45 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   }, []);
 
   const { ttsAudioRef, stopTtsPlayback, speakInterviewer: rawSpeakInterviewer, isAutoplayBlocked, playTtsAudio } =
-    useInterviewerSpeech(setAvatarState, { onNotice: showTtsNotice });
+    useInterviewerSpeech(setAvatarState, {
+      onNotice: (message) =>
+        showToast({
+          message,
+          variant: "info",
+          dedupeKey: `tts:${message}`
+        })
+    });
 
-  const isSttBusy = isRecording || isSubmitting || isQuestionStreaming || isExiting;
+  const isSttBusy = isRecording || isSubmitting || isQuestionStreaming || isExiting || isResumeResolving;
   const speakInterviewer = useCallback(
     (text: string) => rawSpeakInterviewer(text, setupPayload.character),
     [rawSpeakInterviewer, setupPayload.character]
   );
+  const routeUiError = useCallback((next: SetStateAction<string | null>) => {
+    const resolved = typeof next === "function" ? next(uiErrorRef.current) : next;
+    if (!resolved) {
+      setUiError(null);
+      return;
+    }
+    if (resolved === getAuthRequiredMessage()) {
+      setUiError(resolved);
+      return;
+    }
+    showToastError(resolved, `ui:${resolved}`);
+  }, [showToastError]);
+
   const { stopQuestionStream, startQuestionStream } = useQuestionStreaming({
     stopTtsPlayback,
     appendMessage,
     speakInterviewer,
-    setUiError,
+    setUiError: routeUiError,
     setIsQuestionStreaming,
     setStreamingQuestionText,
     setAvatarState,
     setQuestionOrder,
     setFollowupCount
   });
+  startQuestionStreamRef.current = startQuestionStream;
   const { isStarting, startSession, startError, clearStartError } = useStartSession();
   const { isFetchingReport, reportFetchError, fetchReport, clearReportFetchError } = useFetchReport();
 
@@ -464,12 +656,6 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       stopRecording();
       stopQuestionStream();
       stopTtsPlayback();
-      if (ttsNoticeTimerRef.current) {
-        clearTimeout(ttsNoticeTimerRef.current);
-      }
-      if (sttNoticeTimerRef.current) {
-        clearTimeout(sttNoticeTimerRef.current);
-      }
       if (avatarCueTimerRef.current) {
         clearTimeout(avatarCueTimerRef.current);
       }
@@ -489,12 +675,20 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     }
 
     if (!isSttSupported) {
-      showSttNotice("이 브라우저는 음성 인식을 지원하지 않습니다. 텍스트로 답변해 주세요.");
+      showToast({
+        message: "이 브라우저는 음성 인식을 지원하지 않습니다. 텍스트로 답변해 주세요.",
+        variant: "info",
+        dedupeKey: "stt:not-supported"
+      });
     } else {
-      showSttNotice("음성 인식 실패 상태입니다. 버튼 눌러 다시 시도해 주세요.");
+      showToast({
+        message: "음성 인식 실패 상태입니다. 버튼 눌러 다시 시도해 주세요.",
+        variant: "warning",
+        dedupeKey: "stt:recognition-failed"
+      });
     }
     clearSpeechError();
-  }, [clearSpeechError, isSttSupported, showSttNotice, speechError]);
+  }, [clearSpeechError, isSttSupported, showToast, speechError]);
 
   useEffect(() => {
     void runBackendHealthCheck();
@@ -504,8 +698,8 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     if (!startError) {
       return;
     }
-    setUiError(startError);
-  }, [startError]);
+    showToastError(startError, `start:${startError}`);
+  }, [showToastError, startError]);
 
   useEffect(() => {
     clearLegacyApiKeyStorage();
@@ -530,7 +724,9 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         if (!active) {
           return;
         }
-        setIsGuestUser(!profile.data.email);
+        const guest = !profile.data.email;
+        setIsGuestUser(guest);
+        await syncResumeCandidate(guest);
       } catch (error) {
         if (!active) {
           return;
@@ -538,7 +734,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
 
         const message = error instanceof Error ? error.message : "로그인 상태 확인에 실패했습니다.";
         if (message !== getAuthRequiredMessage()) {
-          setUiError(message);
+          showToastError(message, "auth:profile");
           return;
         }
 
@@ -548,13 +744,14 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
             return;
           }
           setIsGuestUser(true);
+          await syncResumeCandidate(true);
         } catch (guestError) {
           if (!active) {
             return;
           }
           const guestMessage =
             guestError instanceof Error ? guestError.message : "게스트 인증 발급에 실패했습니다.";
-          setUiError(guestMessage);
+          showToastError(guestMessage, "auth:guest-access");
         }
       }
     })();
@@ -562,16 +759,31 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     return () => {
       active = false;
     };
-  }, []);
+  }, [showToastError, syncResumeCandidate]);
 
   useEffect(() => {
-    const storedSessionId = getStoredSessionId();
-    if (!storedSessionId) {
+    if (!resumeCandidateSessionId) {
       return;
     }
-    clearStoredSessionId();
-    setUiError(`이전 세션(${storedSessionId})은 재개할 수 없습니다. 새 면접을 시작해 주세요.`);
-  }, []);
+    if (step !== "setup" || routeSessionId || isResumeResolving) {
+      return;
+    }
+    setIsResumePromptOpen(true);
+  }, [isResumeResolving, resumeCandidateSessionId, routeSessionId, step]);
+
+  useEffect(() => {
+    if (step !== "room" || !sessionId || isResumeResolving) {
+      return;
+    }
+    if (hasInterviewRuntimeState(sessionId)) {
+      return;
+    }
+    if (autoRestoreAttemptedSessionRef.current === sessionId) {
+      return;
+    }
+    autoRestoreAttemptedSessionRef.current = sessionId;
+    void restoreSessionIntoRoom(sessionId);
+  }, [isResumeResolving, restoreSessionIntoRoom, sessionId, step]);
 
   const moveToReport = useCallback(
     async (targetSessionId: string) => {
@@ -598,7 +810,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
           setSessions(nextSessions);
         } catch (error) {
           const message = error instanceof Error ? error.message : "세션 목록 조회에 실패했습니다.";
-          setUiError(message);
+          showToastError(message, "sessions:list");
         }
 
         if (!nextReport) {
@@ -611,12 +823,22 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         clearStoredSessionId();
       } catch (error) {
         const message = error instanceof Error ? error.message : "리포트 조회에 실패했습니다.";
-        setUiError(message);
+        showToastError(message, "report:move");
       } finally {
         setIsExiting(false);
       }
     },
-    [clearAvatarCue, clearReportFetchError, fetchReport, isExiting, stopQuestionStream, stopRecording, stopTtsPlayback, syncPathname]
+    [
+      clearAvatarCue,
+      clearReportFetchError,
+      fetchReport,
+      isExiting,
+      showToastError,
+      stopQuestionStream,
+      stopRecording,
+      stopTtsPlayback,
+      syncPathname
+    ]
   );
 
   const beginInterview = useCallback(
@@ -624,23 +846,20 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       setUiError(null);
       clearReportFetchError();
       setIsExiting(false);
+      setIsResumePromptOpen(false);
+      setResumeCandidateSessionId(null);
+      setIsResumeCandidateGuest(false);
       clearStartError();
       try {
         const started = await startSession(payload);
         if (!started) {
           return;
         }
+        autoRestoreAttemptedSessionRef.current = started.sessionId;
         setStoredSessionId(started.sessionId);
         setSessionId(started.sessionId);
         setReport(null);
-        setMessages([
-          {
-            id: `system-${Date.now()}`,
-            role: "coach",
-            content: "면접이 시작되었습니다. 질문을 듣고 120초 안에 핵심부터 답변해 주세요.",
-            meta: "세션 시작"
-          }
-        ]);
+        setMessages([]);
         clearAvatarCue();
         setFollowupCount(0);
         lastFollowupCountRef.current = 0;
@@ -653,11 +872,19 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         startQuestionStream(started.sessionId);
       } catch (error) {
         const message = error instanceof Error ? error.message : "면접 시작에 실패했습니다.";
-        setUiError(message);
+        showToastError(message, "interview:start");
         clearStoredSessionId();
       }
     },
-    [clearAvatarCue, clearReportFetchError, clearStartError, startQuestionStream, startSession, syncPathname]
+    [
+      clearAvatarCue,
+      clearReportFetchError,
+      clearStartError,
+      showToastError,
+      startQuestionStream,
+      startSession,
+      syncPathname
+    ]
   );
 
   const handleStartInterview = useCallback(async () => {
@@ -667,7 +894,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   const handleSubmitAnswer = useCallback(async (options?: SubmitAnswerOptions) => {
     const inputType = options?.inputType ?? "text";
     const sourceAnswer = options?.answerOverride ?? answerText;
-    if (!sessionId || !sourceAnswer.trim() || isSubmitting) {
+    if (!sessionId || !sourceAnswer.trim() || isSubmitting || isResumeResolving) {
       return;
     }
 
@@ -675,8 +902,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     appendMessage({
       id: `answer-${Date.now()}`,
       role: "user",
-      content: submittedAnswer,
-      meta: `Q${questionOrder}`
+      content: submittedAnswer
     });
 
     setAnswerText("");
@@ -704,11 +930,16 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         clearAvatarCue();
       }
 
+      const needsCoachWarning = response.totalScore < COACH_WARNING_SCORE_THRESHOLD;
+      const coachContent = needsCoachWarning
+        ? `답변 보완이 필요합니다.\n${response.feedbackSummary}\n${response.coaching}`
+        : `${response.feedbackSummary}\n${response.coaching}`;
+
       appendMessage({
         id: `coach-${Date.now()}`,
         role: "coach",
-        content: `${response.feedbackSummary}\n${response.coaching}`,
-        meta: `점수 ${response.totalScore}`
+        content: coachContent,
+        tone: needsCoachWarning ? "error" : "default"
       });
 
       if (response.isSessionComplete) {
@@ -727,7 +958,11 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       startQuestionStream(sessionId);
     } catch (error) {
       const message = error instanceof Error ? error.message : "답변 제출에 실패했습니다.";
-      setUiError(message);
+      if (message === getAuthRequiredMessage()) {
+        setUiError(message);
+      } else {
+        showToastError(message, "answer:submit");
+      }
       setAnswerText(submittedAnswer);
       setAvatarState("listening");
 
@@ -735,7 +970,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         id: `error-${Date.now()}`,
         role: "coach",
         content: `요청 처리 중 오류가 발생했습니다: ${message}`,
-        meta: "error"
+        tone: "error"
       });
     } finally {
       setIsSubmitting(false);
@@ -744,15 +979,16 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     appendMessage,
     isGuestUser,
     isSubmitting,
+    isResumeResolving,
     answerText,
     clearAvatarCue,
     moveToReport,
-    questionOrder,
     triggerAvatarCue,
     sessionId,
     startQuestionStream,
     stopQuestionStream,
     stopTtsPlayback,
+    showToastError,
     syncPathname
   ]);
 
@@ -765,7 +1001,11 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       stopRecording((finalTranscript) => {
         const trimmedTranscript = finalTranscript.trim();
         if (!trimmedTranscript) {
-          showSttNotice("인식된 음성이 없어 전송하지 않았습니다. 다시 시도해 주세요.");
+          showToast({
+            message: "인식된 음성이 없어 전송하지 않았습니다. 다시 시도해 주세요.",
+            variant: "warning",
+            dedupeKey: "stt:empty-transcript"
+          });
           return;
         }
         setAnswerText(trimmedTranscript);
@@ -777,7 +1017,6 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       return;
     }
 
-    clearSttNotice();
     clearSpeechError();
     clearAvatarCue();
     setAvatarState("listening");
@@ -787,13 +1026,12 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   }, [
     clearAvatarCue,
     clearSpeechError,
-    clearSttNotice,
-    showSttNotice,
     handleSubmitAnswer,
     isExiting,
     isQuestionStreaming,
     isRecording,
     isSubmitting,
+    showToast,
     startRecording,
     stopRecording
   ]);
@@ -804,13 +1042,12 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     appendMessage({
       id: `pause-${Date.now()}`,
       role: "coach",
-      content: "일시정지 상태입니다. 준비되면 답변 완료 버튼으로 계속 진행하세요.",
-      meta: "pause"
+      content: "일시정지 상태입니다. 준비되면 답변 완료 버튼으로 계속 진행하세요."
     });
   }, [appendMessage, clearAvatarCue]);
 
   const handleExit = useCallback(async () => {
-    if (isExiting) {
+    if (isExiting || isResumeResolving) {
       return;
     }
     if (!sessionId) {
@@ -820,16 +1057,16 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       return;
     }
     await moveToReport(sessionId);
-  }, [isExiting, moveToReport, sessionId, syncPathname]);
+  }, [isExiting, isResumeResolving, moveToReport, sessionId, syncPathname]);
 
   const handleRetryReport = useCallback(async () => {
     if (!sessionId) {
-      setUiError("세션 정보가 없어 리포트를 다시 조회할 수 없습니다.");
+      showToastError("세션 정보가 없어 리포트를 다시 조회할 수 없습니다.", "report:retry-without-session");
       return;
     }
 
     await moveToReport(sessionId);
-  }, [moveToReport, sessionId]);
+  }, [moveToReport, sessionId, showToastError]);
 
   const handleGoInsights = useCallback(async () => {
     if (isInsightsLoading) {
@@ -851,19 +1088,6 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       setIsInsightsLoading(false);
     }
   }, [isInsightsLoading, refreshSessions, syncPathname]);
-
-  const handleRetryUiError = useCallback(async () => {
-    setUiError(null);
-    if (step === "report" && sessionId) {
-      await moveToReport(sessionId);
-      return;
-    }
-    if (step === "insights") {
-      await handleGoInsights();
-      return;
-    }
-    await runBackendHealthCheck();
-  }, [handleGoInsights, moveToReport, runBackendHealthCheck, sessionId, step]);
 
   const weakKeywords = useMemo(() => report?.weakKeywords ?? [], [report]);
   const effectiveAvatarState = useMemo(
@@ -909,7 +1133,6 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     setStep: updateStep,
     uiError,
     clearUiError,
-    handleRetryUiError,
     isAuthRequired: uiError === getAuthRequiredMessage(),
     authRedirectTarget,
     handleGoogleLogin,
@@ -930,13 +1153,9 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     ttsAudioRef,
     isAutoplayBlocked,
     playTtsAudio,
-    ttsNotice,
-    clearTtsNotice,
     isRecording,
     isSttSupported,
     isSttBusy,
-    sttNotice,
-    clearSttNotice,
     handleToggleRecording,
     reactionEnabled: setupPayload.reactionEnabled,
     jobRoleLabel: mapRoleLabel(setupPayload.jobRole),
@@ -967,6 +1186,12 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     weakKeywords,
     studyGuide,
     isRetryingWeakness,
-    handleRetryWeakness
+    handleRetryWeakness,
+    resumeCandidateSessionId,
+    isResumePromptOpen,
+    isResumeCandidateGuest,
+    isResumeResolving,
+    handleContinueResumeCandidate,
+    handleDismissResumeCandidate
   };
 }

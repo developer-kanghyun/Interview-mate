@@ -68,8 +68,7 @@ export function useQuestionStreaming({
             appendMessage({
               id: `${event.questionId}-${Date.now()}`,
               role: "interviewer",
-              content: event.content,
-              meta: `Q${event.order} · follow-up ${event.followupCount}/2`
+              content: event.content
             });
 
             void speakInterviewer(event.content);
