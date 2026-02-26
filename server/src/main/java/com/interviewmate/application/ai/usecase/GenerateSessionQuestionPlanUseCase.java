@@ -23,26 +23,28 @@ public class GenerateSessionQuestionPlanUseCase {
 
     private static final int DEFAULT_QUESTION_COUNT = 7;
     private static final List<String> FRONTEND_JOB_TEMPLATES = List.of(
-            "%s 프로젝트에서 상태 관리 구조를 설계할 때 전역/서버/로컬 상태를 분리하는 기준을 설명해보세요. (%d)",
-            "%s 환경에서 화면 성능 저하가 발생했을 때 병목을 찾는 진단 순서와 개선 우선순위를 설명해보세요. (%d)",
-            "%s 코드베이스에서 컴포넌트 아키텍처를 설계할 때 재사용성과 유지보수성을 동시에 확보하는 기준을 설명해보세요. (%d)",
-            "%s 앱에서 네트워크 지연이 큰 상황을 가정하고 UX 저하를 줄이기 위한 데이터 로딩 전략을 설명해보세요. (%d)"
+            "%s 프로젝트에서 상태 관리 구조를 설계할 때 전역/서버/로컬 상태를 분리하는 기준을 설명해보세요.",
+            "%s 환경에서 화면 성능 저하가 발생했을 때 병목을 찾는 진단 순서와 개선 우선순위를 설명해보세요.",
+            "%s 코드베이스에서 컴포넌트 아키텍처를 설계할 때 재사용성과 유지보수성을 동시에 확보하는 기준을 설명해보세요.",
+            "%s 앱에서 네트워크 지연이 큰 상황을 가정하고 UX 저하를 줄이기 위한 데이터 로딩 전략을 설명해보세요.",
+            "%s 기반 모바일 앱에서 플랫폼별 동작 차이를 줄이기 위해 공통 계층을 설계하는 기준을 설명해보세요."
     );
     private static final List<String> FRONTEND_CS_TEMPLATES = List.of(
-            "%s 관점에서 렌더링 성능 병목을 진단할 때 확인하는 지표와 우선순위를 설명해보세요. (%d)",
-            "%s 앱에서 브라우저 이벤트 루프와 비동기 처리 흐름이 UX에 미치는 영향을 설명해보세요. (%d)",
-            "%s 기반 서비스에서 캐시 전략(메모리/네트워크)을 선택할 때 일관성과 응답속도 사이의 트레이드오프를 설명해보세요. (%d)"
+            "%s 관점에서 렌더링 성능 병목을 진단할 때 확인하는 지표와 우선순위를 설명해보세요.",
+            "%s 앱에서 브라우저 이벤트 루프와 비동기 처리 흐름이 UX에 미치는 영향을 설명해보세요.",
+            "%s 기반 서비스에서 캐시 전략(메모리/네트워크)을 선택할 때 일관성과 응답속도 사이의 트레이드오프를 설명해보세요."
     );
     private static final List<String> BACKEND_JOB_TEMPLATES = List.of(
-            "%s 기반 서비스에서 장애 대응을 위해 API/DB/캐시를 어떻게 계층적으로 설계하는지 설명해보세요. (%d)",
-            "%s 환경에서 트래픽 급증 시 병목 지점을 파악하고 확장 전략을 선택하는 기준을 설명해보세요. (%d)",
-            "%s 프로젝트에서 도메인 분리와 트랜잭션 경계를 설계할 때 고려해야 할 기준을 설명해보세요. (%d)",
-            "%s 서비스에서 배포 중 무중단을 보장하기 위한 아키텍처 전략을 설명해보세요. (%d)"
+            "%s 기반 서비스에서 장애 대응을 위해 API/DB/캐시를 어떻게 계층적으로 설계하는지 설명해보세요.",
+            "%s 환경에서 트래픽 급증 시 병목 지점을 파악하고 확장 전략을 선택하는 기준을 설명해보세요.",
+            "%s 프로젝트에서 도메인 분리와 트랜잭션 경계를 설계할 때 고려해야 할 기준을 설명해보세요.",
+            "%s 서비스에서 배포 중 무중단을 보장하기 위한 아키텍처 전략을 설명해보세요.",
+            "%s 기반 시스템에서 장애 복구 시간을 줄이기 위한 모니터링/알림 체계 설계 기준을 설명해보세요."
     );
     private static final List<String> BACKEND_CS_TEMPLATES = List.of(
-            "%s 환경에서 트랜잭션 격리 수준과 동시성 이슈를 어떻게 점검하고 선택하는지 설명해보세요. (%d)",
-            "%s 기반 시스템에서 분산 락/낙관적 락/비관적 락을 선택하는 기준을 설명해보세요. (%d)",
-            "%s 서비스에서 큐 기반 비동기 처리와 동기 호출을 구분해 설계하는 기준을 설명해보세요. (%d)"
+            "%s 환경에서 트랜잭션 격리 수준과 동시성 이슈를 어떻게 점검하고 선택하는지 설명해보세요.",
+            "%s 기반 시스템에서 분산 락/낙관적 락/비관적 락을 선택하는 기준을 설명해보세요.",
+            "%s 서비스에서 큐 기반 비동기 처리와 동기 호출을 구분해 설계하는 기준을 설명해보세요."
     );
 
     private final AiChatPort aiChatPort;
@@ -257,10 +259,10 @@ public class GenerateSessionQuestionPlanUseCase {
     private String buildFallbackContent(String role, String stack, String category, int index, int seedOffset) {
         if ("frontend".equals(role)) {
             List<String> templates = "cs".equals(category) ? FRONTEND_CS_TEMPLATES : FRONTEND_JOB_TEMPLATES;
-            return pickTemplate(templates, index, seedOffset).formatted(stack, index);
+            return pickTemplate(templates, index, seedOffset).formatted(stack);
         }
         List<String> templates = "cs".equals(category) ? BACKEND_CS_TEMPLATES : BACKEND_JOB_TEMPLATES;
-        return pickTemplate(templates, index, seedOffset).formatted(stack, index);
+        return pickTemplate(templates, index, seedOffset).formatted(stack);
     }
 
     private String pickTemplate(List<String> templates, int index, int seedOffset) {
