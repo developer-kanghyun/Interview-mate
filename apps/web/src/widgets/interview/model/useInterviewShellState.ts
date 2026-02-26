@@ -6,8 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
-  type RefObject,
-  type SetStateAction
+  type RefObject
 } from "react";
 import { usePathname } from "next/navigation";
 import {
@@ -15,7 +14,6 @@ import {
   listSessions,
   pingBackendHealth,
   restoreInterviewSession,
-  submitAnswer,
   type InterviewCharacter,
   type InterviewEmotion,
   type InterviewReport,
@@ -32,24 +30,18 @@ import {
   type InterviewStep
 } from "@/features/interview-session/model/interviewSession.constants";
 import { getInterviewPreferences } from "@/shared/config/interview-preferences";
-import { useInterviewerSpeech } from "@/features/interview-session/model/useInterviewerSpeech";
-import { useQuestionStreaming } from "@/features/interview-session/model/useQuestionStreaming";
 import { useInterviewAuthState } from "@/features/interview-session/model/useInterviewAuthState";
 import { useInterviewResumeState } from "@/features/interview-session/model/useInterviewResumeState";
+import { useInterviewRoomFlow } from "@/features/interview-session/model/useInterviewRoomFlow";
 import { useStartSession } from "@/features/interview/start-session/model/useStartSession";
 import { useFetchReport } from "@/features/interview-report/model/useFetchReport";
-import { useSpeechToText } from "@/shared/lib/useSpeechToText";
 import {
-  getAvatarTransientDurationMs,
   resolveAvatarReportState,
-  resolveAvatarTransientStateFromAnswer,
-  type AvatarState,
-  type AvatarTransientState
+  type AvatarState
 } from "@/entities/avatar/model/avatarBehaviorMachine";
 import {
   clearLegacyApiKeyStorage,
   clearStoredSessionId,
-  getAuthRequiredMessage,
   setStoredSessionId
 } from "@/shared/auth/session";
 import { useToast } from "@/shared/ui/toast/useToast";
@@ -128,11 +120,6 @@ type UseInterviewShellStateResult = {
 type RetryPreset = {
   jobRole?: StartInterviewPayload["jobRole"];
   stack?: StartInterviewPayload["stack"];
-};
-
-type SubmitAnswerOptions = {
-  answerOverride?: string;
-  inputType?: "text" | "voice";
 };
 
 type UseInterviewShellStateOptions = {
@@ -228,48 +215,24 @@ function buildSetupPayloadFromSessionState(
   };
 }
 
-const COACH_WARNING_SCORE_THRESHOLD = 70;
-
 export function useInterviewShellState(options: UseInterviewShellStateOptions = {}): UseInterviewShellStateResult {
   const pathname = usePathname();
   const { pushToast } = useToast();
   const [step, setStep] = useState<InterviewStep>("setup");
   const [setupPayload, setSetupPayload] = useState<StartInterviewPayload>(defaultSetupPayload);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [streamingQuestionText, setStreamingQuestionText] = useState("");
-  const [isQuestionStreaming, setIsQuestionStreaming] = useState(false);
-  const [questionOrder, setQuestionOrder] = useState(1);
-  const [followupCount, setFollowupCount] = useState(0);
-  const [answerText, setAnswerText] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [report, setReport] = useState<InterviewReport | null>(null);
   const [sessions, setSessions] = useState<SessionHistoryItem[]>([]);
   const [isInsightsLoading, setIsInsightsLoading] = useState(false);
   const [insightsErrorMessage, setInsightsErrorMessage] = useState<string | null>(null);
   const [isRetryingWeakness, setIsRetryingWeakness] = useState(false);
-  const [emotion, setEmotion] = useState<InterviewEmotion>("neutral");
-  const [avatarState, setAvatarState] = useState<AvatarState>("idle");
-  const [activeAvatarCue, setActiveAvatarCue] = useState<AvatarTransientState | null>(null);
-  const [avatarCueToken, setAvatarCueToken] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const [uiError, setUiError] = useState<string | null>(null);
   const [toastError, setToastError] = useState<{ message: string; dedupeKey?: string } | null>(null);
   const [backendStatus, setBackendStatus] = useState<"checking" | "ok" | "error">("checking");
   const [backendStatusMessage, setBackendStatusMessage] = useState<string | null>(null);
-  const avatarCueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const uiErrorRef = useRef<string | null>(null);
   const autoRestoreAttemptedSessionRef = useRef<string | null>(null);
   const startQuestionStreamRef = useRef<((sessionId: string) => void) | null>(null);
-  const lastFollowupCountRef = useRef(0);
-  const {
-    isRecording,
-    isSupported: isSttSupported,
-    speechError,
-    startRecording,
-    stopRecording,
-    clearSpeechError
-  } = useSpeechToText();
 
   const routeStep = useMemo(
     () => options.initialStep ?? resolveStepFromPath(pathname),
@@ -279,10 +242,6 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     () => options.initialSessionId ?? resolveSessionIdFromPath(pathname),
     [options.initialSessionId, pathname]
   );
-
-  useEffect(() => {
-    uiErrorRef.current = uiError;
-  }, [uiError]);
 
   useEffect(() => {
     if (!routeStep) {
@@ -339,10 +298,6 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
 
   const updateSetupPayload = useCallback((next: StartInterviewPayload) => {
     setSetupPayload(next);
-  }, []);
-
-  const updateAnswerText = useCallback((value: string) => {
-    setAnswerText(value);
   }, []);
 
   const showToast = useCallback(
@@ -421,10 +376,6 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     setAuthPromptReason(null);
   }, [setAuthPromptReason]);
 
-  const appendMessage = useCallback((nextMessage: ChatMessage) => {
-    setMessages((previous) => [...previous, nextMessage]);
-  }, []);
-
   const runBackendHealthCheck = useCallback(async () => {
     setBackendStatus("checking");
     setBackendStatusMessage(null);
@@ -442,6 +393,43 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     const sessionList = await listSessions(30);
     setSessions(sessionList);
   }, []);
+
+  const { isStarting, startSession, startError, clearStartError } = useStartSession();
+  const { isFetchingReport, reportFetchError, reportFetchErrorCode, fetchReport, clearReportFetchError } =
+    useFetchReport();
+  const [pendingCompletedSessionId, setPendingCompletedSessionId] = useState<string | null>(null);
+
+  const roomFlow = useInterviewRoomFlow({
+    step,
+    setupPayload,
+    sessionId,
+    uiError,
+    isGuestUser,
+    isExiting,
+    isResumeResolving,
+    showToast,
+    showToastError,
+    onSessionComplete: async (targetSessionId, guest) => {
+      if (guest) {
+        setStep("report");
+        syncPathname(`/report/${encodeURIComponent(targetSessionId)}`);
+        setAuthPromptReason("auth_required");
+        setUiError(null);
+        return;
+      }
+      setPendingCompletedSessionId(targetSessionId);
+    },
+    setUiError,
+    setAuthPromptReason
+  });
+  const resetRoomState = roomFlow.resetRoomState;
+  const startRoomQuestionStream = roomFlow.startQuestionStream;
+  const stopRoomRecording = roomFlow.stopRecording;
+  const stopRoomQuestionStream = roomFlow.stopQuestionStream;
+  const stopRoomTtsPlayback = roomFlow.stopTtsPlayback;
+  const clearRoomAvatarCue = roomFlow.clearAvatarCue;
+  const setRoomAvatarState = roomFlow.setAvatarState;
+  startQuestionStreamRef.current = startRoomQuestionStream;
 
   const restoreSessionIntoRoom = useCallback(
     async (
@@ -464,19 +452,12 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
 
         setSessionId(targetSessionId);
         setSetupPayload(buildSetupPayloadFromSessionState(state));
-        setQuestionOrder(state.current_question.question_order);
-        setFollowupCount(state.current_question.followup_count);
-        lastFollowupCountRef.current = state.current_question.followup_count;
-        setAnswerText("");
+        resetRoomState({
+          questionOrder: state.current_question.question_order,
+          followupCount: state.current_question.followup_count,
+          clearMessages: true
+        });
         setReport(null);
-        setMessages([]);
-        if (avatarCueTimerRef.current) {
-          clearTimeout(avatarCueTimerRef.current);
-          avatarCueTimerRef.current = null;
-        }
-        setActiveAvatarCue(null);
-        setEmotion("neutral");
-        setAvatarState("idle");
         setStep("room");
         syncPathname(`/interview/${encodeURIComponent(targetSessionId)}`, "replace");
         startQuestionStreamRef.current?.(targetSessionId);
@@ -493,7 +474,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         setIsResumeResolving(false);
       }
     },
-    [resetResumeState, setIsResumeResolving, showToastError, syncPathname]
+    [resetResumeState, resetRoomState, setIsResumeResolving, showToastError, syncPathname]
   );
 
   const handleContinueResumeCandidate = useCallback(async () => {
@@ -522,112 +503,6 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     setIsResumeResolving,
     resumeCandidateSessionId
   ]);
-
-  const triggerAvatarCue = useCallback((cue: AvatarTransientState) => {
-    if (avatarCueTimerRef.current) {
-      clearTimeout(avatarCueTimerRef.current);
-    }
-
-    setActiveAvatarCue(cue);
-    setAvatarCueToken((current) => current + 1);
-    avatarCueTimerRef.current = setTimeout(() => {
-      setActiveAvatarCue(null);
-      avatarCueTimerRef.current = null;
-    }, getAvatarTransientDurationMs(cue));
-  }, []);
-
-  const clearAvatarCue = useCallback(() => {
-    if (avatarCueTimerRef.current) {
-      clearTimeout(avatarCueTimerRef.current);
-      avatarCueTimerRef.current = null;
-    }
-    setActiveAvatarCue(null);
-  }, []);
-
-  const { ttsAudioRef, stopTtsPlayback, speakInterviewer: rawSpeakInterviewer, isAutoplayBlocked, playTtsAudio } =
-    useInterviewerSpeech(setAvatarState, {
-      onNotice: (message) =>
-        showToast({
-          message,
-          variant: "info",
-          dedupeKey: `tts:${message}`
-        })
-    });
-
-  const isSttBusy = isRecording || isSubmitting || isQuestionStreaming || isExiting || isResumeResolving;
-  const speakInterviewer = useCallback(
-    (text: string) => rawSpeakInterviewer(text, setupPayload.character),
-    [rawSpeakInterviewer, setupPayload.character]
-  );
-  const routeUiError = useCallback((next: SetStateAction<string | null>) => {
-    const resolved = typeof next === "function" ? next(uiErrorRef.current) : next;
-    if (!resolved) {
-      setUiError(null);
-      setAuthPromptReason(null);
-      return;
-    }
-    if (resolved === getAuthRequiredMessage()) {
-      setAuthPromptReason("auth_required");
-      setUiError(resolved);
-      return;
-    }
-    setAuthPromptReason(null);
-    showToastError(resolved, `ui:${resolved}`);
-  }, [setAuthPromptReason, showToastError]);
-
-  const { stopQuestionStream, startQuestionStream } = useQuestionStreaming({
-    stopTtsPlayback,
-    appendMessage,
-    speakInterviewer,
-    setUiError: routeUiError,
-    setIsQuestionStreaming,
-    setStreamingQuestionText,
-    setAvatarState,
-    setQuestionOrder,
-    setFollowupCount
-  });
-  startQuestionStreamRef.current = startQuestionStream;
-  const { isStarting, startSession, startError, clearStartError } = useStartSession();
-  const { isFetchingReport, reportFetchError, reportFetchErrorCode, fetchReport, clearReportFetchError } = useFetchReport();
-
-  useEffect(() => {
-    return () => {
-      stopRecording();
-      stopQuestionStream();
-      stopTtsPlayback();
-      if (avatarCueTimerRef.current) {
-        clearTimeout(avatarCueTimerRef.current);
-      }
-    };
-  }, [stopQuestionStream, stopRecording, stopTtsPlayback]);
-
-  useEffect(() => {
-    if (step === "room" || !isRecording) {
-      return;
-    }
-    stopRecording();
-  }, [isRecording, step, stopRecording]);
-
-  useEffect(() => {
-    if (!speechError) {
-      return;
-    }
-
-    if (!isSttSupported) {
-      showToast({
-        message: "이 브라우저는 음성 인식을 지원하지 않습니다. 텍스트로 답변해 주세요.",
-        variant: "info",
-        dedupeKey: "stt:not-supported"
-      });
-    } else {
-      showToast({
-        message: "음성 인식 실패 상태입니다. 버튼 눌러 다시 시도해 주세요.",
-        variant: "warning",
-        dedupeKey: "stt:recognition-failed"
-      });
-    }
-    clearSpeechError();
-  }, [clearSpeechError, isSttSupported, showToast, speechError]);
 
   useEffect(() => {
     void runBackendHealthCheck();
@@ -676,9 +551,9 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       }
 
       setIsExiting(true);
-      stopRecording();
-      stopQuestionStream();
-      stopTtsPlayback();
+      stopRoomRecording();
+      stopRoomQuestionStream();
+      stopRoomTtsPlayback();
       setUiError(null);
       setAuthPromptReason(null);
       clearReportFetchError();
@@ -703,8 +578,8 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         }
 
         setReport(nextReport);
-        clearAvatarCue();
-        setAvatarState(resolveAvatarReportState(nextReport.totalScore));
+        clearRoomAvatarCue();
+        setRoomAvatarState(resolveAvatarReportState(nextReport.totalScore));
         clearStoredSessionId();
       } catch (error) {
         const message = error instanceof Error ? error.message : "리포트 조회에 실패했습니다.";
@@ -714,15 +589,16 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       }
     },
     [
-      clearAvatarCue,
       clearReportFetchError,
       fetchReport,
       isExiting,
+      clearRoomAvatarCue,
       setAuthPromptReason,
+      setRoomAvatarState,
       showToastError,
-      stopQuestionStream,
-      stopRecording,
-      stopTtsPlayback,
+      stopRoomQuestionStream,
+      stopRoomRecording,
+      stopRoomTtsPlayback,
       syncPathname
     ]
   );
@@ -744,17 +620,14 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         setStoredSessionId(started.sessionId);
         setSessionId(started.sessionId);
         setReport(null);
-        setMessages([]);
-        clearAvatarCue();
-        setFollowupCount(0);
-        lastFollowupCountRef.current = 0;
-        setQuestionOrder(1);
-        setAnswerText("");
-        setEmotion("neutral");
-        setAvatarState("idle");
+        resetRoomState({
+          questionOrder: 1,
+          followupCount: 0,
+          clearMessages: true
+        });
         setStep("room");
         syncPathname(`/interview/${encodeURIComponent(started.sessionId)}`);
-        startQuestionStream(started.sessionId);
+        startRoomQuestionStream(started.sessionId);
       } catch (error) {
         const message = error instanceof Error ? error.message : "면접 시작에 실패했습니다.";
         showToastError(message, "interview:start");
@@ -762,13 +635,13 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       }
     },
     [
-      clearAvatarCue,
       clearReportFetchError,
       clearStartError,
       resetResumeState,
+      resetRoomState,
       setAuthPromptReason,
       showToastError,
-      startQuestionStream,
+      startRoomQuestionStream,
       startSession,
       syncPathname
     ]
@@ -777,165 +650,19 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   const handleStartInterview = useCallback(async () => {
     await beginInterview(setupPayload);
   }, [beginInterview, setupPayload]);
-
-  const handleSubmitAnswer = useCallback(async (options?: SubmitAnswerOptions) => {
-    const inputType = options?.inputType ?? "text";
-    const sourceAnswer = options?.answerOverride ?? answerText;
-    if (!sessionId || !sourceAnswer.trim() || isSubmitting || isResumeResolving) {
+  useEffect(() => {
+    if (!pendingCompletedSessionId || isExiting) {
       return;
     }
 
-    const submittedAnswer = sourceAnswer.trim();
-    appendMessage({
-      id: `answer-${Date.now()}`,
-      role: "user",
-      content: submittedAnswer
-    });
-
-    setAnswerText("");
-    setIsSubmitting(true);
-    setAvatarState("thinking");
-    setUiError(null);
-
-    try {
-      const response = await submitAnswer(sessionId, submittedAnswer, inputType);
-      const previousFollowupCount = lastFollowupCountRef.current;
-      setEmotion(response.suggestedEmotion);
-      setFollowupCount(response.followupCount);
-      lastFollowupCountRef.current = response.followupCount;
-
-      const nextCue = resolveAvatarTransientStateFromAnswer({
-        previousFollowupCount,
-        nextFollowupCount: response.followupCount,
-        totalScore: response.totalScore,
-        suggestedEmotion: response.suggestedEmotion
-      });
-
-      if (nextCue) {
-        triggerAvatarCue(nextCue);
-      } else {
-        clearAvatarCue();
+    void (async () => {
+      try {
+        await moveToReport(pendingCompletedSessionId);
+      } finally {
+        setPendingCompletedSessionId(null);
       }
-
-      const needsCoachWarning = response.totalScore < COACH_WARNING_SCORE_THRESHOLD;
-      const coachContent = needsCoachWarning
-        ? `답변 보완이 필요합니다.\n${response.feedbackSummary}\n${response.coaching}`
-        : `${response.feedbackSummary}\n${response.coaching}`;
-
-      appendMessage({
-        id: `coach-${Date.now()}`,
-        role: "coach",
-        content: coachContent,
-        tone: needsCoachWarning ? "error" : "default"
-      });
-
-      if (response.isSessionComplete) {
-        if (isGuestUser) {
-          stopQuestionStream();
-          stopTtsPlayback();
-          setStep("report");
-          syncPathname(`/report/${encodeURIComponent(sessionId)}`);
-          setAuthPromptReason("auth_required");
-          setUiError(null);
-          return;
-        }
-        await moveToReport(sessionId);
-        return;
-      }
-
-      startQuestionStream(sessionId);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "답변 제출에 실패했습니다.";
-      if (message === getAuthRequiredMessage()) {
-        setAuthPromptReason("auth_required");
-        setUiError(message);
-      } else {
-        setAuthPromptReason(null);
-        showToastError(message, "answer:submit");
-      }
-      setAnswerText(submittedAnswer);
-      setAvatarState("listening");
-
-      appendMessage({
-        id: `error-${Date.now()}`,
-        role: "coach",
-        content: `요청 처리 중 오류가 발생했습니다: ${message}`,
-        tone: "error"
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [
-    appendMessage,
-    isGuestUser,
-    isSubmitting,
-    isResumeResolving,
-    answerText,
-    clearAvatarCue,
-    moveToReport,
-    setAuthPromptReason,
-    triggerAvatarCue,
-    sessionId,
-    startQuestionStream,
-    stopQuestionStream,
-    stopTtsPlayback,
-    showToastError,
-    syncPathname
-  ]);
-
-  const handleToggleRecording = useCallback(() => {
-    if (isSubmitting || isQuestionStreaming || isExiting) {
-      return;
-    }
-
-    if (isRecording) {
-      stopRecording((finalTranscript) => {
-        const trimmedTranscript = finalTranscript.trim();
-        if (!trimmedTranscript) {
-          showToast({
-            message: "인식된 음성이 없어 전송하지 않았습니다. 다시 시도해 주세요.",
-            variant: "warning",
-            dedupeKey: "stt:empty-transcript"
-          });
-          return;
-        }
-        setAnswerText(trimmedTranscript);
-        void handleSubmitAnswer({
-          answerOverride: trimmedTranscript,
-          inputType: "voice"
-        });
-      });
-      return;
-    }
-
-    clearSpeechError();
-    clearAvatarCue();
-    setAvatarState("listening");
-    startRecording((transcript) => {
-      setAnswerText(transcript);
-    });
-  }, [
-    clearAvatarCue,
-    clearSpeechError,
-    handleSubmitAnswer,
-    isExiting,
-    isQuestionStreaming,
-    isRecording,
-    isSubmitting,
-    showToast,
-    startRecording,
-    stopRecording
-  ]);
-
-  const handlePause = useCallback(() => {
-    clearAvatarCue();
-    setAvatarState("idle");
-    appendMessage({
-      id: `pause-${Date.now()}`,
-      role: "coach",
-      content: "일시정지 상태입니다. 준비되면 답변 완료 버튼으로 계속 진행하세요."
-    });
-  }, [appendMessage, clearAvatarCue]);
+    })();
+  }, [isExiting, moveToReport, pendingCompletedSessionId]);
 
   const handleExit = useCallback(async () => {
     if (isExiting || isResumeResolving) {
@@ -999,10 +726,6 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     () => isMemberAuthenticatedBase && reportFetchErrorCode !== "auth_required",
     [isMemberAuthenticatedBase, reportFetchErrorCode]
   );
-  const effectiveAvatarState = useMemo(
-    () => activeAvatarCue ?? avatarState,
-    [activeAvatarCue, avatarState]
-  );
   const studyGuide = useMemo(
     () =>
       report?.studyGuide ?? [
@@ -1060,32 +783,32 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     sessionId,
     interviewerName: interviewerNameMap[setupPayload.character],
     character: setupPayload.character,
-    avatarState: effectiveAvatarState,
-    avatarCueToken,
-    emotion,
-    ttsAudioRef,
-    isAutoplayBlocked,
-    playTtsAudio,
-    isRecording,
-    isSttSupported,
-    isSttBusy,
-    handleToggleRecording,
+    avatarState: roomFlow.avatarState,
+    avatarCueToken: roomFlow.avatarCueToken,
+    emotion: roomFlow.emotion,
+    ttsAudioRef: roomFlow.ttsAudioRef,
+    isAutoplayBlocked: roomFlow.isAutoplayBlocked,
+    playTtsAudio: roomFlow.playTtsAudio,
+    isRecording: roomFlow.isRecording,
+    isSttSupported: roomFlow.isSttSupported,
+    isSttBusy: roomFlow.isSttBusy,
+    handleToggleRecording: roomFlow.handleToggleRecording,
     reactionEnabled: setupPayload.reactionEnabled,
     jobRoleLabel: mapRoleLabel(setupPayload.jobRole),
     stackLabel: setupPayload.stack,
     difficultyLabel: mapDifficultyLabel(setupPayload.difficulty),
-    questionOrder,
+    questionOrder: roomFlow.questionOrder,
     totalQuestions: setupPayload.questionCount,
-    followupCount,
-    streamingQuestionText,
-    isQuestionStreaming,
-    messages,
-    answerText,
-    setAnswerText: updateAnswerText,
-    isSubmitting,
+    followupCount: roomFlow.followupCount,
+    streamingQuestionText: roomFlow.streamingQuestionText,
+    isQuestionStreaming: roomFlow.isQuestionStreaming,
+    messages: roomFlow.messages,
+    answerText: roomFlow.answerText,
+    setAnswerText: roomFlow.setAnswerText,
+    isSubmitting: roomFlow.isSubmitting,
     handleStartInterview,
-    handleSubmitAnswer,
-    handlePause,
+    handleSubmitAnswer: roomFlow.handleSubmitAnswer,
+    handlePause: roomFlow.handlePause,
     handleExit,
     isExiting,
     report,
