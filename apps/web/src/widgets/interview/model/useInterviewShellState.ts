@@ -22,7 +22,7 @@ import {
   type SessionHistoryItem,
   type StartInterviewPayload
 } from "@/shared/api/interview-client";
-import { getGoogleAuthUrl, getGuestAccess, getInterviewSessionState, getLatestActiveInterviewSession, getMyProfile } from "@/shared/api/interview";
+import { getInterviewSessionState } from "@/shared/api/interview";
 import type { ChatMessage } from "@/shared/chat/ChatBoard";
 import {
   defaultSetupPayload,
@@ -34,6 +34,8 @@ import {
 import { getInterviewPreferences } from "@/shared/config/interview-preferences";
 import { useInterviewerSpeech } from "@/features/interview-session/model/useInterviewerSpeech";
 import { useQuestionStreaming } from "@/features/interview-session/model/useQuestionStreaming";
+import { useInterviewAuthState } from "@/features/interview-session/model/useInterviewAuthState";
+import { useInterviewResumeState } from "@/features/interview-session/model/useInterviewResumeState";
 import { useStartSession } from "@/features/interview/start-session/model/useStartSession";
 import { useFetchReport } from "@/features/interview-report/model/useFetchReport";
 import { useSpeechToText } from "@/shared/lib/useSpeechToText";
@@ -45,11 +47,9 @@ import {
   type AvatarTransientState
 } from "@/entities/avatar/model/avatarBehaviorMachine";
 import {
-  clearPostLoginRedirectTarget,
   clearLegacyApiKeyStorage,
   clearStoredSessionId,
   getAuthRequiredMessage,
-  setPostLoginRedirectTarget,
   setStoredSessionId
 } from "@/shared/auth/session";
 import { useToast } from "@/shared/ui/toast/useToast";
@@ -139,9 +139,6 @@ type UseInterviewShellStateOptions = {
   initialStep?: InterviewStep;
   initialSessionId?: string | null;
 };
-
-type AuthStatus = "loading" | "member" | "guest" | "anonymous" | "error";
-type AuthPromptReason = "auth_required" | null;
 
 function resolveStepFromPath(pathname: string | null): InterviewStep | null {
   if (!pathname) {
@@ -257,17 +254,9 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const [uiError, setUiError] = useState<string | null>(null);
-  const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
-  const [authPromptReason, setAuthPromptReason] = useState<AuthPromptReason>(null);
   const [toastError, setToastError] = useState<{ message: string; dedupeKey?: string } | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [backendStatus, setBackendStatus] = useState<"checking" | "ok" | "error">("checking");
   const [backendStatusMessage, setBackendStatusMessage] = useState<string | null>(null);
-  const [isGuestUser, setIsGuestUser] = useState(false);
-  const [resumeCandidateSessionId, setResumeCandidateSessionId] = useState<string | null>(null);
-  const [isResumePromptOpen, setIsResumePromptOpen] = useState(false);
-  const [isResumeCandidateGuest, setIsResumeCandidateGuest] = useState(false);
-  const [isResumeResolving, setIsResumeResolving] = useState(false);
   const avatarCueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const uiErrorRef = useRef<string | null>(null);
   const autoRestoreAttemptedSessionRef = useRef<string | null>(null);
@@ -390,10 +379,47 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     setToastError(null);
   }, [showToast, toastError]);
 
+  const {
+    resumeCandidateSessionId,
+    isResumePromptOpen,
+    isResumeCandidateGuest,
+    isResumeResolving,
+    setIsResumePromptOpen,
+    setIsResumeResolving,
+    syncResumeCandidate,
+    handleDismissResumeCandidate,
+    resetResumeState
+  } = useInterviewResumeState({
+    routeSessionId,
+    routeStep,
+    step,
+    showToastError
+  });
+
+  const {
+    authStatus,
+    authPromptReason,
+    isAuthLoading,
+    isGuestUser,
+    isMemberAuthenticated: isMemberAuthenticatedBase,
+    isAuthRequired,
+    authRedirectTarget,
+    setAuthPromptReason,
+    handleGoogleLogin,
+    handleGoogleLogout
+  } = useInterviewAuthState({
+    step,
+    sessionId,
+    showToastError,
+    setUiError,
+    onSyncResumeCandidate: syncResumeCandidate,
+    onResetResumeState: resetResumeState
+  });
+
   const clearUiError = useCallback(() => {
     setUiError(null);
     setAuthPromptReason(null);
-  }, []);
+  }, [setAuthPromptReason]);
 
   const appendMessage = useCallback((nextMessage: ChatMessage) => {
     setMessages((previous) => [...previous, nextMessage]);
@@ -412,102 +438,10 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     }
   }, []);
 
-  const authRedirectTarget = useMemo(() => {
-    if (step === "report" && sessionId) {
-      return `/report/${sessionId}`;
-    }
-    if (step === "room" && sessionId) {
-      return `/interview/${sessionId}`;
-    }
-    if (step === "insights") {
-      return "/insights";
-    }
-    if (step === "setup") {
-      return "/setup";
-    }
-    return "/interview";
-  }, [sessionId, step]);
-
-  const handleGoogleLogin = useCallback(async (redirectTo?: string) => {
-    if (isAuthLoading) {
-      return;
-    }
-    if (redirectTo) {
-      setPostLoginRedirectTarget(redirectTo);
-    } else {
-      clearPostLoginRedirectTarget();
-    }
-
-    setIsAuthLoading(true);
-
-    try {
-      const response = await getGoogleAuthUrl();
-      window.location.assign(response.data.auth_url);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Google 로그인 URL 조회에 실패했습니다.";
-      if (message.includes("Google OAuth Client ID")) {
-        showToastError("Google 로그인 설정이 올바르지 않습니다. 서버 OAuth 환경변수를 확인해 주세요.", "auth:oauth");
-      } else {
-        showToastError(message, "auth:google-login-url");
-      }
-    } finally {
-      setIsAuthLoading(false);
-    }
-  }, [isAuthLoading, showToastError]);
-
-  const handleGoogleLogout = useCallback(async () => {
-    if (isAuthLoading) {
-      return;
-    }
-    setIsAuthLoading(true);
-    try {
-      clearStoredSessionId();
-      setResumeCandidateSessionId(null);
-      setIsResumeCandidateGuest(false);
-      setIsResumePromptOpen(false);
-      window.location.assign("/api/v1/users/logout");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "로그아웃에 실패했습니다.";
-      showToastError(message, "auth:logout");
-      setIsAuthLoading(false);
-    }
-  }, [isAuthLoading, showToastError]);
-
   const refreshSessions = useCallback(async () => {
     const sessionList = await listSessions(30);
     setSessions(sessionList);
   }, []);
-
-  const syncResumeCandidate = useCallback(
-    async (isGuestCandidate: boolean) => {
-      if (routeSessionId || routeStep === "room") {
-        return;
-      }
-
-      try {
-        const latestActiveResponse = await getLatestActiveInterviewSession();
-        const latestActive = latestActiveResponse.data;
-        const latestSession = latestActive.session;
-        if (!latestActive.has_active_session) {
-          return;
-        }
-
-        if (!latestSession || latestSession.status !== "in_progress" || !latestSession.current_question) {
-          setResumeCandidateSessionId(null);
-          setIsResumeCandidateGuest(false);
-          setIsResumePromptOpen(false);
-          showToastError("이전 세션은 재개할 수 없습니다. 새 면접을 시작해 주세요.", "resume:invalid");
-          return;
-        }
-
-        setResumeCandidateSessionId(latestSession.session_id);
-        setIsResumeCandidateGuest(isGuestCandidate);
-      } catch {
-        // latest-active 탐색 실패는 무시하고 일반 시작 흐름 유지
-      }
-    },
-    [routeSessionId, routeStep, showToastError]
-  );
 
   const restoreSessionIntoRoom = useCallback(
     async (
@@ -547,23 +481,19 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         syncPathname(`/interview/${encodeURIComponent(targetSessionId)}`, "replace");
         startQuestionStreamRef.current?.(targetSessionId);
         clearStoredSessionId();
-        setResumeCandidateSessionId(null);
-        setIsResumeCandidateGuest(false);
-        setIsResumePromptOpen(false);
+        resetResumeState();
       } catch (error) {
         const fallbackMessage = options?.stepFallbackMessage ?? "이전 세션 재개에 실패했습니다. 새 면접을 시작해 주세요.";
         const message = error instanceof Error ? error.message : fallbackMessage;
         setStep("setup");
         syncPathname("/setup", "replace");
-        setResumeCandidateSessionId(null);
-        setIsResumeCandidateGuest(false);
-        setIsResumePromptOpen(false);
+        resetResumeState();
         showToastError(message || fallbackMessage, "resume:restore-failed");
       } finally {
         setIsResumeResolving(false);
       }
     },
-    [showToastError, syncPathname]
+    [resetResumeState, setIsResumeResolving, showToastError, syncPathname]
   );
 
   const handleContinueResumeCandidate = useCallback(async () => {
@@ -588,14 +518,10 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     isResumeCandidateGuest,
     isResumeResolving,
     restoreSessionIntoRoom,
+    setIsResumePromptOpen,
+    setIsResumeResolving,
     resumeCandidateSessionId
   ]);
-
-  const handleDismissResumeCandidate = useCallback(() => {
-    setIsResumePromptOpen(false);
-    setResumeCandidateSessionId(null);
-    setIsResumeCandidateGuest(false);
-  }, []);
 
   const triggerAvatarCue = useCallback((cue: AvatarTransientState) => {
     if (avatarCueTimerRef.current) {
@@ -647,7 +573,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     }
     setAuthPromptReason(null);
     showToastError(resolved, `ui:${resolved}`);
-  }, [showToastError]);
+  }, [setAuthPromptReason, showToastError]);
 
   const { stopQuestionStream, startQuestionStream } = useQuestionStreaming({
     stopTtsPlayback,
@@ -730,79 +656,6 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   }, []);
 
   useEffect(() => {
-    let active = true;
-    setAuthStatus("loading");
-    void (async () => {
-      try {
-        const profile = await getMyProfile();
-        if (!active) {
-          return;
-        }
-        const guest = !profile.data.email;
-        setAuthStatus(guest ? "guest" : "member");
-        setIsGuestUser(guest);
-        setAuthPromptReason(null);
-        await syncResumeCandidate(guest);
-      } catch (error) {
-        if (!active) {
-          return;
-        }
-
-        const message = error instanceof Error ? error.message : "로그인 상태 확인에 실패했습니다.";
-        if (message !== getAuthRequiredMessage()) {
-          setAuthStatus("error");
-          setIsGuestUser(false);
-          setAuthPromptReason(null);
-          showToastError(message, "auth:profile");
-          return;
-        }
-
-        try {
-          await getGuestAccess();
-          if (!active) {
-            return;
-          }
-          setAuthStatus("guest");
-          setIsGuestUser(true);
-          setAuthPromptReason(null);
-          await syncResumeCandidate(true);
-        } catch (guestError) {
-          if (!active) {
-            return;
-          }
-          const guestMessage =
-            guestError instanceof Error ? guestError.message : "게스트 인증 발급에 실패했습니다.";
-          if (guestMessage === getAuthRequiredMessage()) {
-            setUiError(guestMessage);
-            setAuthStatus("anonymous");
-            setAuthPromptReason("auth_required");
-            setIsGuestUser(false);
-          } else {
-            showToastError(guestMessage, "auth:guest-access");
-            setAuthStatus("error");
-            setAuthPromptReason(null);
-            setIsGuestUser(false);
-          }
-        }
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [showToastError, syncResumeCandidate]);
-
-  useEffect(() => {
-    if (!resumeCandidateSessionId) {
-      return;
-    }
-    if (step !== "setup" || routeSessionId || isResumeResolving) {
-      return;
-    }
-    setIsResumePromptOpen(true);
-  }, [isResumeResolving, resumeCandidateSessionId, routeSessionId, step]);
-
-  useEffect(() => {
     if (step !== "room" || !sessionId || isResumeResolving) {
       return;
     }
@@ -865,6 +718,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       clearReportFetchError,
       fetchReport,
       isExiting,
+      setAuthPromptReason,
       showToastError,
       stopQuestionStream,
       stopRecording,
@@ -879,9 +733,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       setAuthPromptReason(null);
       clearReportFetchError();
       setIsExiting(false);
-      setIsResumePromptOpen(false);
-      setResumeCandidateSessionId(null);
-      setIsResumeCandidateGuest(false);
+      resetResumeState();
       clearStartError();
       try {
         const started = await startSession(payload);
@@ -913,6 +765,8 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       clearAvatarCue,
       clearReportFetchError,
       clearStartError,
+      resetResumeState,
+      setAuthPromptReason,
       showToastError,
       startQuestionStream,
       startSession,
@@ -1019,6 +873,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     answerText,
     clearAvatarCue,
     moveToReport,
+    setAuthPromptReason,
     triggerAvatarCue,
     sessionId,
     startQuestionStream,
@@ -1124,7 +979,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     } finally {
       setIsInsightsLoading(false);
     }
-  }, [isInsightsLoading, refreshSessions, syncPathname]);
+  }, [isInsightsLoading, refreshSessions, setAuthPromptReason, syncPathname]);
 
   const handleRetryUiError = useCallback(async () => {
     setUiError(null);
@@ -1138,11 +993,11 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       return;
     }
     await runBackendHealthCheck();
-  }, [handleGoInsights, moveToReport, runBackendHealthCheck, sessionId, step]);
+  }, [handleGoInsights, moveToReport, runBackendHealthCheck, sessionId, setAuthPromptReason, step]);
   const weakKeywords = useMemo(() => report?.weakKeywords ?? [], [report]);
   const isMemberAuthenticated = useMemo(
-    () => authStatus === "member" && reportFetchErrorCode !== "auth_required",
-    [authStatus, reportFetchErrorCode]
+    () => isMemberAuthenticatedBase && reportFetchErrorCode !== "auth_required",
+    [isMemberAuthenticatedBase, reportFetchErrorCode]
   );
   const effectiveAvatarState = useMemo(
     () => activeAvatarCue ?? avatarState,
@@ -1190,7 +1045,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     handleRetryUiError,
     authStatus,
     isMemberAuthenticated,
-    isAuthRequired: authPromptReason === "auth_required",
+    isAuthRequired,
     reportErrorCode: reportFetchErrorCode,
     authRedirectTarget,
     handleGoogleLogin,
