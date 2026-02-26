@@ -21,7 +21,7 @@ export function ChatBoard({ messages }: ChatBoardProps) {
   return (
     <div className="grid gap-3 pb-1">
       {messages.map((message) => (
-        <ChatBubble key={message.id} role={message.role} content={message.content} meta={message.meta} />
+        <ChatBubble key={message.id} role={message.role} content={message.content} meta={message.meta} tone={message.tone} />
       ))}
       <div ref={endRef} />
     </div>
