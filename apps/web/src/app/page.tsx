@@ -5,6 +5,8 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { getMyProfile, getGoogleAuthUrl } from "@/shared/api/interview";
+import { clearStoredSessionId } from "@/shared/auth/session";
+import { Target, Brain, Layers, Mic } from "lucide-react";
 
 const fadeUp: any = {
   initial: { opacity: 0, y: 40 },
@@ -19,6 +21,23 @@ const scaleUp: any = {
   viewport: { once: true, margin: "-50px" },
   transition: { duration: 0.8, ease: "easeOut" }
 };
+
+function AnimatedNumber({ value }: { value: number }) {
+  const [display, setDisplay] = useState(0);
+  useEffect(() => {
+    let startTime: number;
+    const duration = 1500;
+    const update = (currentTime: number) => {
+      if (!startTime) startTime = currentTime;
+      const progress = Math.min((currentTime - startTime) / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 4); // easeOutQuart
+      setDisplay(Math.floor(ease * value));
+      if (progress < 1) requestAnimationFrame(update);
+    };
+    requestAnimationFrame(update);
+  }, [value]);
+  return <span>{display}</span>;
+}
 
 export default function HomePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -47,6 +66,7 @@ export default function HomePage() {
     try {
       localStorage.removeItem("im_session_id");
       localStorage.removeItem("im_api_key");
+      clearStoredSessionId();
     } catch(e) {}
     window.location.reload();
   };
@@ -108,39 +128,41 @@ export default function HomePage() {
 
       <main className="relative z-[1] flex flex-1 flex-col">
         {/* Hero Section */}
-        <section className="px-6 pb-20 pt-16 md:pb-32 md:pt-24">
+        <section className="px-6 pb-20 pt-8 md:pb-32 md:pt-12">
           <div className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-12">
             <motion.article
               {...scaleUp}
-              className="rounded-[2.5rem] border border-im-border/60 bg-white p-8 shadow-sm lg:col-span-7 lg:p-12"
+              className="flex h-full min-h-[500px] flex-col justify-between rounded-[2.5rem] border border-im-border/60 bg-white p-8 shadow-sm lg:col-span-7 lg:p-12"
             >
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 }}
-                className="mb-6 text-lg font-extrabold tracking-tight text-im-text-main sm:text-xl"
-              >
-                ✦ 기획부터 개발, AI, 데이터, 인프라까지
-              </motion.div>
-              <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="text-4xl font-black tracking-tight text-im-text-main sm:text-5xl md:text-6xl md:leading-[1.1]"
-              >
-                모든 IT 직군을 위한
-                <br />
-                <span className="text-im-primary">AI 실전 면접</span> 파트너
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-                className="mt-6 max-w-2xl text-base leading-relaxed text-im-text-muted md:text-lg"
-              >
-                직무와 보유 스택에 맞춘 꼬리물기 압박 질문을 경험해보세요. 실제 목소리(음성)로 답변하고,
-                대본 없는 실전 감각을 기르며, 논리 구조와 전문성에 대한 디테일한 피드백 리포트를 받아볼 수 있습니다.
-              </motion.p>
+              <div>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.1 }}
+                  className="mb-6 text-lg font-extrabold tracking-tight text-im-text-main sm:text-xl"
+                >
+                  ✦ 기획부터 개발, AI, 데이터, 인프라까지
+                </motion.div>
+                <motion.h1
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                  className="text-4xl font-black tracking-tight text-im-text-main sm:text-5xl md:text-6xl md:leading-[1.1]"
+                >
+                  모든 IT 직군을 위한
+                  <br />
+                  <span className="text-im-primary">AI 실전 면접</span> 파트너
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                  className="mt-6 max-w-2xl text-base leading-relaxed text-im-text-muted md:text-lg"
+                >
+                  직무와 보유 스택에 맞춘 꼬리물기 압박 질문을 경험해보세요. 실제 목소리(음성)로 답변하고,
+                  대본 없는 실전 감각을 기르며, 논리 구조와 전문성에 대한 디테일한 피드백 리포트를 받아볼 수 있습니다.
+                </motion.p>
+              </div>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -151,7 +173,7 @@ export default function HomePage() {
                   href="/setup"
                   className="flex h-16 min-w-[260px] items-center justify-center gap-2 rounded-full bg-im-primary px-10 text-lg font-extrabold text-white shadow-glow transition-[background-color,transform,box-shadow] hover:-translate-y-1 hover:bg-im-primary-hover active:scale-95"
                 >
-                  시작하기
+                  무료로 시작하기
                 </Link>
               </motion.div>
             </motion.article>
@@ -159,7 +181,7 @@ export default function HomePage() {
             <motion.aside
               {...scaleUp}
               transition={{ ...scaleUp.transition, delay: 0.1 }}
-              className="relative overflow-hidden rounded-[2.5rem] border border-im-primary/15 bg-im-subtle p-0 shadow-sm lg:col-span-5 flex flex-col justify-center items-center group"
+              className="group relative flex h-full min-h-[500px] flex-col items-center justify-center overflow-hidden rounded-[2.5rem] border border-im-primary/15 bg-im-subtle p-0 shadow-sm lg:col-span-5"
             >
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 z-10" />
               <Image
@@ -229,25 +251,15 @@ export default function HomePage() {
                   </li>
                 </ul>
               </motion.div>
-              <motion.div {...scaleUp} className="order-1 lg:order-2 relative aspect-[4/3] rounded-[2.5rem] bg-im-subtle border border-im-border overflow-hidden shadow-sm flex items-center justify-center">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,96,0,0.05)_0,transparent_100%)]" />
-                <div className="flex gap-4 p-8">
-                  <div className="flex flex-col items-center gap-2 transform -translate-y-4">
-                    <div className="w-24 h-24 rounded-full bg-white shadow-card flex items-center justify-center text-3xl">🌙</div>
-                    <span className="text-sm font-bold text-im-text-main">루나</span>
-                    <span className="text-xs text-im-text-muted">코치형</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-2 transform translate-y-4">
-                    <div className="w-24 h-24 rounded-full bg-white shadow-card flex items-center justify-center text-3xl border-2 border-im-primary">⚡️</div>
-                    <span className="text-sm font-bold text-im-primary">제트</span>
-                    <span className="text-xs text-im-text-muted">실전형</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-2 transform -translate-y-4">
-                    <div className="w-24 h-24 rounded-full bg-white shadow-card flex items-center justify-center text-3xl">🛡️</div>
-                    <span className="text-sm font-bold text-im-text-main">아이언</span>
-                    <span className="text-xs text-im-text-muted">압박형</span>
-                  </div>
-                </div>
+              <motion.div {...scaleUp} className="order-1 lg:order-2 relative aspect-[4/3] rounded-[2.5rem] bg-im-subtle border border-im-border overflow-hidden shadow-sm flex items-center justify-center group pointer-events-none">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,107,0,0.05)_0,transparent_100%)] z-10 pointer-events-none" />
+                <Image 
+                  src="/images/avatar_trio.png" 
+                  alt="AI 면접관 트리오" 
+                  fill 
+                  priority
+                  className="object-cover transition-transform duration-700 group-hover:scale-105" 
+                />
               </motion.div>
             </div>
 
@@ -319,34 +331,90 @@ export default function HomePage() {
                   리포트 샘플 보기 →
                 </Link>
               </motion.div>
-              <motion.div {...scaleUp} className="order-1 lg:order-2 relative aspect-[4/3] rounded-[2.5rem] bg-im-subtle border border-im-border overflow-hidden shadow-sm p-8 flex items-center justify-center">
-                <div className="w-full max-w-sm space-y-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-24 text-sm font-bold text-im-text-main">정확성</div>
-                    <div className="h-2 flex-1 rounded-full bg-white border border-im-border/50 overflow-hidden">
-                      <motion.div initial={{ width: 0 }} whileInView={{ width: "90%" }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.2 }} className="h-full bg-im-primary rounded-full" />
+              {/* 3D Perspective Container */}
+              <div className="order-1 lg:order-2 relative aspect-square sm:aspect-[4/3]" style={{ perspective: "1200px" }}>
+                {/* The 3D Isometric Card */}
+                <motion.div
+                  initial={{ opacity: 0, rotateX: 40, rotateY: -8, scale: 0.85, y: 60 }}
+                  whileInView={{ opacity: 1, rotateX: 0, rotateY: 0, scale: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-80px" }}
+                  transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
+                  className="w-full h-full rounded-[2.5rem] bg-white border border-slate-200 shadow-[0_20px_60px_rgba(0,0,0,0.08)] overflow-hidden"
+                  style={{ transformStyle: "preserve-3d" }}
+                >
+                  {/* Floating animation wrapper */}
+                  <motion.div
+                    animate={{ y: [0, -8, 0] }}
+                    transition={{ duration: 5, ease: "easeInOut", repeat: Infinity, repeatType: "loop" }}
+                    className="w-full h-full flex flex-col"
+                  >
+                    {/* Dashboard Header */}
+                    <div className="flex items-center gap-3 px-6 sm:px-8 pt-6 sm:pt-8 pb-4 border-b border-slate-100">
+                      <div className="flex gap-1.5">
+                        <div className="w-3 h-3 rounded-full bg-red-400" />
+                        <div className="w-3 h-3 rounded-full bg-amber-400" />
+                        <div className="w-3 h-3 rounded-full bg-green-400" />
+                      </div>
+                      <span className="text-xs font-bold text-slate-400 tracking-wide ml-2">AI 채점 리포트</span>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="w-24 text-sm font-bold text-im-text-main">논리성</div>
-                    <div className="h-2 flex-1 rounded-full bg-white border border-im-border/50 overflow-hidden">
-                      <motion.div initial={{ width: 0 }} whileInView={{ width: "75%" }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.4 }} className="h-full bg-im-primary rounded-full" />
+
+                    {/* Dashboard Body */}
+                    <div className="flex-1 flex flex-col justify-center px-6 sm:px-8 py-5 sm:py-6 gap-4 sm:gap-5">
+                      {/* 4 Metric Rows — staggered entrance */}
+                      {[
+                        { label: "정확성", score: 94, color: "bg-im-primary", icon: Target, desc: "핵심 원리를 정확히 짚어냈습니다" },
+                        { label: "논리성", score: 88, color: "bg-blue-500", icon: Brain, desc: "인과관계가 명확합니다" },
+                        { label: "깊이",   score: 76, color: "bg-amber-500", icon: Layers, desc: "한계점 설명이 누락되었습니다" },
+                        { label: "전달력", score: 92, color: "bg-rose-400", icon: Mic, desc: "간결하고 매끄러운 전달입니다" },
+                      ].map((m, i) => (
+                        <motion.div
+                          key={m.label}
+                          initial={{ opacity: 0, x: -30 }}
+                          whileInView={{ opacity: 1, x: 0 }}
+                          viewport={{ once: true, margin: "-50px" }}
+                          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.5 + i * 0.15 }}
+                          className="flex items-center gap-3 sm:gap-4"
+                        >
+                          <div className={`shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${m.color}/10 flex items-center justify-center`}>
+                            <m.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${m.color.replace('bg-', 'text-')}`} strokeWidth={2.5} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline justify-between mb-1.5">
+                              <span className="text-xs sm:text-sm font-bold text-slate-800">{m.label}</span>
+                              <span className={`text-sm sm:text-base font-black tabular-nums ${m.color.replace('bg-', 'text-')}`}>
+                                <AnimatedNumber value={m.score} /><span className="text-[10px] font-bold text-slate-300 ml-0.5">점</span>
+                              </span>
+                            </div>
+                            <div className="h-1.5 sm:h-2 rounded-full bg-slate-100 overflow-hidden">
+                              <motion.div
+                                initial={{ width: 0 }}
+                                whileInView={{ width: `${m.score}%` }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.8 + i * 0.15 }}
+                                className={`h-full rounded-full ${m.color}`}
+                              />
+                            </div>
+                            <p className="text-[10px] sm:text-xs text-slate-400 font-medium mt-1 truncate">{m.desc}</p>
+                          </div>
+                        </motion.div>
+                      ))}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="w-24 text-sm font-bold text-im-text-main">깊이</div>
-                    <div className="h-2 flex-1 rounded-full bg-white border border-im-border/50 overflow-hidden">
-                      <motion.div initial={{ width: 0 }} whileInView={{ width: "60%" }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.6 }} className="h-full bg-amber-400 rounded-full" />
+
+                    {/* Dashboard Footer */}
+                    <div className="px-6 sm:px-8 pb-6 sm:pb-8 pt-2 border-t border-slate-100">
+                      <motion.p 
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.8, delay: 1.4 }}
+                        className="text-[11px] sm:text-xs text-slate-400 leading-relaxed"
+                      >
+                        <span className="font-bold text-slate-600">AI 종합 코멘트:</span> JPA 1차 캐시의 기본 원리를 잘 짚었으나, 멀티 스레드 환경에서의 한계점을 덧붙이면 더 완벽합니다.
+                      </motion.p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="w-24 text-sm font-bold text-im-text-main">전달력</div>
-                    <div className="h-2 flex-1 rounded-full bg-white border border-im-border/50 overflow-hidden">
-                      <motion.div initial={{ width: 0 }} whileInView={{ width: "85%" }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.8 }} className="h-full bg-im-primary rounded-full" />
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
+                  </motion.div>
+                </motion.div>
+              </div>
             </div>
 
           </div>
