@@ -25,6 +25,12 @@ public class InterviewSession {
     @Column(name = "job_role", nullable = false, length = 20)
     private String jobRole;
 
+    @Column(name = "stack", length = 120)
+    private String stack;
+
+    @Column(name = "difficulty", length = 20)
+    private String difficulty;
+
     @Column(name = "interviewer_character", nullable = false, length = 20)
     private String interviewerCharacter;
 
@@ -49,9 +55,19 @@ public class InterviewSession {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public InterviewSession(User user, String jobRole, String interviewerCharacter, int totalQuestions, String status) {
+    public InterviewSession(
+            User user,
+            String jobRole,
+            String stack,
+            String difficulty,
+            String interviewerCharacter,
+            int totalQuestions,
+            String status
+    ) {
         this.user = user;
         this.jobRole = jobRole;
+        this.stack = stack;
+        this.difficulty = difficulty;
         this.interviewerCharacter = interviewerCharacter;
         this.interviewerPressureCount = 0;
         this.totalQuestions = totalQuestions;

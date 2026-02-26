@@ -247,12 +247,16 @@ export type HealthApiResponse = {
 
 export async function startInterviewSession(payload: {
   jobRole: "backend" | "frontend";
+  stack: string;
+  difficulty: "jobseeker" | "junior";
   interviewerCharacter: "luna" | "jet" | "iron";
 }) {
   return requestJson<SessionStartResponse>("/api/interview/sessions/start", {
     method: "POST",
     body: {
       job_role: payload.jobRole,
+      stack: payload.stack,
+      difficulty: payload.difficulty,
       interviewer_character: payload.interviewerCharacter
     },
     fallbackMessage: "세션 시작 실패"

@@ -60,6 +60,8 @@ CREATE TABLE IF NOT EXISTS interview_sessions (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
     job_role VARCHAR(20) NOT NULL,
+    stack VARCHAR(120),
+    difficulty VARCHAR(20),
     interviewer_character VARCHAR(20) NOT NULL DEFAULT 'jet',
     interviewer_pressure_count INTEGER NOT NULL DEFAULT 0,
     total_questions INTEGER NOT NULL,
@@ -77,6 +79,10 @@ ALTER TABLE IF EXISTS interview_sessions
     ADD COLUMN IF NOT EXISTS interviewer_pressure_count INTEGER NOT NULL DEFAULT 0;;
 ALTER TABLE IF EXISTS interview_sessions
     ADD COLUMN IF NOT EXISTS end_reason VARCHAR(50);;
+ALTER TABLE IF EXISTS interview_sessions
+    ADD COLUMN IF NOT EXISTS stack VARCHAR(120);;
+ALTER TABLE IF EXISTS interview_sessions
+    ADD COLUMN IF NOT EXISTS difficulty VARCHAR(20);;
 
 -- interview_session_questions 테이블
 CREATE TABLE IF NOT EXISTS interview_session_questions (
