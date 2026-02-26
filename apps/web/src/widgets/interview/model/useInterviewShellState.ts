@@ -50,7 +50,10 @@ type UseInterviewShellStateResult = {
   uiError: string | null;
   clearUiError: () => void;
   handleRetryUiError: () => Promise<void>;
+  authStatus: "loading" | "member" | "guest" | "anonymous" | "error";
+  isMemberAuthenticated: boolean;
   isAuthRequired: boolean;
+  reportErrorCode: "auth_required" | "unknown" | null;
   authRedirectTarget: string;
   handleGoogleLogin: (redirectTo?: string) => Promise<void>;
   handleGoogleLogout: () => Promise<void>;
@@ -124,6 +127,9 @@ type UseInterviewShellStateOptions = {
   initialStep?: InterviewStep;
   initialSessionId?: string | null;
 };
+
+type AuthStatus = "loading" | "member" | "guest" | "anonymous" | "error";
+type AuthPromptReason = "auth_required" | null;
 
 function resolveStepFromPath(pathname: string | null): InterviewStep | null {
   if (!pathname) {
@@ -207,6 +213,8 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const [uiError, setUiError] = useState<string | null>(null);
+  const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
+  const [authPromptReason, setAuthPromptReason] = useState<AuthPromptReason>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [backendStatus, setBackendStatus] = useState<"checking" | "ok" | "error">("checking");
   const [backendStatusMessage, setBackendStatusMessage] = useState<string | null>(null);
@@ -291,6 +299,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
 
   const clearUiError = useCallback(() => {
     setUiError(null);
+    setAuthPromptReason(null);
   }, []);
 
   const appendMessage = useCallback((nextMessage: ChatMessage) => {
@@ -337,6 +346,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     }
 
     setIsAuthLoading(true);
+    setAuthPromptReason(null);
 
     try {
       const response = await getGoogleAuthUrl();
@@ -457,7 +467,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     setFollowupCount
   });
   const { isStarting, startSession, startError, clearStartError } = useStartSession();
-  const { isFetchingReport, reportFetchError, fetchReport, clearReportFetchError } = useFetchReport();
+  const { isFetchingReport, reportFetchError, reportFetchErrorCode, fetchReport, clearReportFetchError } = useFetchReport();
 
   useEffect(() => {
     return () => {
@@ -524,13 +534,22 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
 
   useEffect(() => {
     let active = true;
+    setAuthStatus("loading");
     void (async () => {
       try {
         const profile = await getMyProfile();
         if (!active) {
           return;
         }
-        setIsGuestUser(!profile.data.email);
+        if (profile.data.email) {
+          setAuthStatus("member");
+          setIsGuestUser(false);
+          setAuthPromptReason(null);
+        } else {
+          setAuthStatus("guest");
+          setIsGuestUser(true);
+          setAuthPromptReason(null);
+        }
       } catch (error) {
         if (!active) {
           return;
@@ -539,6 +558,9 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         const message = error instanceof Error ? error.message : "로그인 상태 확인에 실패했습니다.";
         if (message !== getAuthRequiredMessage()) {
           setUiError(message);
+          setAuthStatus("error");
+          setIsGuestUser(false);
+          setAuthPromptReason(null);
           return;
         }
 
@@ -547,7 +569,9 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
           if (!active) {
             return;
           }
+          setAuthStatus("guest");
           setIsGuestUser(true);
+          setAuthPromptReason(null);
         } catch (guestError) {
           if (!active) {
             return;
@@ -555,6 +579,14 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
           const guestMessage =
             guestError instanceof Error ? guestError.message : "게스트 인증 발급에 실패했습니다.";
           setUiError(guestMessage);
+          if (guestMessage === getAuthRequiredMessage()) {
+            setAuthStatus("anonymous");
+            setAuthPromptReason("auth_required");
+          } else {
+            setAuthStatus("error");
+            setAuthPromptReason(null);
+          }
+          setIsGuestUser(false);
         }
       }
     })();
@@ -584,6 +616,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       stopQuestionStream();
       stopTtsPlayback();
       setUiError(null);
+      setAuthPromptReason(null);
       clearReportFetchError();
       syncPathname(`/report/${encodeURIComponent(targetSessionId)}`);
       setStep("report");
@@ -622,6 +655,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   const beginInterview = useCallback(
     async (payload: StartInterviewPayload) => {
       setUiError(null);
+      setAuthPromptReason(null);
       clearReportFetchError();
       setIsExiting(false);
       clearStartError();
@@ -717,7 +751,8 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
           stopTtsPlayback();
           setStep("report");
           syncPathname(`/report/${encodeURIComponent(sessionId)}`);
-          setUiError(getAuthRequiredMessage());
+          setAuthPromptReason("auth_required");
+          setUiError(null);
           return;
         }
         await moveToReport(sessionId);
@@ -727,7 +762,13 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       startQuestionStream(sessionId);
     } catch (error) {
       const message = error instanceof Error ? error.message : "답변 제출에 실패했습니다.";
-      setUiError(message);
+      if (message === getAuthRequiredMessage()) {
+        setAuthPromptReason("auth_required");
+        setUiError(null);
+      } else {
+        setAuthPromptReason(null);
+        setUiError(message);
+      }
       setAnswerText(submittedAnswer);
       setAvatarState("listening");
 
@@ -837,6 +878,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     }
 
     setUiError(null);
+    setAuthPromptReason(null);
     setInsightsErrorMessage(null);
     syncPathname("/insights");
     setStep("insights");
@@ -854,6 +896,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
 
   const handleRetryUiError = useCallback(async () => {
     setUiError(null);
+    setAuthPromptReason(null);
     if (step === "report" && sessionId) {
       await moveToReport(sessionId);
       return;
@@ -866,6 +909,10 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   }, [handleGoInsights, moveToReport, runBackendHealthCheck, sessionId, step]);
 
   const weakKeywords = useMemo(() => report?.weakKeywords ?? [], [report]);
+  const isMemberAuthenticated = useMemo(
+    () => authStatus === "member" && reportFetchErrorCode !== "auth_required",
+    [authStatus, reportFetchErrorCode]
+  );
   const effectiveAvatarState = useMemo(
     () => activeAvatarCue ?? avatarState,
     [activeAvatarCue, avatarState]
@@ -910,7 +957,10 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     uiError,
     clearUiError,
     handleRetryUiError,
-    isAuthRequired: uiError === getAuthRequiredMessage(),
+    authStatus,
+    isMemberAuthenticated,
+    isAuthRequired: authPromptReason === "auth_required",
+    reportErrorCode: reportFetchErrorCode,
     authRedirectTarget,
     handleGoogleLogin,
     handleGoogleLogout,

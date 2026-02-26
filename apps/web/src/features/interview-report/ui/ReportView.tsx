@@ -11,6 +11,7 @@ type ReportViewProps = {
   report: InterviewReport | null;
   isLoading: boolean;
   errorMessage: string | null;
+  errorCode?: "auth_required" | "unknown" | null;
   isGoingInsights: boolean;
   isBusy?: boolean;
   onRetry: () => void;
@@ -23,6 +24,7 @@ export function ReportView({
   report,
   isLoading,
   errorMessage,
+  errorCode = null,
   isGoingInsights,
   isBusy = false,
   onRetry,
@@ -41,12 +43,12 @@ export function ReportView({
   }
 
   if (errorMessage) {
-    const shouldShowLogin = /로그인/.test(errorMessage);
+    const isAuthError = errorCode === "auth_required";
     return (
       <div className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-8">
         <InlineNotice variant="error" message={errorMessage} />
         <div className="flex flex-wrap justify-end gap-2 rounded-[2rem] border border-im-border/60 bg-white p-3 shadow-sm">
-          {shouldShowLogin ? (
+          {isAuthError ? (
             <Button variant="secondary" onClick={onLogin} disabled={isBusy}>
               Google 로그인
             </Button>
@@ -54,9 +56,11 @@ export function ReportView({
           <Button variant="secondary" onClick={onRestart} disabled={isBusy}>
             설정으로 이동
           </Button>
-          <Button onClick={onRetry} disabled={isBusy}>
-            다시 시도
-          </Button>
+          {!isAuthError ? (
+            <Button onClick={onRetry} disabled={isBusy}>
+              다시 시도
+            </Button>
+          ) : null}
         </div>
       </div>
     );

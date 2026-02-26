@@ -9,6 +9,7 @@ import { Button } from "@/shared/ui/Button";
 import { InlineNotice } from "@/shared/ui/InlineNotice";
 import { useInterviewShellState } from "@/widgets/interview/model/useInterviewShellState";
 import type { InterviewStep } from "@/features/interview-session/model/interviewSession.constants";
+import { getAuthRequiredMessage } from "@/shared/auth/session";
 
 type InterviewShellProps = {
   initialStep?: InterviewStep;
@@ -110,17 +111,7 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
 
             <div className="ml-2 mr-1 h-6 w-px bg-im-border/80" /> {/* Divider */}
 
-            {shellState.isAuthRequired ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => void shellState.handleGoogleLogin()}
-                disabled={isNavigationBusy}
-                className="rounded-full shadow-sm"
-              >
-                로그인
-              </Button>
-            ) : (
+            {shellState.isMemberAuthenticated ? (
               <Button
                 variant="ghost"
                 size="sm"
@@ -129,6 +120,16 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
                 className="rounded-full text-im-text-muted hover:bg-red-50 hover:text-red-500"
               >
                 로그아웃
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void shellState.handleGoogleLogin()}
+                disabled={isNavigationBusy}
+                className="rounded-full shadow-sm"
+              >
+                로그인
               </Button>
             )}
           </div>
@@ -187,6 +188,7 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
             report={shellState.report}
             isLoading={shellState.isReportLoading}
             errorMessage={shellState.reportErrorMessage}
+            errorCode={shellState.reportErrorCode}
             isGoingInsights={shellState.isInsightsLoading}
             isBusy={isNavigationBusy}
             onRetry={shellState.handleRetryReport}
@@ -211,9 +213,9 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
         ) : null}
       </div>
 
-      {shellState.uiError && shellState.isAuthRequired ? (
+      {shellState.isAuthRequired && shellState.step !== "report" ? (
         <LoginRequiredModal
-          message={shellState.uiError}
+          message={shellState.uiError ?? getAuthRequiredMessage()}
           onClose={shellState.clearUiError}
           isLoading={shellState.isAuthLoading}
           onLogin={() => shellState.handleGoogleLogin(shellState.authRedirectTarget)}
