@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { enterInterviewFromSetup, roomSelectors } from "./helpers/interviewRoom";
 
 const SESSION_ID = "session-enter";
 
@@ -106,15 +107,10 @@ test("엔터 입력으로 답변 제출되고 Shift+Enter는 줄바꿈 유지", 
     });
   });
 
-  await page.goto("/interview");
+  await enterInterviewFromSetup(page);
+  await expect(roomSelectors.questionBanner(page)).toContainText("트랜잭션 전파를 설명해 주세요.");
 
-  await page.getByRole("button", { name: "다음" }).click();
-  await page.getByRole("button", { name: "다음" }).click();
-  await page.getByRole("button", { name: "면접 시작" }).click();
-
-  await expect(page.getByText("Current Question")).toBeVisible();
-
-  const answerInput = page.getByPlaceholder("답변을 입력하세요...");
+  const answerInput = roomSelectors.answerInput(page);
   await answerInput.fill("첫 줄");
   await answerInput.press("Shift+Enter");
   await answerInput.type("둘째 줄");

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { enterInterviewFromSetup, roomSelectors } from "./helpers/interviewRoom";
 
 const SESSION_ID = "route-sync-session-1";
 
@@ -73,11 +74,8 @@ test("setup에서 면접 시작 시 interview/{sessionId} 경로로 이동", asy
     });
   });
 
-  await page.goto("/setup");
-  await page.getByRole("button", { name: /다음/ }).click();
-  await page.getByRole("button", { name: /다음/ }).click();
-  await page.getByRole("button", { name: /면접 시작/ }).click();
+  await enterInterviewFromSetup(page, "/setup");
 
   await expect(page).toHaveURL(new RegExp(`/interview/${SESSION_ID}$`));
-  await expect(page.getByText("Current Question")).toBeVisible();
+  await expect(roomSelectors.questionBanner(page)).toContainText("트랜잭션 격리 수준을 설명해 주세요.");
 });

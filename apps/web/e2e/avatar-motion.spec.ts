@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { enterInterviewFromSetup, roomSelectors } from "./helpers/interviewRoom";
 
 const SESSION_ID = "avatar-motion-session";
 
@@ -125,10 +126,7 @@ async function mockCommonRoutes(page: Page) {
 }
 
 async function enterRoom(page: Page) {
-  await page.goto("/interview");
-  await page.getByRole("button", { name: "다음" }).click();
-  await page.getByRole("button", { name: "다음" }).click();
-  await page.getByRole("button", { name: "면접 시작" }).click();
+  await enterInterviewFromSetup(page);
   const avatar = page.locator("[data-avatar-state]").first();
   await expect(avatar).toHaveAttribute("data-avatar-state", "asking");
   return avatar;
@@ -179,9 +177,12 @@ test("아바타가 follow-up 시 confused 단발 동작으로 전환된다", asy
 
   const avatar = await enterRoom(page);
 
-  await page.getByRole("button", { name: "🎤 음성 답변" }).click();
+  const voiceToggleButton = roomSelectors.voiceToggle(page);
+  await expect(voiceToggleButton).toHaveText("음성 답변");
+  await voiceToggleButton.click();
   await expect(avatar).toHaveAttribute("data-avatar-state", "listening");
-  await page.getByRole("button", { name: "⏹ 녹음 종료" }).click();
+  await expect(voiceToggleButton).toHaveText("녹음 종료");
+  await voiceToggleButton.click();
 
   const submitButton = page.getByRole("button", { name: "답변 완료" });
   await page.getByLabel("면접 답변 입력").fill("상태는 로컬, 서버, 전역으로 분리합니다.");
