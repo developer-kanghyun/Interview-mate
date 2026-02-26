@@ -32,9 +32,9 @@ class GenerateSessionQuestionPlanUseCaseTest {
         when(aiChatPort.requestSingleResponse(anyString(), anyString()))
                 .thenReturn("""
                         [
-                          {"category":"job","difficulty":"medium","content":"Spring 트랜잭션 전파 전략을 설명해보세요."},
-                          {"category":"cs","difficulty":"easy","content":"REST 상태코드 선택 기준을 설명해보세요."},
-                          {"category":"job","difficulty":"hard","content":"캐시 무효화 전략을 설계해보세요."}
+                          {"category":"job","difficulty":"medium","content":"Spring Boot 트랜잭션 전파 전략을 설명해보세요."},
+                          {"category":"cs","difficulty":"easy","content":"Spring Boot API에서 REST 상태코드 선택 기준을 설명해보세요."},
+                          {"category":"job","difficulty":"hard","content":"Spring Boot 기반 캐시 무효화 전략을 설계해보세요."}
                         ]
                         """);
 
@@ -59,11 +59,30 @@ class GenerateSessionQuestionPlanUseCaseTest {
     @Test
     void executeFillsMissingItemsWithFallback() {
         when(aiChatPort.requestSingleResponse(anyString(), anyString()))
-                .thenReturn("[{\"category\":\"job\",\"difficulty\":\"medium\",\"content\":\"단일 질문\"}]");
+                .thenReturn("[{\"category\":\"job\",\"difficulty\":\"medium\",\"content\":\"Spring Boot 단일 질문\"}]");
 
         List<GenerateSessionQuestionPlanUseCase.GeneratedQuestion> result = useCase.execute("backend", "Spring Boot", "jobseeker", 3);
 
         assertThat(result).hasSize(3);
-        assertThat(result.get(0).content()).contains("단일 질문");
+        assertThat(result.get(0).content()).contains("Spring Boot 단일 질문");
+    }
+
+    @Test
+    void executeFiltersOutQuestionsThatDoNotReferenceSelectedStacks() {
+        when(aiChatPort.requestSingleResponse(anyString(), anyString()))
+                .thenReturn("""
+                        [
+                          {"category":"job","difficulty":"medium","content":"React에서 상태를 로컬/전역/서버 상태로 분리하는 기준을 설명해보세요."},
+                          {"category":"job","difficulty":"medium","content":"웹 접근성 체크리스트를 설명해보세요."},
+                          {"category":"cs","difficulty":"medium","content":"네트워크 레이턴시를 줄이는 방법을 설명해보세요."}
+                        ]
+                        """);
+
+        List<GenerateSessionQuestionPlanUseCase.GeneratedQuestion> result = useCase.execute("frontend", "Kotlin,Swift,React Native", "jobseeker", 3);
+
+        assertThat(result).hasSize(3);
+        assertThat(result)
+                .extracting(GenerateSessionQuestionPlanUseCase.GeneratedQuestion::content)
+                .allMatch(content -> content.contains("Kotlin") || content.contains("Swift") || content.contains("React Native"));
     }
 }
