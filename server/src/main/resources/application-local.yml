@@ -18,6 +18,8 @@ spring:
       mode: never
 
 app:
+  interview:
+    seed-enabled: false
   rate-limit:
     enabled: false
 

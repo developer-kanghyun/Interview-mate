@@ -5,6 +5,7 @@ import com.interviewmate.repository.InterviewQuestionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +16,7 @@ import java.util.List;
 @Slf4j
 @Component
 @Profile("!test")
+@ConditionalOnProperty(name = "app.interview.seed-enabled", havingValue = "true")
 @RequiredArgsConstructor
 public class InterviewQuestionSeedService implements CommandLineRunner {
 
