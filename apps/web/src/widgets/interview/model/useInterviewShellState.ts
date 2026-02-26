@@ -11,7 +11,6 @@ import {
 import { usePathname } from "next/navigation";
 import {
   hasInterviewRuntimeState,
-  listSessions,
   pingBackendHealth,
   restoreInterviewSession,
   type InterviewCharacter,
@@ -33,8 +32,8 @@ import { getInterviewPreferences } from "@/shared/config/interview-preferences";
 import { useInterviewAuthState } from "@/features/interview-session/model/useInterviewAuthState";
 import { useInterviewResumeState } from "@/features/interview-session/model/useInterviewResumeState";
 import { useInterviewRoomFlow } from "@/features/interview-session/model/useInterviewRoomFlow";
+import { useInterviewReportInsights } from "@/features/interview-session/model/useInterviewReportInsights";
 import { useStartSession } from "@/features/interview/start-session/model/useStartSession";
-import { useFetchReport } from "@/features/interview-report/model/useFetchReport";
 import {
   resolveAvatarReportState,
   type AvatarState
@@ -221,11 +220,6 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   const [step, setStep] = useState<InterviewStep>("setup");
   const [setupPayload, setSetupPayload] = useState<StartInterviewPayload>(defaultSetupPayload);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [report, setReport] = useState<InterviewReport | null>(null);
-  const [sessions, setSessions] = useState<SessionHistoryItem[]>([]);
-  const [isInsightsLoading, setIsInsightsLoading] = useState(false);
-  const [insightsErrorMessage, setInsightsErrorMessage] = useState<string | null>(null);
-  const [isRetryingWeakness, setIsRetryingWeakness] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const [uiError, setUiError] = useState<string | null>(null);
   const [toastError, setToastError] = useState<{ message: string; dedupeKey?: string } | null>(null);
@@ -233,6 +227,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   const [backendStatusMessage, setBackendStatusMessage] = useState<string | null>(null);
   const autoRestoreAttemptedSessionRef = useRef<string | null>(null);
   const startQuestionStreamRef = useRef<((sessionId: string) => void) | null>(null);
+  const beginInterviewRef = useRef<(payload: StartInterviewPayload) => Promise<void>>(async () => {});
 
   const routeStep = useMemo(
     () => options.initialStep ?? resolveStepFromPath(pathname),
@@ -389,14 +384,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     }
   }, []);
 
-  const refreshSessions = useCallback(async () => {
-    const sessionList = await listSessions(30);
-    setSessions(sessionList);
-  }, []);
-
   const { isStarting, startSession, startError, clearStartError } = useStartSession();
-  const { isFetchingReport, reportFetchError, reportFetchErrorCode, fetchReport, clearReportFetchError } =
-    useFetchReport();
   const [pendingCompletedSessionId, setPendingCompletedSessionId] = useState<string | null>(null);
 
   const roomFlow = useInterviewRoomFlow({
@@ -431,6 +419,37 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
   const setRoomAvatarState = roomFlow.setAvatarState;
   startQuestionStreamRef.current = startRoomQuestionStream;
 
+  const reportFlow = useInterviewReportInsights({
+    sessionId,
+    setupPayload,
+    setSetupPayload,
+    setStep,
+    syncPathname,
+    isStarting,
+    isExiting,
+    setIsExiting,
+    setUiError,
+    setAuthPromptReason,
+    showToastError,
+    onBeforeMoveToReport: () => {
+      stopRoomRecording();
+      stopRoomQuestionStream();
+      stopRoomTtsPlayback();
+    },
+    onReportResolved: (nextReport) => {
+      clearRoomAvatarCue();
+      setRoomAvatarState(resolveAvatarReportState(nextReport.totalScore));
+    },
+    onRetryInterview: async (payload) => {
+      await beginInterviewRef.current(payload);
+    },
+    buildRetryPreset
+  });
+  const moveToReport = reportFlow.moveToReport;
+  const handleGoInsights = reportFlow.handleGoInsights;
+  const clearReportFetchError = reportFlow.clearReportFetchError;
+  const resetReportState = reportFlow.resetReportState;
+
   const restoreSessionIntoRoom = useCallback(
     async (
       targetSessionId: string,
@@ -457,7 +476,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
           followupCount: state.current_question.followup_count,
           clearMessages: true
         });
-        setReport(null);
+        resetReportState();
         setStep("room");
         syncPathname(`/interview/${encodeURIComponent(targetSessionId)}`, "replace");
         startQuestionStreamRef.current?.(targetSessionId);
@@ -474,7 +493,14 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         setIsResumeResolving(false);
       }
     },
-    [resetResumeState, resetRoomState, setIsResumeResolving, showToastError, syncPathname]
+    [
+      resetReportState,
+      resetResumeState,
+      resetRoomState,
+      setIsResumeResolving,
+      showToastError,
+      syncPathname
+    ]
   );
 
   const handleContinueResumeCandidate = useCallback(async () => {
@@ -544,65 +570,6 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     void restoreSessionIntoRoom(sessionId);
   }, [isResumeResolving, restoreSessionIntoRoom, sessionId, step]);
 
-  const moveToReport = useCallback(
-    async (targetSessionId: string) => {
-      if (isExiting) {
-        return;
-      }
-
-      setIsExiting(true);
-      stopRoomRecording();
-      stopRoomQuestionStream();
-      stopRoomTtsPlayback();
-      setUiError(null);
-      setAuthPromptReason(null);
-      clearReportFetchError();
-      syncPathname(`/report/${encodeURIComponent(targetSessionId)}`);
-      setStep("report");
-      setReport(null);
-
-      try {
-        const sessionsPromise = listSessions(30);
-        const nextReport = await fetchReport(targetSessionId);
-
-        try {
-          const nextSessions = await sessionsPromise;
-          setSessions(nextSessions);
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "세션 목록 조회에 실패했습니다.";
-          showToastError(message, "sessions:list");
-        }
-
-        if (!nextReport) {
-          return;
-        }
-
-        setReport(nextReport);
-        clearRoomAvatarCue();
-        setRoomAvatarState(resolveAvatarReportState(nextReport.totalScore));
-        clearStoredSessionId();
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "리포트 조회에 실패했습니다.";
-        showToastError(message, "report:move");
-      } finally {
-        setIsExiting(false);
-      }
-    },
-    [
-      clearReportFetchError,
-      fetchReport,
-      isExiting,
-      clearRoomAvatarCue,
-      setAuthPromptReason,
-      setRoomAvatarState,
-      showToastError,
-      stopRoomQuestionStream,
-      stopRoomRecording,
-      stopRoomTtsPlayback,
-      syncPathname
-    ]
-  );
-
   const beginInterview = useCallback(
     async (payload: StartInterviewPayload) => {
       setUiError(null);
@@ -619,7 +586,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
         autoRestoreAttemptedSessionRef.current = started.sessionId;
         setStoredSessionId(started.sessionId);
         setSessionId(started.sessionId);
-        setReport(null);
+        resetReportState();
         resetRoomState({
           questionOrder: 1,
           followupCount: 0,
@@ -635,10 +602,11 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       }
     },
     [
-      clearReportFetchError,
       clearStartError,
+      clearReportFetchError,
       resetResumeState,
       resetRoomState,
+      resetReportState,
       setAuthPromptReason,
       showToastError,
       startRoomQuestionStream,
@@ -646,6 +614,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
       syncPathname
     ]
   );
+  beginInterviewRef.current = beginInterview;
 
   const handleStartInterview = useCallback(async () => {
     await beginInterview(setupPayload);
@@ -677,37 +646,6 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     await moveToReport(sessionId);
   }, [isExiting, isResumeResolving, moveToReport, sessionId, syncPathname]);
 
-  const handleRetryReport = useCallback(async () => {
-    if (!sessionId) {
-      showToastError("세션 정보가 없어 리포트를 다시 조회할 수 없습니다.", "report:retry-without-session");
-      return;
-    }
-
-    await moveToReport(sessionId);
-  }, [moveToReport, sessionId, showToastError]);
-
-  const handleGoInsights = useCallback(async () => {
-    if (isInsightsLoading) {
-      return;
-    }
-
-    setUiError(null);
-    setAuthPromptReason(null);
-    setInsightsErrorMessage(null);
-    syncPathname("/insights");
-    setStep("insights");
-    setIsInsightsLoading(true);
-
-    try {
-      await refreshSessions();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "세션 목록 조회에 실패했습니다.";
-      setInsightsErrorMessage(message);
-    } finally {
-      setIsInsightsLoading(false);
-    }
-  }, [isInsightsLoading, refreshSessions, setAuthPromptReason, syncPathname]);
-
   const handleRetryUiError = useCallback(async () => {
     setUiError(null);
     setAuthPromptReason(null);
@@ -721,44 +659,12 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     }
     await runBackendHealthCheck();
   }, [handleGoInsights, moveToReport, runBackendHealthCheck, sessionId, setAuthPromptReason, step]);
-  const weakKeywords = useMemo(() => report?.weakKeywords ?? [], [report]);
   const isMemberAuthenticated = useMemo(
-    () => isMemberAuthenticatedBase && reportFetchErrorCode !== "auth_required",
-    [isMemberAuthenticatedBase, reportFetchErrorCode]
+    () => isMemberAuthenticatedBase && reportFlow.reportErrorCode !== "auth_required",
+    [isMemberAuthenticatedBase, reportFlow.reportErrorCode]
   );
-  const studyGuide = useMemo(
-    () =>
-      report?.studyGuide ?? [
-        "답변을 결론-근거-예시 순서로 구조화하세요.",
-        "약점 키워드 위주로 재연습 세션을 반복하세요."
-      ],
-    [report]
-  );
-
-  const handleRetryWeakness = useCallback(async () => {
-    if (isRetryingWeakness || isStarting) {
-      return;
-    }
-
-    // 고정 규칙: 약점 키워드로 역할/스택 프리셋, 점수 기준 난이도 보정, 문항 수는 최대 5개
-    const retryPreset = buildRetryPreset(weakKeywords, setupPayload);
-    const retryPayload: StartInterviewPayload = {
-      ...setupPayload,
-      ...retryPreset,
-      difficulty: report && report.totalScore >= 70 ? "junior" : "jobseeker",
-      questionCount: Math.min(setupPayload.questionCount, 5)
-    };
-
-    setIsRetryingWeakness(true);
-    try {
-      syncPathname("/setup");
-      setStep("setup");
-      setSetupPayload(retryPayload);
-      await beginInterview(retryPayload);
-    } finally {
-      setIsRetryingWeakness(false);
-    }
-  }, [beginInterview, isRetryingWeakness, isStarting, report, setupPayload, syncPathname, weakKeywords]);
+  const weakKeywords = reportFlow.weakKeywords;
+  const studyGuide = reportFlow.studyGuide;
 
   return {
     step,
@@ -769,7 +675,7 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     authStatus,
     isMemberAuthenticated,
     isAuthRequired,
-    reportErrorCode: reportFetchErrorCode,
+    reportErrorCode: reportFlow.reportErrorCode,
     authRedirectTarget,
     handleGoogleLogin,
     handleGoogleLogout,
@@ -811,18 +717,18 @@ export function useInterviewShellState(options: UseInterviewShellStateOptions = 
     handlePause: roomFlow.handlePause,
     handleExit,
     isExiting,
-    report,
-    isReportLoading: isFetchingReport,
-    reportErrorMessage: reportFetchError,
-    handleRetryReport,
+    report: reportFlow.report,
+    isReportLoading: reportFlow.isReportLoading,
+    reportErrorMessage: reportFlow.reportErrorMessage,
+    handleRetryReport: reportFlow.handleRetryReport,
     handleGoInsights,
-    isInsightsLoading,
-    insightsErrorMessage,
-    sessions,
+    isInsightsLoading: reportFlow.isInsightsLoading,
+    insightsErrorMessage: reportFlow.insightsErrorMessage,
+    sessions: reportFlow.sessions,
     weakKeywords,
     studyGuide,
-    isRetryingWeakness,
-    handleRetryWeakness,
+    isRetryingWeakness: reportFlow.isRetryingWeakness,
+    handleRetryWeakness: reportFlow.handleRetryWeakness,
     resumeCandidateSessionId,
     isResumePromptOpen,
     isResumeCandidateGuest,
