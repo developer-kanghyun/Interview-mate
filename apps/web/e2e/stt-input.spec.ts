@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { enterInterviewFromSetup, roomSelectors } from "./helpers/interviewRoom";
 
 const SESSION_ID = "stt-session-1";
 
@@ -70,14 +71,11 @@ test("STT 미지원 브라우저에서 토스트 안내 후 재시도 가능", a
     });
   });
 
-  await page.goto("/interview");
-  await page.getByRole("button", { name: "다음" }).click();
-  await page.getByRole("button", { name: "다음" }).click();
-  await page.getByRole("button", { name: "면접 시작" }).click();
+  await enterInterviewFromSetup(page);
+  await expect(roomSelectors.questionBanner(page)).toContainText("트랜잭션 격리 수준을 설명해 주세요.");
 
-  await expect(page.getByText("Current Question")).toBeVisible();
-
-  const voiceButton = page.getByRole("button", { name: "🎤 음성 답변" });
+  const voiceButton = roomSelectors.voiceToggle(page);
+  await expect(voiceButton).toHaveText("음성 답변");
   await expect(voiceButton).toBeVisible();
   await voiceButton.click();
 
@@ -279,21 +277,19 @@ test("STT 전사 후 자동 제출되지 않고 녹음 종료 클릭 시 음성 
     });
   });
 
-  await page.goto("/interview");
-  await page.getByRole("button", { name: "다음" }).click();
-  await page.getByRole("button", { name: "다음" }).click();
-  await page.getByRole("button", { name: "면접 시작" }).click();
+  await enterInterviewFromSetup(page);
+  await expect(roomSelectors.questionBanner(page)).toContainText("트랜잭션 격리 수준을 설명해 주세요.");
 
-  await expect(page.getByText("Current Question")).toBeVisible();
-
-  const voiceButton = page.getByRole("button", { name: "🎤 음성 답변" });
+  const voiceButton = roomSelectors.voiceToggle(page);
+  await expect(voiceButton).toHaveText("음성 답변");
   await voiceButton.click();
 
   await expect.poll(() => page.evaluate(() => (window as Window & { __sttStartCount?: number }).__sttStartCount ?? 0)).toBeGreaterThanOrEqual(2);
   await expect.poll(() => submitRequestCount).toBe(0);
-  await expect(page.getByPlaceholder("답변을 입력하세요...")).toHaveValue("음성 수동 제출 테스트");
+  await expect(roomSelectors.answerInput(page)).toHaveValue("음성 수동 제출 테스트");
 
-  await page.getByRole("button", { name: "⏹ 녹음 종료" }).click();
+  await expect(voiceButton).toHaveText("녹음 종료");
+  await voiceButton.click();
 
   await expect.poll(() => submitRequestCount).toBe(1);
   await expect.poll(() => submittedInputType).toBe("voice");
@@ -366,17 +362,51 @@ test("STT 녹음 중지 토글 동작", async ({ page }) => {
     });
   });
 
-  await page.goto(`/interview/${SESSION_ID}`);
-  await expect(page.getByText("Interview Room")).toBeVisible();
+  await page.route("**/api/backend/api/interview/sessions/start", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        success: true,
+        data: {
+          session_id: SESSION_ID,
+          started_at: "2026-02-24T00:00:00.000Z",
+          job_role: "backend",
+          interviewer_character: "jet",
+          total_questions: 2,
+          status: "in_progress",
+          first_question: {
+            question_id: "q-1",
+            category: "job",
+            difficulty: "jobseeker",
+            content: "트랜잭션 격리 수준을 설명해 주세요."
+          }
+        }
+      })
+    });
+  });
 
-  const startButton = page.getByRole("button", { name: "🎤 음성 답변" });
+  await page.route("**/api/chat", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "text/event-stream; charset=utf-8",
+      body: "event: token\ndata: {\"text\":\"트랜잭션 격리 수준을 설명해 주세요.\"}\n\nevent: done\ndata: [DONE]\n\n"
+    });
+  });
+
+  await enterInterviewFromSetup(page);
+  await expect(roomSelectors.questionBanner(page)).toContainText("트랜잭션 격리 수준을 설명해 주세요.");
+
+  const startButton = roomSelectors.voiceToggle(page);
+  await expect(startButton).toHaveText("음성 답변");
   await expect(startButton).toBeEnabled();
   await startButton.click();
 
-  const stopButton = page.getByRole("button", { name: "⏹ 녹음 종료" });
+  const stopButton = roomSelectors.voiceToggle(page);
+  await expect(stopButton).toHaveText("녹음 종료");
   await expect(stopButton).toBeVisible();
   await expect(stopButton).toBeEnabled();
   await stopButton.click();
 
-  await expect(page.getByRole("button", { name: "🎤 음성 답변" })).toBeVisible();
+  await expect(roomSelectors.voiceToggle(page)).toHaveText("음성 답변");
 });
