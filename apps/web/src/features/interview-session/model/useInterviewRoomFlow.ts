@@ -165,7 +165,7 @@ export function useInterviewRoomFlow({
     });
 
   const speakInterviewer = useCallback(
-    (text: string) => rawSpeakInterviewer(text, setupPayload.character as InterviewCharacter),
+    (text: string) => rawSpeakInterviewer(text, setupPayload.character),
     [rawSpeakInterviewer, setupPayload.character]
   );
 
