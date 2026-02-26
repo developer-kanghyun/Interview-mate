@@ -12,9 +12,19 @@ public class GenerateFollowupQuestionUseCase {
 
     private final AiChatPort aiChatPort;
 
-    public String execute(String jobRole, String question, String answer) {
+    public String execute(
+            String jobRole,
+            String stack,
+            String difficulty,
+            String question,
+            String answer,
+            String recentAnswerSummary
+    ) {
         String systemPrompt = "당신은 개발자 면접관입니다. 후속 꼬리질문 1개를 생성하세요.";
-        String userPrompt = String.format("직무: %s%n원문 질문: %s%n지원자 답변: %s", jobRole, question, answer);
+        String userPrompt = String.format(
+                "직무: %s%n스택: %s%n난이도: %s%n원문 질문: %s%n지원자 답변: %s%n최근 답변 요약: %s",
+                jobRole, stack, difficulty, question, answer, recentAnswerSummary
+        );
         try {
             String generatedQuestion = aiChatPort.requestSingleResponse(systemPrompt, userPrompt);
             if (generatedQuestion == null || generatedQuestion.isBlank()) {
