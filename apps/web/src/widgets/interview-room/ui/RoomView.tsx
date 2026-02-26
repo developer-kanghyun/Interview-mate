@@ -157,7 +157,10 @@ export function RoomView({
         {/* Right Column: Chat + Input */}
         <section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-sm">
           {/* Question Banner */}
-          <div className="shrink-0 border-b border-slate-200/70 bg-gradient-to-r from-im-primary-soft via-white to-im-subtle px-5 py-4">
+          <div
+            data-testid="room-question-banner"
+            className="shrink-0 border-b border-slate-200/70 bg-gradient-to-r from-im-primary-soft via-white to-im-subtle px-5 py-4"
+          >
             {isAutoplayBlocked ? (
               <div className="flex justify-end">
                 <Button
@@ -189,6 +192,7 @@ export function RoomView({
           {/* Input Area */}
           <footer className="shrink-0 border-t border-slate-200/70 bg-white/95 px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm">
             <Textarea
+              data-testid="room-answer-input"
               value={answerText}
               onChange={(event) => onChangeAnswer(event.target.value)}
               disabled={isBusy}
@@ -201,6 +205,7 @@ export function RoomView({
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Button
+                data-testid="room-voice-toggle"
                 variant={isRecording ? "primary" : "secondary"}
                 onClick={onToggleRecording}
                 disabled={!isRecording && isSttBusy}
@@ -210,7 +215,12 @@ export function RoomView({
                 {isRecording ? "녹음 종료" : "음성 답변"}
               </Button>
               <div className="flex-1" />
-              <Button onClick={onSubmitAnswer} disabled={!canSubmitAnswer} className="min-w-[120px] rounded-xl">
+              <Button
+                data-testid="room-submit-answer"
+                onClick={onSubmitAnswer}
+                disabled={!canSubmitAnswer}
+                className="min-w-[120px] rounded-xl"
+              >
                 {isSubmitting ? "제출 중..." : "답변 완료"}
               </Button>
             </div>
