@@ -48,190 +48,156 @@ function AnimatedStatNumber({ value }: { value: number }) {
 export function ReportShowcaseSection() {
   return (
     <div className="space-y-14">
-      <motion.div {...fadeUpReveal()} className="mx-auto max-w-5xl text-center">
-        <h2 className="mt-3 text-4xl font-black tracking-tight text-im-text-main md:text-6xl md:leading-[1.08]">
-          합격을 가르는 디테일
-          <br />
-          <span className="text-im-primary">4축 정밀 채점 리포트</span>
-        </h2>
-        <p className="mx-auto mt-6 max-w-3xl text-base leading-relaxed text-im-text-muted md:text-lg">
-          모호한 평가 대신, 답변의 정확성·논리성·깊이·전달력을 근거와 함께 수치화합니다. 점수만 보여주는 것이 아니라
-          왜 그 점수가 나왔는지까지 설명하는 리포트입니다.
-        </p>
-      </motion.div>
-
-      <motion.div
-        {...fadeUpReveal({ delay: 0.06 })}
-        className="grid gap-5 lg:grid-cols-[1.08fr,1fr]"
-      >
-        <div className="group relative overflow-hidden rounded-[2.25rem] border border-slate-800/90 bg-[#0B0C10] p-8 text-white shadow-[0_28px_70px_-38px_rgba(0,0,0,0.85)] sm:p-9 flex flex-col justify-between">
-          {/* Animated Tech Grid */}
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_0%,#000_70%,transparent_100%)]" />
+      {/* 2-Column Grid Format */}
+      <div className="mx-auto max-w-6xl grid items-center gap-12 lg:grid-cols-2">
+        
+        {/* Left Column: Text Content */}
+        <motion.div {...fadeUpReveal()} className="order-2 lg:order-1">
+          <h2 className="text-3xl font-black tracking-tight text-im-text-main md:text-5xl md:leading-[1.1]">
+            합격을 가르는 디테일
+            <br />
+            <span className="text-im-primary">4축 정밀 채점 리포트</span>
+          </h2>
+          <p className="mt-6 text-lg leading-relaxed text-im-text-muted">
+            모호한 평가 대신, 답변의 정확성·논리성·깊이·전달력을 근거와 함께 수치화합니다. 
+            점수만 보여주는 것이 아니라 왜 그 점수가 나왔는지까지 설명하는 리포트입니다.
+          </p>
           
-          {/* Animated Ambient Glow */}
-          <motion.div
-            animate={{ scale: [1, 1.2, 1], opacity: [0.15, 0.3, 0.15] }}
-            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -top-24 -right-12 h-64 w-64 rounded-full bg-orange-500/20 blur-[64px]"
-          />
-          <motion.div
-            animate={{ scale: [1, 1.3, 1], opacity: [0.1, 0.2, 0.1] }}
-            transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            className="absolute -bottom-24 -left-12 h-64 w-64 rounded-full bg-blue-500/20 blur-[64px]"
-          />
-
-          {/* Scanning Laser Line */}
-          <motion.div
-            animate={{ y: ["0%", "400%", "0%"] }}
-            transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-            className="absolute left-0 right-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-orange-400/50 to-transparent shadow-[0_0_15px_rgba(251,146,60,0.5)]"
-          />
-
-          <div className="relative z-10">
-            <div className="flex gap-2.5 items-center">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75"></span>
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-orange-500"></span>
-              </span>
-              <p className="text-[11px] font-bold tracking-[0.2em] text-orange-400">REPORT ENGINE</p>
-            </div>
-            <h3 className="mt-4 text-2xl font-black tracking-tight text-white sm:text-3xl">점수 뒤의 이유까지 보여주는 평가</h3>
-            <p className="mt-4 text-sm leading-7 text-slate-300 sm:text-base">
-              답변 문장만 보지 않고, 개념 정확도와 인과 구조, 설계 깊이, 전달 명확성을 함께 분석합니다.
-              감점 이유와 보완 지점을 바로 확인할 수 있습니다.
-            </p>
-          </div>
-
-          <div className="relative z-10 mt-10 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-md shadow-2xl">
-            {/* Window Header */}
-            <div className="mb-6 flex items-center gap-1.5">
-              <div className="h-2.5 w-2.5 rounded-full bg-slate-600" />
-              <div className="h-2.5 w-2.5 rounded-full bg-slate-600" />
-              <div className="h-2.5 w-2.5 rounded-full bg-slate-600" />
-            </div>
-
-            {/* 4-Axis Scores Visual */}
-            <div className="grid gap-4">
-              {/* Row 1 */}
-              <div className="flex items-center gap-4">
-                <div className="w-16 shrink-0 text-xs font-medium text-slate-400">정확성</div>
-                <div className="relative h-2 w-full overflow-hidden rounded-full bg-white/10">
-                  <motion.div initial={{ width: 0 }} whileInView={{ width: "94%" }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.1 }} className="absolute inset-y-0 left-0 bg-orange-400" />
-                </div>
-                <div className="w-8 shrink-0 text-right text-xs font-bold text-white">94</div>
-              </div>
-              {/* Row 2 */}
-              <div className="flex items-center gap-4">
-                <div className="w-16 shrink-0 text-xs font-medium text-slate-400">논리성</div>
-                <div className="relative h-2 w-full overflow-hidden rounded-full bg-white/10">
-                  <motion.div initial={{ width: 0 }} whileInView={{ width: "72%" }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.2 }} className="absolute inset-y-0 left-0 bg-rose-400" />
-                </div>
-                <div className="w-8 shrink-0 text-right text-xs font-bold text-white">72</div>
-              </div>
-              {/* Row 3 */}
-              <div className="flex items-center gap-4">
-                <div className="w-16 shrink-0 text-xs font-medium text-slate-400">깊이</div>
-                <div className="relative h-2 w-full overflow-hidden rounded-full bg-white/10">
-                  <motion.div initial={{ width: 0 }} whileInView={{ width: "88%" }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.3 }} className="absolute inset-y-0 left-0 bg-blue-400" />
-                </div>
-                <div className="w-8 shrink-0 text-right text-xs font-bold text-white">88</div>
-              </div>
-              {/* Row 4 */}
-              <div className="flex items-center gap-4">
-                <div className="w-16 shrink-0 text-xs font-medium text-slate-400">전달력</div>
-                <div className="relative h-2 w-full overflow-hidden rounded-full bg-white/10">
-                  <motion.div initial={{ width: 0 }} whileInView={{ width: "95%" }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.4 }} className="absolute inset-y-0 left-0 bg-emerald-400" />
-                </div>
-                <div className="w-8 shrink-0 text-right text-xs font-bold text-white">95</div>
-              </div>
-            </div>
-
-            {/* AI Deduction Highlight */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.8, duration: 0.5 }}
-              className="relative mt-6 overflow-hidden rounded-xl border border-rose-500/30 bg-rose-500/10 p-4"
-            >
-              <div className="absolute left-0 top-0 h-full w-1 bg-rose-500" />
-              <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-rose-400" />
-                <span className="text-xs font-bold text-rose-300">Targeting: 논리성 (72점)</span>
-              </div>
-              <p className="mt-2 text-[13px] leading-relaxed text-slate-300">
-                &quot;비즈니스 로직은 컨트롤러의 역할&quot;이라는 응답에서 <strong className="text-white">개념 혼동</strong>이 감지되었습니다.
-              </p>
-            </motion.div>
-          </div>
-        </div>
-
-        <div className="flex flex-col justify-center rounded-[2.25rem] border border-im-border/70 bg-white p-8 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.35)] sm:p-9 relative overflow-hidden">
-          {/* Subtle Background Pattern */}
-          <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px] opacity-50" />
-          
-          <div className="relative z-10 flex flex-col gap-6 w-full">
-            {/* Feature 1: Question Feedback */}
-            <motion.div 
-             initial={{ opacity: 0, x: 20 }}
-             whileInView={{ opacity: 1, x: 0 }}
-             viewport={{ once: true }}
-             transition={{ duration: 0.6, delay: 0.1 }}
-             className="flex items-start gap-4 rounded-2xl bg-slate-50 p-4 border border-slate-200/60 shadow-sm"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-600 shadow-sm">
+          <ul className="mt-10 space-y-8">
+            <li className="flex gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 shadow-sm border border-slate-200/60">
                 <MessageSquare className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-800">질문별 피드백</p>
-                <p className="mt-1 text-xs leading-relaxed text-slate-500">어떤 질문에서 흔들렸는지, 왜 감점되었는지 질의응답 타임라인에서 바로 확인</p>
+                <p className="font-bold text-lg text-im-text-main">질문별 피드백</p>
+                <p className="mt-1 leading-relaxed text-im-text-muted">어떤 질문에서 흔들렸는지, 왜 흔들렸는지 한 눈에 확인</p>
               </div>
-            </motion.div>
-
-            {/* Feature 2: 4-Axis Radar */}
-            <motion.div 
-             initial={{ opacity: 0, x: 20 }}
-             whileInView={{ opacity: 1, x: 0 }}
-             viewport={{ once: true }}
-             transition={{ duration: 0.6, delay: 0.2 }}
-             className="flex items-start gap-4 rounded-2xl bg-slate-50 p-4 border border-slate-200/60 shadow-sm"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 shadow-sm">
+            </li>
+            <li className="flex gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 shadow-sm border border-slate-200/60">
                 <BarChart3 className="h-5 w-5" />
               </div>
-              <div className="w-full">
-                <p className="text-sm font-bold text-slate-800 mb-2">축별 강약점 분해</p>
-                {/* Mini Visual Chart */}
-                <div className="space-y-1.5 w-full max-w-[200px]">
-                  <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden"><div className="h-full bg-indigo-500 w-[85%] rounded-full" /></div>
-                  <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden"><div className="h-full bg-indigo-400 w-[60%] rounded-full" /></div>
-                  <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden"><div className="h-full bg-indigo-300 w-[40%] rounded-full" /></div>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Feature 3: Action Items */}
-            <motion.div 
-             initial={{ opacity: 0, x: 20 }}
-             whileInView={{ opacity: 1, x: 0 }}
-             viewport={{ once: true }}
-             transition={{ duration: 0.6, delay: 0.3 }}
-             className="flex items-start gap-4 rounded-2xl bg-slate-50 p-4 border border-slate-200/60 shadow-sm"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 shadow-sm">
-                <CheckCircle2 className="h-5 w-5" />
-              </div>
               <div>
-                <p className="text-sm font-bold text-slate-800">다음 면접 액션 제안</p>
-                <div className="mt-2 space-y-1">
-                  <div className="flex items-center gap-1.5"><div className="h-1 w-1 rounded-full bg-emerald-500" /><div className="h-1.5 w-16 bg-slate-200 rounded-full" /></div>
-                  <div className="flex items-center gap-1.5"><div className="h-1 w-1 rounded-full bg-emerald-500" /><div className="h-1.5 w-24 bg-slate-200 rounded-full" /></div>
-                </div>
+                <p className="font-bold text-lg text-im-text-main">축별 강약점 분해</p>
+                <p className="mt-1 leading-relaxed text-im-text-muted">정확성·논리성·깊이·전달력 어디가 강하고 어디가 약한지 정리</p>
               </div>
-            </motion.div>
+            </li>
+          </ul>
+        </motion.div>
+
+        {/* Right Column: Visualization Apple-style Card */}
+        <motion.div {...fadeUpReveal({ delay: 0.1 })} className="order-1 lg:order-2 h-full flex flex-col justify-center">
+          <div className="relative overflow-hidden rounded-[2.25rem] border border-im-border/60 bg-slate-50 p-8 shadow-sm sm:p-9 h-full flex flex-col justify-center min-h-[460px]">
+            {/* Animated Ambient Background Orbs */}
+            <motion.div
+              animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
+              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-orange-400/30 blur-3xl"
+            />
+            <motion.div
+              animate={{ scale: [1, 1.5, 1], opacity: [0.1, 0.4, 0.1] }}
+              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+              className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-rose-400/20 blur-3xl"
+            />
+
+            <div className="relative z-10 w-full mb-8">
+              <div className="flex gap-2.5 items-center justify-start">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75"></span>
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-orange-500"></span>
+                </span>
+                <p className="text-[11px] font-bold tracking-[0.2em] text-orange-500">REPORT ENGINE</p>
+              </div>
+            </div>
+
+            {/* Smart Timeline Review (Apple-style) */}
+            <div className="relative z-10 mt-6 w-full pl-6">
+              {/* Vertical Timeline Line */}
+              <div className="absolute bottom-[30px] left-[15px] top-[30px] w-px bg-slate-200/60" />
+
+              <div className="flex flex-col gap-6">
+                
+                {/* Q1: Perfect */}
+                <motion.div 
+                 initial={{ opacity: 0, x: -10 }}
+                 whileInView={{ opacity: 1, x: 0 }}
+                 viewport={{ once: true }}
+                 transition={{ duration: 0.6 }}
+                 className="relative"
+                >
+                  <div className="absolute -left-6 top-2.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-100 ring-4 ring-slate-50">
+                    <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                  </div>
+                  <div className="flex items-start justify-between gap-4 rounded-2xl bg-white/60 p-4 shadow-sm backdrop-blur-sm border border-white/40">
+                    <div>
+                      <p className="text-xs font-bold text-slate-400">Q1</p>
+                      <p className="mt-1 text-[13px] font-medium text-slate-700">프론트엔드 성능 최적화의 주요 기법에 대해 설명해 주세요.</p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-500">92점</span>
+                  </div>
+                </motion.div>
+
+                {/* Q2: Highlight / Error (Extended Glassmorphic Card) */}
+                <motion.div 
+                 initial={{ opacity: 0, x: -10 }}
+                 whileInView={{ opacity: 1, x: 0 }}
+                 viewport={{ once: true }}
+                 transition={{ delay: 0.2, duration: 0.6 }}
+                 className="relative"
+                >
+                  <div className="absolute -left-[26px] top-6 flex h-[20px] w-[20px] items-center justify-center rounded-full bg-rose-100 ring-[6px] ring-slate-50">
+                    {/* Animated Ping (Runs only 3 times then stops) */}
+                    <motion.span 
+                      animate={{ scale: [1, 2.5], opacity: [0.6, 0] }}
+                      transition={{ duration: 1.5, repeat: 2, ease: "easeOut" }}
+                      className="absolute inline-flex h-full w-full rounded-full bg-rose-400" 
+                    />
+                    <Target className="relative h-3 w-3 text-rose-600" />
+                  </div>
+                  
+                  <div className="rounded-[1.25rem] bg-white/95 p-5 shadow-[0_8px_30px_rgba(0,0,0,0.06)] backdrop-blur-xl border border-white relative mt-2">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-bold text-rose-500">Q2</p>
+                        <p className="mt-1 text-[13px] font-medium text-slate-800">CORS가 무엇인지, 어떻게 해결할 수 있는지 설명해 주세요.</p>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-600 ring-1 ring-rose-200">65점</span>
+                    </div>
+
+                    <div className="mt-4 rounded-xl bg-slate-50/80 p-3.5 border border-slate-100">
+                      <p className="mb-1.5 text-[11px] font-bold text-rose-500 uppercase tracking-wider">깊이 감점</p>
+                      <p className="text-xs leading-relaxed text-slate-600">
+                        CORS의 기본 개념은 설명했으나, Preflight 요청의 조건이나 Proxy 서버를 활용하는 우회 기법 등 <strong className="font-semibold text-slate-900">다양한 해결책에 대한 깊이 있는 설명이 누락</strong>되었습니다.
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Q3: Good */}
+                <motion.div 
+                 initial={{ opacity: 0, x: -10 }}
+                 whileInView={{ opacity: 1, x: 0 }}
+                 viewport={{ once: true }}
+                 transition={{ delay: 0.4, duration: 0.6 }}
+                 className="relative"
+                >
+                  <div className="absolute -left-6 top-2.5 flex h-4 w-4 items-center justify-center rounded-full bg-sky-100 ring-4 ring-slate-50">
+                    <div className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+                  </div>
+                  <div className="flex items-start justify-between gap-4 rounded-2xl bg-white/60 p-4 shadow-sm backdrop-blur-sm border border-white/40 opacity-80">
+                    <div>
+                      <p className="text-xs font-bold text-slate-400">Q3</p>
+                      <p className="mt-1 text-[13px] font-medium text-slate-700">React의 useEffect Hook의 내부 동작 원리는 무엇인가요?</p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-500">80점</span>
+                  </div>
+                </motion.div>
+
+              </div>
+            </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
 
       <motion.div
         {...fadeUpReveal({ delay: 0.1 })}

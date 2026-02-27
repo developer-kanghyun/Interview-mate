@@ -37,7 +37,7 @@ export function InsightsView({
     <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-8">
       {/* Insights Header */}
       <header className="rounded-[2rem] border border-im-border/60 bg-white p-8 text-center shadow-sm">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-im-primary">학습</p>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-im-primary">study</p>
         <h1 className="mt-2 text-2xl font-black tracking-tight text-im-text-main sm:text-3xl">학습하기</h1>
         <p className="mt-2 text-sm text-im-text-muted">
           최근 30일 세션 이력과 약점 키워드를 바탕으로 복습 루프를 이어갑니다.

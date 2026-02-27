@@ -46,6 +46,17 @@
 }
 
 @layer components {
+  @keyframes toast-rise-up {
+    from {
+      opacity: 0;
+      transform: translateY(14px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
   .sse-caret::after {
     content: "▌";
     @apply ml-0.5 animate-pulse text-im-primary;

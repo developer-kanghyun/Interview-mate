@@ -14,17 +14,10 @@ const MAX_TOAST_COUNT = 3;
 const TOAST_DEDUPE_WINDOW_MS = 1500;
 
 const variantClassNameMap: Record<ToastVariant, string> = {
-  info: "border-sky-200/70 bg-white/95 text-slate-800",
-  success: "border-emerald-200/80 bg-white/95 text-slate-800",
-  warning: "border-amber-200/80 bg-white/95 text-slate-800",
-  error: "border-rose-200/80 bg-white/95 text-slate-800"
-};
-
-const variantAccentGradientClassNameMap: Record<ToastVariant, string> = {
-  info: "from-sky-500 to-cyan-500",
-  success: "from-emerald-500 to-teal-500",
-  warning: "from-amber-500 to-orange-500",
-  error: "from-rose-500 to-pink-500"
+  info: "border-im-border bg-white text-im-text-main",
+  success: "border-emerald-200/80 bg-emerald-50/65 text-im-text-main",
+  warning: "border-amber-200/80 bg-amber-50/70 text-im-text-main",
+  error: "border-rose-200/80 bg-rose-50/75 text-im-text-main"
 };
 
 const variantIconClassNameMap: Record<ToastVariant, string> = {
@@ -75,7 +68,6 @@ function ToastCard({
   onDismiss: (id: string) => void;
 }) {
   const Icon = variantIconMap[item.variant];
-  const accentGradientClassName = variantAccentGradientClassNameMap[item.variant];
   const iconClassName = variantIconClassNameMap[item.variant];
   const iconBackgroundClassName = variantIconBackgroundClassNameMap[item.variant];
 
@@ -84,22 +76,21 @@ function ToastCard({
       role={item.variant === "error" ? "alert" : "status"}
       aria-live={item.variant === "error" ? "assertive" : "polite"}
       data-testid="toast-item"
-      className={`pointer-events-auto relative overflow-hidden rounded-2xl border px-4 py-3 shadow-[0_18px_38px_rgba(15,23,42,0.16)] backdrop-blur-md animate-[toast-rise-up_220ms_cubic-bezier(0.16,1,0.3,1)] ${variantClassNameMap[item.variant]}`}
+      className={`pointer-events-auto rounded-2xl border px-4 py-3 shadow-[0_14px_30px_rgba(15,23,42,0.12)] animate-[toast-rise-up_220ms_cubic-bezier(0.16,1,0.3,1)] ${variantClassNameMap[item.variant]}`}
     >
-      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${accentGradientClassName}`} />
-      <div className="flex items-start gap-3 pt-1">
+      <div className="flex items-start gap-3">
         <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${iconBackgroundClassName}`}>
           <Icon className={`h-4 w-4 ${iconClassName}`} strokeWidth={2.6} />
         </div>
         <div className="min-w-0 flex-1">
           {item.title ? <p className="text-sm font-bold">{item.title}</p> : null}
-          <p className="text-sm leading-6 text-slate-700">{item.message}</p>
+          <p className="text-sm leading-6 text-im-text-main/80">{item.message}</p>
         </div>
         {item.dismissible ? (
           <button
             type="button"
             onClick={() => onDismiss(item.id)}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-im-text-muted transition-colors hover:bg-black/5 hover:text-im-text-main"
             aria-label="토스트 닫기"
           >
             <X className="h-4 w-4" />
