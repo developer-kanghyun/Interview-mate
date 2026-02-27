@@ -81,7 +81,9 @@ public class InterviewHistoryService {
 
         return evaluateAnswerUseCase.execute(
                 answer.getSessionQuestion().getQuestion().getContent(),
-                answer.getAnswerText()
+                answer.getAnswerText(),
+                answer.getSessionQuestion().getSession().getDifficulty(),
+                answer.getSessionQuestion().getSession().getStack()
         );
     }
 }

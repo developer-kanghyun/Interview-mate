@@ -30,7 +30,7 @@ class AdaptNextQuestionUseCaseTest {
     void executeUsesAdaptedQuestionWhenAvailable() {
         when(aiChatPort.requestSingleResponse(anyString(), anyString())).thenReturn("근거가 부족했던 포인트를 중심으로 트랜잭션 격리 수준을 다시 설명해보세요");
 
-        String result = useCase.execute("backend", "Spring Boot", "junior", "트랜잭션 격리 수준을 설명해보세요.", "답변 요약");
+        String result = useCase.execute("backend", "Spring Boot", "junior", "트랜잭션 격리 수준을 설명해보세요.", "답변 요약", "jet");
 
         assertThat(result).isEqualTo("근거가 부족했던 포인트를 중심으로 트랜잭션 격리 수준을 다시 설명해보세요?");
     }
@@ -40,19 +40,20 @@ class AdaptNextQuestionUseCaseTest {
         when(aiChatPort.requestSingleResponse(anyString(), anyString())).thenThrow(new RuntimeException("fail"));
 
         String baseQuestion = "REST 상태코드 선택 기준을 설명해보세요.";
-        String result = useCase.execute("frontend", "Next.js", "jobseeker", baseQuestion, "답변 요약");
+        String result = useCase.execute("frontend", "Next.js", "jobseeker", baseQuestion, "답변 요약", "luna");
 
         assertThat(result).isEqualTo(baseQuestion);
     }
 
     @Test
-    void executeAddsJobseekerDifficultyGuardToPrompt() {
-        when(aiChatPort.requestSingleResponse(anyString(), anyString())).thenReturn("기초 개념을 다시 설명해보세요.");
+    void executeIncludesCharacterToneGuideInPrompt() {
+        when(aiChatPort.requestSingleResponse(anyString(), anyString())).thenReturn("동시성 충돌 해결 순서를 설명해보세요.");
 
-        useCase.execute("frontend", "Next.js", "jobseeker", "상태 관리를 설명해보세요.", "답변 요약");
+        useCase.execute("backend", "Spring Boot", "junior", "락 전략을 설명해보세요.", "답변 요약", "iron");
 
         ArgumentCaptor<String> systemPromptCaptor = ArgumentCaptor.forClass(String.class);
         verify(aiChatPort).requestSingleResponse(systemPromptCaptor.capture(), anyString());
-        assertThat(systemPromptCaptor.getValue()).contains("취준생 기준");
+        assertThat(systemPromptCaptor.getValue()).contains("캐릭터: 아이언");
+        assertThat(systemPromptCaptor.getValue()).contains("아이언 추가 가드레일");
     }
 }

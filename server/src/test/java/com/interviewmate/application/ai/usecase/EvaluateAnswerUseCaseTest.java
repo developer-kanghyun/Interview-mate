@@ -1,159 +1,89 @@
 package com.interviewmate.application.ai.usecase;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.interviewmate.application.ai.port.AiChatPort;
 import com.interviewmate.domain.ai.AnswerEvaluationResult;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
 class EvaluateAnswerUseCaseTest {
 
-    @Mock
-    private AiChatPort aiChatPort;
-
-    private EvaluateAnswerUseCase useCase;
-
-    @BeforeEach
-    void setUp() {
-        useCase = new EvaluateAnswerUseCase(aiChatPort, new ObjectMapper());
-    }
-
     @Test
-    void testExecuteReturnsLowScoreForShortAnswer() {
-        when(aiChatPort.requestSingleResponse(anyString(), anyString())).thenThrow(new RuntimeException("timeout"));
+    void jobseekerThresholdUses2Point8ForFollowupDecision() {
+        EvaluateAnswerUseCase useCase = new EvaluateAnswerUseCase();
 
         AnswerEvaluationResult result = useCase.execute(
                 "트랜잭션을 설명해보세요.",
-                "잘 모르겠습니다."
+                "트랜잭션은 데이터 정합성을 위해 작업 단위를 묶는 방식입니다.",
+                "jobseeker",
+                "Spring Boot"
         );
 
-        assertThat(result.getTotalScore()).isLessThan(3.2);
-        assertThat(result.isFollowupRequired()).isTrue();
-        assertThat(result.getFollowupReason()).isNotBlank();
-    }
-
-    @Test
-    void testExecuteReturnsHighScoreForDetailedAnswer() {
-        when(aiChatPort.requestSingleResponse(anyString(), anyString()))
-                .thenReturn("""
-                        {
-                          "accuracy": 4.2,
-                          "logic": 4.0,
-                          "depth": 3.8,
-                          "delivery": 3.9,
-                          "followup_required": false,
-                          "followup_reason_detail_ko": "핵심 개념과 근거를 균형 있게 제시했습니다."
-                        }
-                        """);
-
-        AnswerEvaluationResult result = useCase.execute(
-                "트랜잭션을 설명해보세요.",
-                "트랜잭션은 ACID를 기반으로 데이터 정합성을 보장합니다. 원자성을 통해 전부 성공하거나 전부 실패하게 만들고, 격리 수준을 조정해 동시성 충돌을 완화하며, 커밋 이후 지속성을 보장합니다."
-        );
-
-        assertThat(result.getTotalScore()).isGreaterThanOrEqualTo(3.2);
+        assertThat(result.getTotalScore()).isGreaterThanOrEqualTo(2.8);
         assertThat(result.isFollowupRequired()).isFalse();
-        assertThat(result.getFollowupReason()).contains("핵심 개념");
     }
 
     @Test
-    void testExecuteUsesConfiguredWeightedScoreRule() {
-        when(aiChatPort.requestSingleResponse(anyString(), anyString())).thenThrow(new RuntimeException("timeout"));
+    void juniorThresholdUses3Point0ForFollowupDecision() {
+        EvaluateAnswerUseCase useCase = new EvaluateAnswerUseCase();
 
         AnswerEvaluationResult result = useCase.execute(
                 "트랜잭션을 설명해보세요.",
-                "잘 모르겠습니다."
+                "트랜잭션은 작업 단위를 묶는 기능입니다.",
+                "junior",
+                "Spring Boot"
         );
 
-        // 4축 점수(2.2, 1.8, 1.6, 3.5)에 가중치(35/25/25/15)를 적용하면 2.145 -> 2.1
-        assertThat(result.getAccuracy()).isEqualTo(2.2);
-        assertThat(result.getLogic()).isEqualTo(1.8);
-        assertThat(result.getDepth()).isEqualTo(1.6);
-        assertThat(result.getDelivery()).isEqualTo(3.5);
-        assertThat(result.getTotalScore()).isEqualTo(2.1);
-    }
-
-    @Test
-    void testExecutePenalizesGenericLongAnswerWhenCoreKeywordMissing() {
-        when(aiChatPort.requestSingleResponse(anyString(), anyString())).thenThrow(new RuntimeException("timeout"));
-
-        AnswerEvaluationResult result = useCase.execute(
-                "트랜잭션의 ACID를 설명해보세요.",
-                "트랜잭션은 중요한 개념입니다. 시스템의 안정성과 일관성을 위해 꼭 필요합니다. " +
-                        "상황에 맞게 설계하면 품질을 높일 수 있고 운영 안정성에도 도움이 됩니다."
-        );
-
-        assertThat(result.getAccuracy()).isLessThanOrEqualTo(2.8);
+        assertThat(result.getTotalScore()).isLessThan(3.0);
         assertThat(result.isFollowupRequired()).isTrue();
     }
 
     @Test
-    void testExecuteRewardsAnswerContainingCoreKeyword() {
-        when(aiChatPort.requestSingleResponse(anyString(), anyString())).thenThrow(new RuntimeException("timeout"));
+    void guaranteesAccuracyFloorWhenOneKeywordMatches() {
+        EvaluateAnswerUseCase useCase = new EvaluateAnswerUseCase();
 
         AnswerEvaluationResult result = useCase.execute(
-                "트랜잭션의 ACID를 설명해보세요.",
-                "트랜잭션은 ACID를 기반으로 동작합니다. 원자성은 전부 성공 또는 전부 롤백을 보장하고, " +
-                        "일관성은 제약조건을 유지하며, 격리성은 동시성 충돌을 완화하고, 지속성은 커밋 이후 데이터를 보존합니다."
+                "TypeScript의 장점을 설명해보세요.",
+                "TypeScript를 쓰면 타입 기반으로 코드를 더 안전하게 유지할 수 있습니다.",
+                "jobseeker",
+                "TypeScript,React"
+        );
+
+        assertThat(result.getAccuracy()).isGreaterThanOrEqualTo(3.0);
+    }
+
+    @Test
+    void guaranteesHigherAccuracyFloorWhenTwoKeywordsMatch() {
+        EvaluateAnswerUseCase useCase = new EvaluateAnswerUseCase();
+
+        AnswerEvaluationResult result = useCase.execute(
+                "TypeScript 기반 상태 관리 전략을 설명해보세요.",
+                "TypeScript로 타입 경계를 먼저 잡고 React 상태를 로컬과 전역으로 나눠 관리합니다.",
+                "jobseeker",
+                "TypeScript,React"
         );
 
         assertThat(result.getAccuracy()).isGreaterThanOrEqualTo(3.5);
-        assertThat(result.isFollowupRequired()).isFalse();
     }
 
     @Test
-    void testExecuteRewardsLogicalConnectorsInDeliveryAndLogic() {
-        when(aiChatPort.requestSingleResponse(anyString(), anyString())).thenThrow(new RuntimeException("timeout"));
+    void rewardsLogicalConnectors() {
+        EvaluateAnswerUseCase useCase = new EvaluateAnswerUseCase();
 
         AnswerEvaluationResult unstructured = useCase.execute(
                 "캐시 전략을 설명해보세요.",
-                "캐시는 읽기 성능을 높입니다 캐시 무효화가 중요합니다 트래픽이 많으면 도움이 됩니다"
+                "캐시는 읽기 성능을 높입니다 캐시 무효화가 중요합니다 트래픽이 많으면 도움이 됩니다",
+                "junior",
+                "Redis"
         );
 
         AnswerEvaluationResult structured = useCase.execute(
                 "캐시 전략을 설명해보세요.",
-                "첫째, 조회 빈도가 높은 데이터는 캐시로 분리합니다. 둘째, 만료시간과 무효화 정책을 함께 설계합니다. " +
-                        "따라서 성능과 정합성의 균형을 유지할 수 있습니다."
+                "첫째, 조회 빈도가 높은 데이터는 캐시합니다. 둘째, 만료시간과 무효화 정책을 함께 둡니다. 따라서 성능과 정합성의 균형을 맞춥니다.",
+                "junior",
+                "Redis"
         );
 
         assertThat(structured.getLogic()).isGreaterThan(unstructured.getLogic());
         assertThat(structured.getDelivery()).isGreaterThan(unstructured.getDelivery());
-    }
-
-    @Test
-    void testExecuteUsesLowerFollowupThresholdForJobseeker() {
-        when(aiChatPort.requestSingleResponse(anyString(), anyString())).thenThrow(new RuntimeException("timeout"));
-
-        String answer = "트랜잭션은 ACID를 기반으로 동작하고 커밋과 롤백으로 데이터 정합성을 지킵니다";
-        AnswerEvaluationResult juniorResult = useCase.execute("트랜잭션의 ACID를 설명해보세요.", answer, "junior");
-        AnswerEvaluationResult jobseekerResult = useCase.execute("트랜잭션의 ACID를 설명해보세요.", answer, "jobseeker");
-
-        assertThat(jobseekerResult.getTotalScore()).isEqualTo(juniorResult.getTotalScore());
-        assertThat(juniorResult.isFollowupRequired()).isTrue();
-        assertThat(jobseekerResult.isFollowupRequired()).isFalse();
-    }
-
-    @Test
-    void testExecuteRetriesAiOnceThenFallsBack() {
-        when(aiChatPort.requestSingleResponse(anyString(), anyString()))
-                .thenThrow(new RuntimeException("first-fail"))
-                .thenThrow(new RuntimeException("second-fail"));
-
-        AnswerEvaluationResult result = useCase.execute(
-                "REST와 RPC 차이를 설명해보세요.",
-                "잘 모르겠습니다.",
-                "junior"
-        );
-
-        assertThat(result.getTotalScore()).isGreaterThan(0.0);
-        assertThat(result.getFollowupReason()).isNotBlank();
     }
 }

@@ -27,7 +27,8 @@ class GenerateFollowupQuestionUseCaseTest {
                 "jobseeker",
                 "트랜잭션과 락을 설명해보세요.",
                 "데이터 정합성을 위해 트랜잭션을 사용합니다.",
-                "이전 답변 요약"
+                "이전 답변 요약",
+                "jet"
         );
 
         assertThat(followupQuestion).contains("트랜잭션");
@@ -48,14 +49,15 @@ class GenerateFollowupQuestionUseCaseTest {
                 "jobseeker",
                 "트랜잭션과 락을 설명해보세요.",
                 "잘 모르겠습니다.",
-                "이전 답변 요약"
+                "이전 답변 요약",
+                "luna"
         );
 
-        assertThat(followupQuestion).contains("가장 중요한 개념");
+        assertThat(followupQuestion).contains("핵심 근거");
     }
 
     @Test
-    void testExecuteBuildsJobseekerSpecificPromptGuide() {
+    void testExecuteBuildsCharacterSpecificPromptGuide() {
         AiChatPort aiChatPort = mock(AiChatPort.class);
         when(aiChatPort.requestSingleResponse(anyString(), anyString()))
                 .thenReturn("핵심 개념을 한 가지 예시와 함께 설명해 주세요.");
@@ -68,11 +70,36 @@ class GenerateFollowupQuestionUseCaseTest {
                 "jobseeker",
                 "우선순위를 어떻게 정하나요?",
                 "impact effort로 정합니다.",
-                "이전 답변 요약"
+                "이전 답변 요약",
+                "jet"
         );
 
         ArgumentCaptor<String> systemPromptCaptor = ArgumentCaptor.forClass(String.class);
         verify(aiChatPort).requestSingleResponse(systemPromptCaptor.capture(), anyString());
-        assertThat(systemPromptCaptor.getValue()).contains("취준생 기준");
+        assertThat(systemPromptCaptor.getValue()).contains("캐릭터: 제트");
+        assertThat(systemPromptCaptor.getValue()).contains("꼬리질문 규칙");
+    }
+
+    @Test
+    void testExecuteIncludesIronToneGuideInPrompt() {
+        AiChatPort aiChatPort = mock(AiChatPort.class);
+        when(aiChatPort.requestSingleResponse(anyString(), anyString()))
+                .thenReturn("핵심 실패 원인을 기준으로 동시성 대응 전략을 다시 설명해 주세요.");
+
+        GenerateFollowupQuestionUseCase useCase = new GenerateFollowupQuestionUseCase(aiChatPort);
+        useCase.execute(
+                "backend",
+                "Spring Boot",
+                "junior",
+                "트랜잭션과 락을 설명해보세요.",
+                "잘 모르겠습니다.",
+                "이전 답변 요약",
+                "iron"
+        );
+
+        ArgumentCaptor<String> systemPromptCaptor = ArgumentCaptor.forClass(String.class);
+        verify(aiChatPort).requestSingleResponse(systemPromptCaptor.capture(), anyString());
+        assertThat(systemPromptCaptor.getValue()).contains("캐릭터: 아이언");
+        assertThat(systemPromptCaptor.getValue()).contains("아이언 추가 가드레일");
     }
 }

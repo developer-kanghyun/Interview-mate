@@ -36,7 +36,9 @@ export type AnswerSubmitResponse = {
       followup_reason: string;
       followup_remaining: number;
     };
-    coaching_message: string;
+    feedback_summary: string | null;
+    coaching_message: string | null;
+    coaching_available: boolean;
     followup_question?: string | null;
     interviewer_emotion: "neutral" | "encourage" | "pressure";
     next_question?: {
@@ -78,7 +80,7 @@ export type SessionReportResponse = {
       question_content: string;
       answer_text: string;
       interviewer_emotion: "neutral" | "encourage" | "pressure";
-      coaching_message: string;
+      coaching_message: string | null;
       model_answer: string;
       score: {
         accuracy: number;
