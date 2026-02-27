@@ -100,16 +100,6 @@ export function ReportShowcaseSection() {
               className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-rose-400/20 blur-3xl"
             />
 
-            <div className="relative z-10 w-full mb-8">
-              <div className="flex gap-2.5 items-center justify-start">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75"></span>
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-orange-500"></span>
-                </span>
-                <p className="text-[11px] font-bold tracking-[0.2em] text-orange-500">REPORT ENGINE</p>
-              </div>
-            </div>
-
             {/* Smart Timeline Review (Apple-style) */}
             <div className="relative z-10 mt-6 w-full pl-6">
               {/* Vertical Timeline Line */}
