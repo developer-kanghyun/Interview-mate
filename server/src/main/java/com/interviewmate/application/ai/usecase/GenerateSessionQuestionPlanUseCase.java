@@ -9,9 +9,12 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
@@ -92,43 +95,54 @@ public class GenerateSessionQuestionPlanUseCase {
 
     public List<GeneratedQuestion> execute(String jobRole, String stack, String difficulty, int questionCount) {
         int requiredCount = questionCount <= 0 ? DEFAULT_QUESTION_COUNT : questionCount;
+        StackCoveragePlan coveragePlan = buildStackCoveragePlan(stack, requiredCount);
         try {
-            String generated = aiChatPort.requestSingleResponse(buildSystemPrompt(requiredCount), buildUserPrompt(jobRole, stack, difficulty));
+            String generated = aiChatPort.requestSingleResponse(buildSystemPrompt(requiredCount), buildUserPrompt(jobRole, coveragePlan, difficulty));
             List<GeneratedQuestion> parsed = parseQuestions(generated);
-            return normalizeQuestions(parsed, jobRole, stack, difficulty, requiredCount);
+            return normalizeQuestions(parsed, jobRole, coveragePlan, difficulty, requiredCount);
         } catch (Exception exception) {
             log.warn("세션 질문 플랜 생성 실패, fallback 플랜 사용: {}", exception.getMessage());
-            return fallbackQuestions(jobRole, stack, difficulty, requiredCount);
+            return fallbackQuestions(jobRole, coveragePlan, difficulty, requiredCount);
         }
     }
 
     private String buildSystemPrompt(int questionCount) {
         return """
                 당신은 한국어 기술 면접 질문 설계자입니다.
-                반드시 JSON 배열만 반환하세요. 각 원소는 category, difficulty, content 필드를 가진 객체여야 합니다.
+                반드시 JSON 배열만 반환하세요. 각 원소는 category, difficulty, primary_stack, content 필드를 가진 객체여야 합니다.
                 category는 job 또는 cs만 허용합니다.
                 difficulty는 easy, medium, hard 중 하나여야 합니다.
+                primary_stack은 전달된 기술스택 목록 중 하나여야 합니다.
                 총 %d개의 질문을 생성하세요.
                 """.formatted(questionCount);
     }
 
-    private String buildUserPrompt(String jobRole, String stack, String difficulty) {
-        String normalizedStack = normalizeStackLabel(stack);
+    private String buildUserPrompt(String jobRole, StackCoveragePlan coveragePlan, String difficulty) {
+        String normalizedStack = String.join(", ", coveragePlan.selectedStacks());
         String roleFamily = resolveRoleFamily(jobRole);
         String difficultyGuide = buildDifficultyGuide(difficulty);
         return """
                 직무: %s
                 직무군: %s
                 기술스택: %s
+                스택별 목표 문항수: %s
                 지원자 난이도: %s
                 요구사항:
                 1) 같은 질문을 반복하지 않는다.
                 2) 답변자가 짧게 답하면 꼬리질문으로 확장 가능한 질문으로 작성한다.
-                3) 모든 질문 본문에 기술스택 문자열 중 최소 1개를 그대로 포함한다.
+                3) content에는 primary_stack 값을 그대로 포함한다.
                 4) 첫 질문은 기술스택 기반의 실무 시나리오 질문으로 작성한다.
                 5) 같은 설정이어도 매 세션 질문 구성이 달라지도록 다양한 소재를 섞는다.
                 6) 난이도 가이드: %s
-                """.formatted(jobRole, roleFamily, normalizedStack, difficulty, difficultyGuide);
+                7) 반환 배열은 총 문항 수를 정확히 맞추고, 스택별 목표 문항 수를 지킨다.
+                """.formatted(
+                jobRole,
+                roleFamily,
+                normalizedStack,
+                formatTargetCounts(coveragePlan.targetCounts()),
+                difficulty,
+                difficultyGuide
+        );
     }
 
     private String buildDifficultyGuide(String difficulty) {
@@ -136,6 +150,57 @@ public class GenerateSessionQuestionPlanUseCase {
             return "실무 판단과 트레이드오프를 포함하되, 과도한 이론만 묻지 않는다.";
         }
         return "기초 개념과 기본 원리 중심으로 묻고, 대규모 아키텍처/고급 튜닝 심화 질문은 피한다.";
+    }
+
+    private String buildRefillPrompt(
+            String jobRole,
+            StackCoveragePlan coveragePlan,
+            String difficulty,
+            List<Integer> missingSlotIndexes,
+            List<GeneratedQuestion> currentQuestions
+    ) {
+        List<String> missingStacks = missingSlotIndexes.stream()
+                .map(index -> coveragePlan.stackSlots().get(index))
+                .collect(Collectors.toList());
+
+        Map<String, Long> missingByStack = missingStacks.stream()
+                .collect(Collectors.groupingBy(value -> value, LinkedHashMap::new, Collectors.counting()));
+
+        String existingQuestionSummary = currentQuestions.stream()
+                .map(GeneratedQuestion::content)
+                .collect(Collectors.joining(" | "));
+
+        return """
+                직무: %s
+                직무군: %s
+                기술스택: %s
+                지원자 난이도: %s
+                누락 스택별 목표 문항수: %s
+                이미 생성된 질문: %s
+                요구사항:
+                1) 기존 질문과 중복되지 않게 누락 슬롯만 보충한다.
+                2) content에는 primary_stack 값을 그대로 포함한다.
+                3) 반드시 JSON 배열만 반환하고 각 원소는 category, difficulty, primary_stack, content를 포함한다.
+                """.formatted(
+                jobRole,
+                resolveRoleFamily(jobRole),
+                String.join(", ", coveragePlan.selectedStacks()),
+                difficulty,
+                formatLongTargetCounts(missingByStack),
+                existingQuestionSummary
+        );
+    }
+
+    private String formatTargetCounts(Map<String, Integer> targetCounts) {
+        return targetCounts.entrySet().stream()
+                .map(entry -> entry.getKey() + "=" + entry.getValue())
+                .collect(Collectors.joining(", "));
+    }
+
+    private String formatLongTargetCounts(Map<String, Long> targetCounts) {
+        return targetCounts.entrySet().stream()
+                .map(entry -> entry.getKey() + "=" + entry.getValue())
+                .collect(Collectors.joining(", "));
     }
 
     private List<GeneratedQuestion> parseQuestions(String rawText) throws Exception {
@@ -157,7 +222,8 @@ public class GenerateSessionQuestionPlanUseCase {
             parsed.add(new GeneratedQuestion(
                     node.path("category").asText("job"),
                     node.path("difficulty").asText("medium"),
-                    node.path("content").asText("")
+                    node.path("content").asText(""),
+                    node.path("primary_stack").asText("")
             ));
         }
         return parsed;
@@ -182,63 +248,55 @@ public class GenerateSessionQuestionPlanUseCase {
     private List<GeneratedQuestion> normalizeQuestions(
             List<GeneratedQuestion> parsed,
             String jobRole,
-            String stack,
+            StackCoveragePlan coveragePlan,
             String difficulty,
             int requiredCount
     ) {
-        List<GeneratedQuestion> normalized = new ArrayList<>();
-        Set<String> dedupe = new LinkedHashSet<>();
-        List<String> stackKeywords = parseStackKeywords(stack);
+        List<String> difficultyProfile = buildDifficultyProfile(difficulty, requiredCount);
+        List<GeneratedQuestion> normalizedCandidates = normalizeCandidates(parsed, coveragePlan.selectedStacks(), difficulty);
+        List<GeneratedQuestion> selected = initializeQuestionSlots(requiredCount);
+        Set<String> usedContent = new LinkedHashSet<>();
 
-        for (GeneratedQuestion item : parsed) {
-            String content = normalizeContent(item.content());
-            if (content.isBlank()) {
-                continue;
-            }
-            if (!isQuestionStackRelevant(content, stackKeywords)) {
-                continue;
-            }
-            if (!dedupe.add(content.toLowerCase(Locale.ROOT))) {
-                continue;
-            }
-            normalized.add(new GeneratedQuestion(
-                    normalizeCategory(item.category()),
-                    normalizeDifficulty(item.difficulty(), difficulty),
-                    content
-            ));
-            if (normalized.size() >= requiredCount) {
-                break;
+        fillQuestionSlots(selected, normalizedCandidates, coveragePlan.stackSlots(), difficultyProfile, usedContent);
+
+        List<Integer> missingSlotIndexes = collectMissingSlotIndexes(selected);
+        if (!missingSlotIndexes.isEmpty()) {
+            try {
+                String refillRaw = aiChatPort.requestSingleResponse(
+                        buildSystemPrompt(missingSlotIndexes.size()),
+                        buildRefillPrompt(jobRole, coveragePlan, difficulty, missingSlotIndexes, compactQuestions(selected))
+                );
+                List<GeneratedQuestion> refillCandidates = normalizeCandidates(
+                        parseQuestions(refillRaw),
+                        coveragePlan.selectedStacks(),
+                        difficulty
+                );
+                fillQuestionSlots(selected, refillCandidates, coveragePlan.stackSlots(), difficultyProfile, usedContent);
+            } catch (Exception exception) {
+                log.warn("질문 보충 생성 실패, fallback으로 누락 슬롯 채움: {}", exception.getMessage());
             }
         }
 
-        if (normalized.size() < requiredCount) {
-            List<GeneratedQuestion> fallback = fallbackQuestions(jobRole, stack, difficulty, requiredCount);
-            for (GeneratedQuestion item : fallback) {
-                if (normalized.size() >= requiredCount) {
+        List<GeneratedQuestion> fallbackQuestions = fallbackQuestions(jobRole, coveragePlan, difficulty, requiredCount);
+        fillWithFallback(
+                selected,
+                fallbackQuestions,
+                coveragePlan.stackSlots(),
+                difficultyProfile,
+                usedContent
+        );
+
+        List<GeneratedQuestion> compact = compactQuestions(selected);
+        if (compact.size() < requiredCount) {
+            List<GeneratedQuestion> emergency = fallbackQuestions(jobRole, coveragePlan, difficulty, requiredCount);
+            for (GeneratedQuestion item : emergency) {
+                if (compact.size() >= requiredCount) {
                     break;
                 }
-                String key = item.content().toLowerCase(Locale.ROOT);
-                if (dedupe.add(key)) {
-                    normalized.add(item);
-                }
+                compact.add(item);
             }
         }
-
-        return applyDifficultyProfile(normalized, difficulty);
-    }
-
-    private List<GeneratedQuestion> applyDifficultyProfile(List<GeneratedQuestion> questions, String requestedDifficulty) {
-        if (questions.isEmpty()) {
-            return questions;
-        }
-
-        List<String> profile = buildDifficultyProfile(requestedDifficulty, questions.size());
-        List<GeneratedQuestion> adjusted = new ArrayList<>(questions.size());
-        for (int index = 0; index < questions.size(); index++) {
-            GeneratedQuestion current = questions.get(index);
-            adjusted.add(new GeneratedQuestion(current.category(), profile.get(index), current.content()));
-        }
-        return adjusted;
+        return compact;
     }
 
     private List<String> buildDifficultyProfile(String requestedDifficulty, int questionCount) {
@@ -302,6 +360,44 @@ public class GenerateSessionQuestionPlanUseCase {
         return String.join(", ", keywords);
     }
 
+    private List<GeneratedQuestion> normalizeCandidates(
+            List<GeneratedQuestion> candidates,
+            List<String> selectedStacks,
+            String requestedDifficulty
+    ) {
+        List<GeneratedQuestion> normalized = new ArrayList<>();
+        Set<String> dedupe = new LinkedHashSet<>();
+
+        for (GeneratedQuestion candidate : candidates) {
+            String content = normalizeContent(candidate.content());
+            if (content.isBlank()) {
+                continue;
+            }
+
+            String resolvedPrimaryStack = resolvePrimaryStack(candidate.primaryStack(), content, selectedStacks);
+            if (resolvedPrimaryStack == null) {
+                continue;
+            }
+            if (!containsIgnoreCase(content, resolvedPrimaryStack)) {
+                continue;
+            }
+
+            String dedupeKey = content.toLowerCase(Locale.ROOT);
+            if (!dedupe.add(dedupeKey)) {
+                continue;
+            }
+
+            normalized.add(new GeneratedQuestion(
+                    normalizeCategory(candidate.category()),
+                    normalizeDifficulty(candidate.difficulty(), requestedDifficulty),
+                    content,
+                    resolvedPrimaryStack
+            ));
+        }
+
+        return normalized;
+    }
+
     private List<String> parseStackKeywords(String stack) {
         if (stack == null || stack.isBlank()) {
             return List.of();
@@ -313,32 +409,160 @@ public class GenerateSessionQuestionPlanUseCase {
                 .collect(Collectors.toList());
     }
 
-    private boolean isQuestionStackRelevant(String content, List<String> stackKeywords) {
-        if (stackKeywords.isEmpty()) {
-            return true;
+    private StackCoveragePlan buildStackCoveragePlan(String stack, int requiredCount) {
+        List<String> selectedStacks = parseStackKeywords(stack);
+        if (selectedStacks.isEmpty()) {
+            selectedStacks = List.of("기본 스택");
         }
-        String normalizedContent = content.toLowerCase(Locale.ROOT);
-        for (String keyword : stackKeywords) {
-            if (normalizedContent.contains(keyword.toLowerCase(Locale.ROOT))) {
-                return true;
-            }
+
+        List<String> slots = new ArrayList<>(requiredCount);
+        for (int index = 0; index < requiredCount; index++) {
+            slots.add(selectedStacks.get(index % selectedStacks.size()));
         }
-        return false;
+
+        Map<String, Integer> targetCounts = new LinkedHashMap<>();
+        for (String selectedStack : selectedStacks) {
+            targetCounts.put(selectedStack, 0);
+        }
+        for (String slot : slots) {
+            targetCounts.put(slot, targetCounts.getOrDefault(slot, 0) + 1);
+        }
+
+        return new StackCoveragePlan(selectedStacks, slots, targetCounts);
     }
 
-    private List<GeneratedQuestion> fallbackQuestions(String jobRole, String stack, String difficulty, int requiredCount) {
+    private String resolvePrimaryStack(String primaryStack, String content, List<String> selectedStacks) {
+        if (selectedStacks.isEmpty()) {
+            return null;
+        }
+
+        if (primaryStack != null && !primaryStack.isBlank()) {
+            String normalizedPrimary = primaryStack.trim();
+            for (String selectedStack : selectedStacks) {
+                if (selectedStack.equalsIgnoreCase(normalizedPrimary)) {
+                    return selectedStack;
+                }
+            }
+        }
+
+        List<String> mentionedStacks = selectedStacks.stream()
+                .filter(stackKeyword -> containsIgnoreCase(content, stackKeyword))
+                .toList();
+        if (mentionedStacks.size() == 1) {
+            return mentionedStacks.get(0);
+        }
+
+        return null;
+    }
+
+    private boolean containsIgnoreCase(String text, String keyword) {
+        return text.toLowerCase(Locale.ROOT).contains(keyword.toLowerCase(Locale.ROOT));
+    }
+
+    private List<GeneratedQuestion> initializeQuestionSlots(int requiredCount) {
+        return new ArrayList<>(Collections.nCopies(requiredCount, null));
+    }
+
+    private void fillQuestionSlots(
+            List<GeneratedQuestion> slots,
+            List<GeneratedQuestion> candidates,
+            List<String> targetStacks,
+            List<String> difficultyProfile,
+            Set<String> usedContent
+    ) {
+        if (candidates.isEmpty()) {
+            return;
+        }
+
+        Map<String, List<GeneratedQuestion>> byStack = candidates.stream()
+                .collect(Collectors.groupingBy(GeneratedQuestion::primaryStack, LinkedHashMap::new, Collectors.toCollection(ArrayList::new)));
+
+        for (int index = 0; index < slots.size(); index++) {
+            if (slots.get(index) != null) {
+                continue;
+            }
+
+            String requiredStack = targetStacks.get(index);
+            List<GeneratedQuestion> stackCandidates = byStack.get(requiredStack);
+            if (stackCandidates == null || stackCandidates.isEmpty()) {
+                continue;
+            }
+
+            while (!stackCandidates.isEmpty()) {
+                GeneratedQuestion candidate = stackCandidates.remove(0);
+                String key = candidate.content().toLowerCase(Locale.ROOT);
+                if (!usedContent.add(key)) {
+                    continue;
+                }
+                slots.set(index, new GeneratedQuestion(
+                        candidate.category(),
+                        difficultyProfile.get(index),
+                        candidate.content(),
+                        requiredStack
+                ));
+                break;
+            }
+        }
+    }
+
+    private List<Integer> collectMissingSlotIndexes(List<GeneratedQuestion> slots) {
+        List<Integer> missing = new ArrayList<>();
+        for (int index = 0; index < slots.size(); index++) {
+            if (slots.get(index) == null) {
+                missing.add(index);
+            }
+        }
+        return missing;
+    }
+
+    private List<GeneratedQuestion> compactQuestions(List<GeneratedQuestion> slottedQuestions) {
+        return slottedQuestions.stream()
+                .filter(item -> item != null)
+                .toList();
+    }
+
+    private void fillWithFallback(
+            List<GeneratedQuestion> selected,
+            List<GeneratedQuestion> fallbackQuestions,
+            List<String> stackSlots,
+            List<String> difficultyProfile,
+            Set<String> usedContent
+    ) {
+        for (int index = 0; index < selected.size(); index++) {
+            if (selected.get(index) != null) {
+                continue;
+            }
+
+            GeneratedQuestion fallback = fallbackQuestions.get(index);
+            String dedupeKey = fallback.content().toLowerCase(Locale.ROOT);
+            usedContent.add(dedupeKey);
+            selected.set(index, new GeneratedQuestion(
+                    fallback.category(),
+                    difficultyProfile.get(index),
+                    fallback.content(),
+                    stackSlots.get(index)
+            ));
+        }
+    }
+
+    private List<GeneratedQuestion> fallbackQuestions(
+            String jobRole,
+            StackCoveragePlan coveragePlan,
+            String difficulty,
+            int requiredCount
+    ) {
         List<GeneratedQuestion> fallback = new ArrayList<>();
         String roleFamily = resolveRoleFamily(jobRole);
-        String normalizedStack = normalizeStackLabel(stack);
         int fallbackOffset = ThreadLocalRandom.current().nextInt(0, 10_000);
         List<String> difficultyProfile = buildDifficultyProfile(difficulty, requiredCount);
 
         int jobTarget = Math.max(1, Math.min(requiredCount, Math.round(requiredCount * 0.7f)));
-        for (int index = 1; index <= requiredCount; index++) {
-            String category = index <= jobTarget ? "job" : "cs";
-            String level = difficultyProfile.get(index - 1);
-            String content = buildFallbackContent(roleFamily, normalizedStack, category, level, index, fallbackOffset);
-            fallback.add(new GeneratedQuestion(category, level, content));
+        for (int index = 0; index < requiredCount; index++) {
+            String category = index < jobTarget ? "job" : "cs";
+            String level = difficultyProfile.get(index);
+            String stackSlot = coveragePlan.stackSlots().get(index);
+            String content = buildFallbackContent(roleFamily, stackSlot, category, level, index + 1, fallbackOffset);
+            fallback.add(new GeneratedQuestion(category, level, content, stackSlot));
         }
         return fallback;
     }
@@ -393,6 +617,16 @@ public class GenerateSessionQuestionPlanUseCase {
         return templates.get(resolvedIndex);
     }
 
-    public record GeneratedQuestion(String category, String difficulty, String content) {
+    public record GeneratedQuestion(String category, String difficulty, String content, String primaryStack) {
+        public GeneratedQuestion(String category, String difficulty, String content) {
+            this(category, difficulty, content, null);
+        }
+    }
+
+    private record StackCoveragePlan(
+            List<String> selectedStacks,
+            List<String> stackSlots,
+            Map<String, Integer> targetCounts
+    ) {
     }
 }
