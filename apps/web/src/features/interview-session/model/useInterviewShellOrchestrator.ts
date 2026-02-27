@@ -186,7 +186,39 @@ function buildRetryPreset(weakKeywords: string[], fallback: StartInterviewPayloa
 }
 
 function mapRoleFromApi(role: string | null | undefined): StartInterviewPayload["jobRole"] {
-  return role === "frontend" ? "frontend" : "backend";
+  switch (role) {
+    case "frontend":
+    case "app":
+    case "cloud":
+    case "data":
+    case "design":
+    case "pm":
+      return role;
+    case "backend":
+    default:
+      return "backend";
+  }
+}
+
+function defaultStackByRole(role: StartInterviewPayload["jobRole"]) {
+  switch (role) {
+    case "backend":
+      return "Spring Boot";
+    case "frontend":
+      return "Next.js";
+    case "app":
+      return "React Native";
+    case "cloud":
+      return "AWS";
+    case "data":
+      return "Python";
+    case "design":
+      return "Figma";
+    case "pm":
+      return "PRD";
+    default:
+      return "Spring Boot";
+  }
 }
 
 function mapCharacterFromApi(character: "luna" | "jet" | "iron" | null | undefined): InterviewCharacter {
@@ -199,14 +231,20 @@ function mapCharacterFromApi(character: "luna" | "jet" | "iron" | null | undefin
   return "iron";
 }
 
+function mapDifficultyFromApi(difficulty: string | null | undefined): StartInterviewPayload["difficulty"] {
+  return difficulty === "junior" ? "junior" : "jobseeker";
+}
+
 function buildSetupPayloadFromSessionState(
   state: Awaited<ReturnType<typeof getInterviewSessionState>>["data"]
 ): StartInterviewPayload {
   const jobRole = mapRoleFromApi(state.job_role);
   return {
     jobRole,
-    stack: jobRole === "backend" ? "Spring Boot" : "Next.js",
-    difficulty: "jobseeker",
+    stack: typeof state.stack === "string" && state.stack.trim().length > 0
+      ? state.stack.trim()
+      : defaultStackByRole(jobRole),
+    difficulty: mapDifficultyFromApi(state.difficulty),
     questionCount: state.total_questions,
     timerSeconds: 120,
     character: mapCharacterFromApi(state.interviewer_character),

@@ -10,6 +10,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,7 +47,9 @@ class GenerateRealtimeCoachingUseCaseTest {
 
     @Test
     void executeFallsBackWhenAiFails() {
-        when(aiChatPort.requestSingleResponse(anyString(), anyString())).thenThrow(new RuntimeException("api-failed"));
+        when(aiChatPort.requestSingleResponse(anyString(), anyString()))
+                .thenThrow(new RuntimeException("api-failed-1"))
+                .thenThrow(new RuntimeException("api-failed-2"));
 
         String result = useCase.execute(
                 "backend",
@@ -58,6 +62,27 @@ class GenerateRealtimeCoachingUseCaseTest {
         );
 
         assertThat(result).contains("다음 답변");
+        verify(aiChatPort, times(2)).requestSingleResponse(anyString(), anyString());
+    }
+
+    @Test
+    void executeRetriesAndUsesSecondAiResponse() {
+        when(aiChatPort.requestSingleResponse(anyString(), anyString()))
+                .thenThrow(new RuntimeException("api-failed-1"))
+                .thenReturn("개념 요약은 좋았습니다. 다음 답변에서는 결론-근거-예시 순서를 유지해보세요.");
+
+        String result = useCase.execute(
+                "backend",
+                "Spring Boot",
+                "jobseeker",
+                "질문",
+                "답변",
+                evaluation(false, "핵심 근거 제시는 충분했습니다."),
+                "핵심 근거 제시는 충분했습니다."
+        );
+
+        assertThat(result).contains("결론-근거-예시");
+        verify(aiChatPort, times(2)).requestSingleResponse(anyString(), anyString());
     }
 
     private AnswerEvaluationResult evaluation(boolean followupRequired, String followupReason) {

@@ -195,7 +195,7 @@ class InterviewAnswerServiceTest {
 
         assertThat(response.getEvaluation()).isNotNull();
         assertThat(response.getEvaluation().isFollowupRequired()).isFalse();
-        assertThat(response.getEvaluation().getFollowupReason()).isEqualTo("followup_limit_reached");
+        assertThat(response.getEvaluation().getFollowupReason()).contains("꼬리질문 한도");
         assertThat(response.getEvaluation().getFollowupRemaining()).isEqualTo(0);
         assertThat(response.getInterviewerEmotion()).isEqualTo("pressure");
         assertThat(response.getFollowupQuestion()).isNull();
@@ -263,7 +263,7 @@ class InterviewAnswerServiceTest {
 
         assertThat(response.getEvaluation()).isNotNull();
         assertThat(response.getEvaluation().isFollowupRequired()).isTrue();
-        assertThat(response.getEvaluation().getFollowupReason()).isNotEqualTo("none");
+        assertThat(response.getEvaluation().getFollowupReason()).isNotBlank();
         assertThat(response.getEvaluation().getFollowupRemaining()).isEqualTo(1);
         assertThat(response.getFollowupQuestion()).isNotBlank();
         assertThat(response.getNextQuestion()).isNull();
@@ -308,7 +308,7 @@ class InterviewAnswerServiceTest {
         assertThat(second.isSessionCompleted()).isFalse();
 
         assertThat(third.getEvaluation().isFollowupRequired()).isFalse();
-        assertThat(third.getEvaluation().getFollowupReason()).isEqualTo("followup_limit_reached");
+        assertThat(third.getEvaluation().getFollowupReason()).contains("꼬리질문 한도");
         assertThat(third.getFollowupQuestion()).isNull();
         assertThat(third.getSessionStatus()).isEqualTo("completed");
         assertThat(third.isSessionCompleted()).isTrue();
@@ -365,5 +365,26 @@ class InterviewAnswerServiceTest {
         assertThatThrownBy(() -> interviewAnswerService.submitAnswer(10L, request))
                 .isInstanceOf(AppException.class)
                 .hasMessageContaining("이미 종료된 세션입니다.");
+    }
+
+    @Test
+    void testSubmitAnswerAppliesSingleFollowupLimitForJobseeker() {
+        jdbcTemplate.update("UPDATE interview_sessions SET difficulty = 'jobseeker' WHERE id = 10");
+
+        InterviewAnswerSubmitRequest request = new InterviewAnswerSubmitRequest();
+        request.setQuestionId(100L);
+        request.setAnswerText("잘 모르겠습니다.");
+        request.setInputType("text");
+
+        InterviewAnswerSubmitResponse first = interviewAnswerService.submitAnswer(10L, request);
+        InterviewAnswerSubmitResponse second = interviewAnswerService.submitAnswer(10L, request);
+
+        assertThat(first.getEvaluation().isFollowupRequired()).isTrue();
+        assertThat(first.getEvaluation().getFollowupRemaining()).isEqualTo(0);
+
+        assertThat(second.getEvaluation().isFollowupRequired()).isFalse();
+        assertThat(second.getEvaluation().getFollowupReason()).contains("꼬리질문 한도");
+        assertThat(second.getNextQuestion()).isNotNull();
+        assertThat(second.getNextQuestion().getQuestionId()).isEqualTo("101");
     }
 }

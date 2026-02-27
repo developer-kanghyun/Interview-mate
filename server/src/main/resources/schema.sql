@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS interview_answers (
     score_delivery DOUBLE PRECISION,
     score_total DOUBLE PRECISION,
     followup_required BOOLEAN,
-    followup_reason VARCHAR(80),
+    followup_reason TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT fk_interview_answers_session_question FOREIGN KEY (session_question_id) REFERENCES interview_session_questions(id) ON DELETE CASCADE
 );;
@@ -129,7 +129,9 @@ ALTER TABLE IF EXISTS interview_answers
 ALTER TABLE IF EXISTS interview_answers
     ADD COLUMN IF NOT EXISTS followup_required BOOLEAN;;
 ALTER TABLE IF EXISTS interview_answers
-    ADD COLUMN IF NOT EXISTS followup_reason VARCHAR(80);;
+    ADD COLUMN IF NOT EXISTS followup_reason TEXT;;
+ALTER TABLE IF EXISTS interview_answers
+    ALTER COLUMN followup_reason TYPE TEXT;;
 ALTER TABLE IF EXISTS interview_answers
     ADD COLUMN IF NOT EXISTS coaching_message VARCHAR(400);;
 

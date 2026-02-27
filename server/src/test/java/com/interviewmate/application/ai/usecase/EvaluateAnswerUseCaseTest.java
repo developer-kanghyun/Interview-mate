@@ -1,15 +1,34 @@
 package com.interviewmate.application.ai.usecase;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.interviewmate.application.ai.port.AiChatPort;
 import com.interviewmate.domain.ai.AnswerEvaluationResult;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class EvaluateAnswerUseCaseTest {
+
+    @Mock
+    private AiChatPort aiChatPort;
+
+    private EvaluateAnswerUseCase useCase;
+
+    @BeforeEach
+    void setUp() {
+        useCase = new EvaluateAnswerUseCase(aiChatPort, new ObjectMapper());
+    }
 
     @Test
     void testExecuteReturnsLowScoreForShortAnswer() {
-        EvaluateAnswerUseCase useCase = new EvaluateAnswerUseCase();
+        when(aiChatPort.requestSingleResponse(anyString(), anyString())).thenThrow(new RuntimeException("timeout"));
 
         AnswerEvaluationResult result = useCase.execute(
                 "트랜잭션을 설명해보세요.",
@@ -23,7 +42,17 @@ class EvaluateAnswerUseCaseTest {
 
     @Test
     void testExecuteReturnsHighScoreForDetailedAnswer() {
-        EvaluateAnswerUseCase useCase = new EvaluateAnswerUseCase();
+        when(aiChatPort.requestSingleResponse(anyString(), anyString()))
+                .thenReturn("""
+                        {
+                          "accuracy": 4.2,
+                          "logic": 4.0,
+                          "depth": 3.8,
+                          "delivery": 3.9,
+                          "followup_required": false,
+                          "followup_reason_detail_ko": "핵심 개념과 근거를 균형 있게 제시했습니다."
+                        }
+                        """);
 
         AnswerEvaluationResult result = useCase.execute(
                 "트랜잭션을 설명해보세요.",
@@ -32,11 +61,12 @@ class EvaluateAnswerUseCaseTest {
 
         assertThat(result.getTotalScore()).isGreaterThanOrEqualTo(3.2);
         assertThat(result.isFollowupRequired()).isFalse();
+        assertThat(result.getFollowupReason()).contains("핵심 개념");
     }
 
     @Test
     void testExecuteUsesConfiguredWeightedScoreRule() {
-        EvaluateAnswerUseCase useCase = new EvaluateAnswerUseCase();
+        when(aiChatPort.requestSingleResponse(anyString(), anyString())).thenThrow(new RuntimeException("timeout"));
 
         AnswerEvaluationResult result = useCase.execute(
                 "트랜잭션을 설명해보세요.",
@@ -53,7 +83,7 @@ class EvaluateAnswerUseCaseTest {
 
     @Test
     void testExecutePenalizesGenericLongAnswerWhenCoreKeywordMissing() {
-        EvaluateAnswerUseCase useCase = new EvaluateAnswerUseCase();
+        when(aiChatPort.requestSingleResponse(anyString(), anyString())).thenThrow(new RuntimeException("timeout"));
 
         AnswerEvaluationResult result = useCase.execute(
                 "트랜잭션의 ACID를 설명해보세요.",
@@ -67,7 +97,7 @@ class EvaluateAnswerUseCaseTest {
 
     @Test
     void testExecuteRewardsAnswerContainingCoreKeyword() {
-        EvaluateAnswerUseCase useCase = new EvaluateAnswerUseCase();
+        when(aiChatPort.requestSingleResponse(anyString(), anyString())).thenThrow(new RuntimeException("timeout"));
 
         AnswerEvaluationResult result = useCase.execute(
                 "트랜잭션의 ACID를 설명해보세요.",
@@ -81,7 +111,7 @@ class EvaluateAnswerUseCaseTest {
 
     @Test
     void testExecuteRewardsLogicalConnectorsInDeliveryAndLogic() {
-        EvaluateAnswerUseCase useCase = new EvaluateAnswerUseCase();
+        when(aiChatPort.requestSingleResponse(anyString(), anyString())).thenThrow(new RuntimeException("timeout"));
 
         AnswerEvaluationResult unstructured = useCase.execute(
                 "캐시 전략을 설명해보세요.",
@@ -96,5 +126,34 @@ class EvaluateAnswerUseCaseTest {
 
         assertThat(structured.getLogic()).isGreaterThan(unstructured.getLogic());
         assertThat(structured.getDelivery()).isGreaterThan(unstructured.getDelivery());
+    }
+
+    @Test
+    void testExecuteUsesLowerFollowupThresholdForJobseeker() {
+        when(aiChatPort.requestSingleResponse(anyString(), anyString())).thenThrow(new RuntimeException("timeout"));
+
+        String answer = "트랜잭션은 ACID를 기반으로 동작하고 커밋과 롤백으로 데이터 정합성을 지킵니다";
+        AnswerEvaluationResult juniorResult = useCase.execute("트랜잭션의 ACID를 설명해보세요.", answer, "junior");
+        AnswerEvaluationResult jobseekerResult = useCase.execute("트랜잭션의 ACID를 설명해보세요.", answer, "jobseeker");
+
+        assertThat(jobseekerResult.getTotalScore()).isEqualTo(juniorResult.getTotalScore());
+        assertThat(juniorResult.isFollowupRequired()).isTrue();
+        assertThat(jobseekerResult.isFollowupRequired()).isFalse();
+    }
+
+    @Test
+    void testExecuteRetriesAiOnceThenFallsBack() {
+        when(aiChatPort.requestSingleResponse(anyString(), anyString()))
+                .thenThrow(new RuntimeException("first-fail"))
+                .thenThrow(new RuntimeException("second-fail"));
+
+        AnswerEvaluationResult result = useCase.execute(
+                "REST와 RPC 차이를 설명해보세요.",
+                "잘 모르겠습니다.",
+                "junior"
+        );
+
+        assertThat(result.getTotalScore()).isGreaterThan(0.0);
+        assertThat(result.getFollowupReason()).isNotBlank();
     }
 }

@@ -137,6 +137,39 @@ class InterviewSessionControllerTest {
     }
 
     @Test
+    void testStartInterviewSessionAcceptsExtendedRole() throws Exception {
+        InterviewSessionStartResponse mockResponse = InterviewSessionStartResponse.builder()
+                .sessionId("session-pm")
+                .jobRole("pm")
+                .interviewerCharacter("jet")
+                .totalQuestions(7)
+                .status("in_progress")
+                .startedAt(LocalDateTime.now())
+                .firstQuestion(InterviewSessionStartResponse.FirstQuestionDto.builder()
+                        .questionId("q-pm-1")
+                        .category("job")
+                        .difficulty("easy")
+                        .content("PM 우선순위 기준을 설명해보세요.")
+                        .build())
+                .build();
+
+        when(interviewSessionService.startSession(any(), anyLong())).thenReturn(mockResponse);
+
+        InterviewSessionStartRequest request = new InterviewSessionStartRequest();
+        request.setJobRole("pm");
+        request.setStack("PRD");
+        request.setDifficulty("jobseeker");
+
+        mockMvc.perform(post("/api/interview/sessions/start")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-API-Key", "test-key")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.job_role").value("pm"));
+    }
+
+    @Test
     void testStartInterviewSessionWithInvalidRoleReturns400() throws Exception {
         InterviewSessionStartRequest request = new InterviewSessionStartRequest();
         request.setJobRole("ios");
@@ -238,6 +271,8 @@ class InterviewSessionControllerTest {
                 .status("in_progress")
                 .endReason(null)
                 .jobRole("backend")
+                .stack("Spring Boot,Redis")
+                .difficulty("junior")
                 .interviewerCharacter("jet")
                 .totalQuestions(7)
                 .answeredQuestions(2)
@@ -263,6 +298,8 @@ class InterviewSessionControllerTest {
                 .andExpect(jsonPath("$.data.session_id").value("10"))
                 .andExpect(jsonPath("$.data.status").value("in_progress"))
                 .andExpect(jsonPath("$.data.end_reason").doesNotExist())
+                .andExpect(jsonPath("$.data.stack").value("Spring Boot,Redis"))
+                .andExpect(jsonPath("$.data.difficulty").value("junior"))
                 .andExpect(jsonPath("$.data.interviewer_character").value("jet"))
                 .andExpect(jsonPath("$.data.answered_questions").value(2))
                 .andExpect(jsonPath("$.data.remaining_questions").value(5))
@@ -280,6 +317,8 @@ class InterviewSessionControllerTest {
                         .status("in_progress")
                         .endReason(null)
                         .jobRole("backend")
+                        .stack("Spring Boot")
+                        .difficulty("jobseeker")
                         .interviewerCharacter("luna")
                         .totalQuestions(7)
                         .answeredQuestions(3)
@@ -305,6 +344,8 @@ class InterviewSessionControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.has_active_session").value(true))
                 .andExpect(jsonPath("$.data.session.session_id").value("22"))
+                .andExpect(jsonPath("$.data.session.stack").value("Spring Boot"))
+                .andExpect(jsonPath("$.data.session.difficulty").value("jobseeker"))
                 .andExpect(jsonPath("$.data.session.interviewer_character").value("luna"))
                 .andExpect(jsonPath("$.data.session.current_question.question_order").value(4));
     }

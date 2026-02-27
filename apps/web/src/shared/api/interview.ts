@@ -149,6 +149,8 @@ export type SessionStateResponse = {
     status: string;
     end_reason: string | null;
     job_role: string;
+    stack: string | null;
+    difficulty: string | null;
     interviewer_character: "luna" | "jet" | "iron";
     total_questions: number;
     answered_questions: number;
@@ -246,7 +248,7 @@ export type HealthApiResponse = {
 };
 
 export async function startInterviewSession(payload: {
-  jobRole: "backend" | "frontend";
+  jobRole: "backend" | "frontend" | "app" | "cloud" | "data" | "design" | "pm";
   stack: string;
   difficulty: "jobseeker" | "junior";
   interviewerCharacter: "luna" | "jet" | "iron";

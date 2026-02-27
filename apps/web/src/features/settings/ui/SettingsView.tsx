@@ -21,7 +21,12 @@ const defaultPreferences: InterviewPreferences = {
 
 const stackOptionsByRole: Record<InterviewPreferences["jobRole"], string[]> = {
   backend: ["Spring Boot", "NestJS", "Node.js"],
-  frontend: ["React", "Next.js", "Vue"]
+  frontend: ["React", "Next.js", "Vue"],
+  app: ["React Native", "Flutter", "Swift", "Kotlin"],
+  cloud: ["AWS", "GCP", "Kubernetes", "Terraform"],
+  data: ["Python", "SQL", "Pandas", "Spark"],
+  design: ["Figma", "UX Research", "Google Analytics", "SEO"],
+  pm: ["PRD", "Roadmap", "A/B Testing", "Jira"]
 };
 
 function getInitialPreferences() {
@@ -106,6 +111,11 @@ export function SettingsView() {
             >
               <option value="backend">백엔드</option>
               <option value="frontend">프론트엔드</option>
+              <option value="app">앱개발</option>
+              <option value="cloud">클라우드 엔지니어링</option>
+              <option value="data">데이터 분석</option>
+              <option value="design">디자인/마케팅</option>
+              <option value="pm">PM</option>
             </Select>
           </label>
 

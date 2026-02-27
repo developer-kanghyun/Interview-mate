@@ -83,8 +83,8 @@ class InterviewSessionStateServiceTest {
     @Test
     void testGetLatestActiveSessionReturnsSessionWhenInProgressExists() {
         jdbcTemplate.update("""
-                INSERT INTO interview_sessions (id, user_id, job_role, interviewer_character, total_questions, status, started_at, created_at, updated_at)
-                VALUES (77, 1, 'backend', 'jet', 7, 'in_progress', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                INSERT INTO interview_sessions (id, user_id, job_role, stack, difficulty, interviewer_character, total_questions, status, started_at, created_at, updated_at)
+                VALUES (77, 1, 'backend', 'Spring Boot,Redis', 'junior', 'jet', 7, 'in_progress', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """);
         jdbcTemplate.update("""
                 INSERT INTO interview_session_questions (id, session_id, question_id, question_order, followup_count, created_at)
@@ -96,6 +96,8 @@ class InterviewSessionStateServiceTest {
         assertThat(response.isHasActiveSession()).isTrue();
         assertThat(response.getSession()).isNotNull();
         assertThat(response.getSession().getSessionId()).isEqualTo("77");
+        assertThat(response.getSession().getStack()).isEqualTo("Spring Boot,Redis");
+        assertThat(response.getSession().getDifficulty()).isEqualTo("junior");
         assertThat(response.getSession().getInterviewerCharacter()).isEqualTo("jet");
         assertThat(response.getSession().getEndReason()).isNull();
         assertThat(response.getSession().getRemainingQuestions()).isEqualTo(7);
@@ -107,8 +109,8 @@ class InterviewSessionStateServiceTest {
     @Test
     void testGetSessionStateDoesNotCountQuestionAsCompletedDuringFollowup() {
         jdbcTemplate.update("""
-                INSERT INTO interview_sessions (id, user_id, job_role, interviewer_character, total_questions, status, started_at, created_at, updated_at)
-                VALUES (88, 1, 'backend', 'jet', 7, 'in_progress', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                INSERT INTO interview_sessions (id, user_id, job_role, stack, difficulty, interviewer_character, total_questions, status, started_at, created_at, updated_at)
+                VALUES (88, 1, 'backend', 'Spring Boot', 'jobseeker', 'jet', 7, 'in_progress', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """);
         jdbcTemplate.update("""
                 INSERT INTO interview_session_questions (id, session_id, question_id, question_order, followup_count, created_at)
@@ -127,13 +129,15 @@ class InterviewSessionStateServiceTest {
         assertThat(state.getCurrentQuestion()).isNotNull();
         assertThat(state.getCurrentQuestion().getQuestionId()).isEqualTo("900");
         assertThat(state.getCurrentQuestion().getFollowupCount()).isEqualTo(1);
+        assertThat(state.getStack()).isEqualTo("Spring Boot");
+        assertThat(state.getDifficulty()).isEqualTo("jobseeker");
     }
 
     @Test
     void testGetSessionStateIncludesEndReason() {
         jdbcTemplate.update("""
-                INSERT INTO interview_sessions (id, user_id, job_role, interviewer_character, total_questions, status, end_reason, started_at, created_at, updated_at)
-                VALUES (89, 1, 'backend', 'jet', 7, 'completed', 'user_end', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                INSERT INTO interview_sessions (id, user_id, job_role, stack, difficulty, interviewer_character, total_questions, status, end_reason, started_at, created_at, updated_at)
+                VALUES (89, 1, 'backend', 'Spring Boot', 'jobseeker', 'jet', 7, 'completed', 'user_end', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """);
         jdbcTemplate.update("""
                 INSERT INTO interview_session_questions (id, session_id, question_id, question_order, followup_count, created_at)
