@@ -9,7 +9,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isValidJobRole(value: unknown): value is StartInterviewPayload["jobRole"] {
-  return value === "backend" || value === "frontend";
+  return (
+    value === "backend" ||
+    value === "frontend" ||
+    value === "app" ||
+    value === "cloud" ||
+    value === "data" ||
+    value === "design" ||
+    value === "pm"
+  );
 }
 
 function isValidDifficulty(value: unknown): value is StartInterviewPayload["difficulty"] {

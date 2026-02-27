@@ -29,7 +29,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class InterviewAnswerService {
 
-    private static final int MAX_FOLLOWUP_PER_QUESTION = 2;
+    private static final int MAX_FOLLOWUP_PER_QUESTION_JOBSEEKER = 1;
+    private static final int MAX_FOLLOWUP_PER_QUESTION_JUNIOR = 2;
     private static final int MAX_PRESSURE_PER_SESSION = 2;
 
     private final InterviewSessionQuestionRepository interviewSessionQuestionRepository;
@@ -55,11 +56,14 @@ public class InterviewAnswerService {
             throw new AppException(ErrorCode.INVALID_INPUT, "현재 답변 가능한 질문이 아닙니다.");
         }
 
+        String sessionDifficulty = sessionQuestion.getSession().getDifficulty();
         AnswerEvaluationResult evaluationResult = evaluateAnswerUseCase.execute(
                 sessionQuestion.getQuestion().getContent(),
-                request.getAnswerText()
+                request.getAnswerText(),
+                sessionDifficulty
         );
         String interviewerEmotion = resolveInterviewerEmotion(sessionQuestion, evaluationResult);
+        int maxFollowupPerQuestion = resolveMaxFollowupPerQuestion(sessionDifficulty);
 
         InterviewAnswer answer = new InterviewAnswer(
                 sessionQuestion,
@@ -83,7 +87,7 @@ public class InterviewAnswerService {
         String sessionStatus = InterviewSessionStatus.IN_PROGRESS;
         boolean sessionCompleted = false;
         if (followupRequired) {
-            if (sessionQuestion.getFollowupCount() >= MAX_FOLLOWUP_PER_QUESTION) {
+            if (sessionQuestion.getFollowupCount() >= maxFollowupPerQuestion) {
                 followupRequired = false;
                 followupReason = "followup_limit_reached";
             } else {
@@ -149,7 +153,7 @@ public class InterviewAnswerService {
         );
         savedAnswer.setCoachingMessage(coachingMessage);
         interviewAnswerRepository.save(savedAnswer);
-        int followupRemaining = Math.max(0, MAX_FOLLOWUP_PER_QUESTION - sessionQuestion.getFollowupCount());
+        int followupRemaining = Math.max(0, maxFollowupPerQuestion - sessionQuestion.getFollowupCount());
 
         return InterviewAnswerSubmitResponse.builder()
                 .answerId(String.valueOf(savedAnswer.getId()))
@@ -176,6 +180,13 @@ public class InterviewAnswerService {
                 .endReason(sessionQuestion.getSession().getEndReason())
                 .sessionCompleted(sessionCompleted)
                 .build();
+    }
+
+    private int resolveMaxFollowupPerQuestion(String difficulty) {
+        if ("jobseeker".equalsIgnoreCase(difficulty)) {
+            return MAX_FOLLOWUP_PER_QUESTION_JOBSEEKER;
+        }
+        return MAX_FOLLOWUP_PER_QUESTION_JUNIOR;
     }
 
     private String summarizeRecentAnswers(InterviewSession session, String currentAnswer) {

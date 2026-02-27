@@ -20,6 +20,27 @@ function formatSessionStatus(status: SessionHistoryItem["status"]) {
   return status === "completed" ? "완료" : "진행중";
 }
 
+function formatRoleLabel(role: SessionHistoryItem["role"]) {
+  switch (role) {
+    case "backend":
+      return "백엔드";
+    case "frontend":
+      return "프론트엔드";
+    case "app":
+      return "앱개발";
+    case "cloud":
+      return "클라우드 엔지니어링";
+    case "data":
+      return "데이터 분석";
+    case "design":
+      return "디자인/마케팅";
+    case "pm":
+      return "PM";
+    default:
+      return "백엔드";
+  }
+}
+
 export function InsightsView({
   sessions,
   weakKeywords,
@@ -72,7 +93,7 @@ export function InsightsView({
               <li key={session.sessionId} className="rounded-2xl border border-im-border bg-white p-4 transition-[background-color,border-color,transform] hover:-translate-y-0.5 hover:border-im-primary/30 hover:bg-im-primary/5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-bold text-im-text-main">
-                    {session.role === "backend" ? "백엔드" : "프론트엔드"} · {session.stack}
+                    {formatRoleLabel(session.role)} · {session.stack}
                   </p>
                   <Chip variant={session.status === "completed" ? "success" : "info"}>
                     {formatSessionStatus(session.status)}

@@ -4,7 +4,7 @@ import { Button } from "@/shared/ui/Button";
 import { Chip } from "@/shared/ui/Chip";
 import { useState } from "react";
 import Image from "next/image";
-import type { InterviewCharacter, InterviewRole, StartInterviewPayload } from "@/shared/api/interview-client";
+import type { InterviewCharacter, StartInterviewPayload } from "@/shared/api/interview-client";
 import { motion } from "framer-motion";
 
 type SetupViewProps = {
@@ -15,7 +15,7 @@ type SetupViewProps = {
   canStart?: boolean;
 };
 
-type VisualJobId = "frontend" | "backend" | "app" | "cloud" | "data" | "design";
+type VisualJobId = "frontend" | "backend" | "app" | "cloud" | "data" | "design" | "pm";
 
 const stacksByJobId: Record<VisualJobId, string[]> = {
   frontend: ["React", "Next.js", "Vue", "Angular", "JavaScript", "TypeScript", "CSS", "Tailwind"],
@@ -24,15 +24,7 @@ const stacksByJobId: Record<VisualJobId, string[]> = {
   cloud:    ["AWS", "GCP", "Azure", "Kubernetes", "Docker", "Terraform", "CI/CD"],
   data:     ["Python", "SQL", "Pandas", "Spark", "Airflow", "TensorFlow", "PyTorch"],
   design:   ["Figma", "Adobe XD", "UX Research", "Google Analytics", "SEO", "Copywriting"],
-};
-
-const jobToRole: Record<VisualJobId, InterviewRole> = {
-  frontend: "frontend",
-  backend:  "backend",
-  app:      "frontend",
-  cloud:    "backend",
-  data:     "backend",
-  design:   "frontend",
+  pm:       ["PRD", "Roadmap", "A/B Testing", "SQL", "GA4", "Jira", "Notion"],
 };
 
 const MAX_STACKS = 3;
@@ -128,7 +120,8 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
                   { id: "app", label: "앱개발 (iOS/Android)", role: "frontend" },
                   { id: "cloud", label: "클라우드 엔지니어링", role: "backend" },
                   { id: "data", label: "데이터 분석", role: "backend" },
-                  { id: "design", label: "디자인 / 마케팅", role: "frontend" }
+                  { id: "design", label: "디자인 / 마케팅", role: "frontend" },
+                  { id: "pm", label: "PM", role: "frontend" }
                 ] as const
               ).map((job) => {
                 const isSelected = visualJobId === job.id;
@@ -149,7 +142,7 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
                       setSelectedStacks([]);
                       onChange({
                         ...value,
-                        jobRole: jobToRole[newJobId],
+                        jobRole: newJobId,
                         stack: "",
                       } as StartInterviewPayload);
                     }}

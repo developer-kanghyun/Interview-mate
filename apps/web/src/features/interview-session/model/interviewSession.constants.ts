@@ -19,7 +19,24 @@ export const interviewerNameMap: Record<InterviewCharacter, string> = {
 };
 
 export function mapRoleLabel(role: StartInterviewPayload["jobRole"]) {
-  return role === "backend" ? "백엔드" : "프론트엔드";
+  switch (role) {
+    case "backend":
+      return "백엔드";
+    case "frontend":
+      return "프론트엔드";
+    case "app":
+      return "앱개발";
+    case "cloud":
+      return "클라우드 엔지니어링";
+    case "data":
+      return "데이터 분석";
+    case "design":
+      return "디자인/마케팅";
+    case "pm":
+      return "PM";
+    default:
+      return "백엔드";
+  }
 }
 
 export function mapDifficultyLabel(difficulty: StartInterviewPayload["difficulty"]) {

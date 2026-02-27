@@ -11,6 +11,10 @@ import java.util.List;
 public class EvaluateAnswerUseCase {
 
     public AnswerEvaluationResult execute(String question, String answer) {
+        return execute(question, answer, "junior");
+    }
+
+    public AnswerEvaluationResult execute(String question, String answer, String difficulty) {
         String normalizedAnswer = answer == null ? "" : answer.trim();
         int answerLength = normalizedAnswer.length();
 
@@ -25,7 +29,8 @@ public class EvaluateAnswerUseCase {
                 + depth * weights.getDepth()
                 + delivery * weights.getDelivery()) / 100.0;
 
-        boolean followupRequired = weightedTotal < 3.2;
+        double followupThreshold = resolveFollowupThreshold(difficulty);
+        boolean followupRequired = weightedTotal < followupThreshold;
         String followupReason = followupRequired ? determineFollowupReason(accuracy, logic, depth) : "none";
 
         return AnswerEvaluationResult.builder()
@@ -37,6 +42,13 @@ public class EvaluateAnswerUseCase {
                 .followupRequired(followupRequired)
                 .followupReason(followupReason)
                 .build();
+    }
+
+    private double resolveFollowupThreshold(String difficulty) {
+        if ("jobseeker".equalsIgnoreCase(difficulty)) {
+            return 2.8;
+        }
+        return 3.2;
     }
 
     private double calculateAccuracy(String question, String answer, int answerLength) {

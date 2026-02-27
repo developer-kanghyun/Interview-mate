@@ -10,7 +10,7 @@ import {
 } from "@/shared/api/interview";
 import { getAuthRequiredMessage } from "@/shared/auth/session";
 
-export type InterviewRole = "backend" | "frontend";
+export type InterviewRole = "backend" | "frontend" | "app" | "cloud" | "data" | "design" | "pm";
 export type InterviewDifficulty = "jobseeker" | "junior";
 export type InterviewCharacter = "zet" | "luna" | "iron";
 export type InterviewEmotion = "neutral" | "encourage" | "pressure";
@@ -155,7 +155,18 @@ function mapEmotion(value: string | null | undefined): InterviewEmotion {
 }
 
 function mapRole(value: string | null | undefined): InterviewRole {
-  return value === "frontend" ? "frontend" : "backend";
+  switch (value) {
+    case "frontend":
+    case "app":
+    case "cloud":
+    case "data":
+    case "design":
+    case "pm":
+      return value;
+    case "backend":
+    default:
+      return "backend";
+  }
 }
 
 function mapStatus(value: string | null | undefined): "in_progress" | "completed" {
@@ -723,7 +734,24 @@ export async function getReport(sessionId: string): Promise<InterviewReport> {
 }
 
 function defaultStackByRole(role: InterviewRole) {
-  return role === "backend" ? "Spring Boot" : "Next.js";
+  switch (role) {
+    case "backend":
+      return "Spring Boot";
+    case "frontend":
+      return "Next.js";
+    case "app":
+      return "React Native";
+    case "cloud":
+      return "AWS";
+    case "data":
+      return "Python";
+    case "design":
+      return "Figma";
+    case "pm":
+      return "PRD";
+    default:
+      return "Spring Boot";
+  }
 }
 
 function pickLatestDate(values: string[]) {
