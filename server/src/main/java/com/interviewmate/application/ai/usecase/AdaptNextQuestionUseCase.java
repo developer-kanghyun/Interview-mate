@@ -1,5 +1,6 @@
 package com.interviewmate.application.ai.usecase;
 
+import com.interviewmate.application.ai.prompt.InterviewerToneGuide;
 import com.interviewmate.application.ai.port.AiChatPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +18,8 @@ public class AdaptNextQuestionUseCase {
             String stack,
             String difficulty,
             String baseQuestion,
-            String recentAnswerSummary
+            String recentAnswerSummary,
+            String interviewerCharacter
     ) {
         if (baseQuestion == null || baseQuestion.isBlank()) {
             return baseQuestion;
@@ -29,7 +31,8 @@ public class AdaptNextQuestionUseCase {
                             당신은 기술 면접관입니다.
                             다음 질문의 핵심 주제는 유지하되, 지원자의 최근 답변 약점을 반영해 질문을 1개로 보정하세요.
                             출력은 질문 문장 1개만 반환하세요.
-                            """,
+                            %s
+                            """.formatted(InterviewerToneGuide.forNextQuestionAdaptation(interviewerCharacter)),
                     """
                             직무: %s
                             스택: %s

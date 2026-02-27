@@ -29,7 +29,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class InterviewAnswerService {
 
-    private static final int MAX_FOLLOWUP_PER_QUESTION = 2;
+    private static final int MAX_FOLLOWUP_PER_QUESTION_JUNIOR = 2;
+    private static final int MAX_FOLLOWUP_PER_QUESTION_JOBSEEKER = 1;
     private static final int MAX_PRESSURE_PER_SESSION = 2;
 
     private final InterviewSessionQuestionRepository interviewSessionQuestionRepository;
@@ -57,7 +58,9 @@ public class InterviewAnswerService {
 
         AnswerEvaluationResult evaluationResult = evaluateAnswerUseCase.execute(
                 sessionQuestion.getQuestion().getContent(),
-                request.getAnswerText()
+                request.getAnswerText(),
+                sessionQuestion.getSession().getDifficulty(),
+                sessionQuestion.getSession().getStack()
         );
         String interviewerEmotion = resolveInterviewerEmotion(sessionQuestion, evaluationResult);
 
@@ -82,8 +85,9 @@ public class InterviewAnswerService {
         InterviewAnswerSubmitResponse.NextQuestionDto nextQuestion = null;
         String sessionStatus = InterviewSessionStatus.IN_PROGRESS;
         boolean sessionCompleted = false;
+        int maxFollowupPerQuestion = resolveMaxFollowupPerQuestion(sessionQuestion.getSession());
         if (followupRequired) {
-            if (sessionQuestion.getFollowupCount() >= MAX_FOLLOWUP_PER_QUESTION) {
+            if (sessionQuestion.getFollowupCount() >= maxFollowupPerQuestion) {
                 followupRequired = false;
                 followupReason = "followup_limit_reached";
             } else {
@@ -94,7 +98,8 @@ public class InterviewAnswerService {
                         sessionQuestion.getSession().getDifficulty(),
                         sessionQuestion.getQuestion().getContent(),
                         request.getAnswerText(),
-                        recentAnswerSummary
+                        recentAnswerSummary,
+                        sessionQuestion.getSession().getInterviewerCharacter()
                 );
                 sessionQuestion.incrementFollowupCount();
                 interviewSessionQuestionRepository.save(sessionQuestion);
@@ -121,7 +126,8 @@ public class InterviewAnswerService {
                             sessionQuestion.getSession().getStack(),
                             sessionQuestion.getSession().getDifficulty(),
                             nextSessionQuestion.getQuestion().getContent(),
-                            summarizeRecentAnswers(sessionQuestion.getSession(), request.getAnswerText())
+                            summarizeRecentAnswers(sessionQuestion.getSession(), request.getAnswerText()),
+                            sessionQuestion.getSession().getInterviewerCharacter()
                     );
                     if (adaptedNextQuestion != null && !adaptedNextQuestion.isBlank()) {
                         nextSessionQuestion.getQuestion().setContent(adaptedNextQuestion);
@@ -138,18 +144,19 @@ public class InterviewAnswerService {
                 .build();
             }
         }
-        String coachingMessage = generateRealtimeCoachingUseCase.execute(
+        GenerateRealtimeCoachingUseCase.RealtimeCoachingResult coachingMessage = generateRealtimeCoachingUseCase.execute(
                 sessionQuestion.getSession().getJobRole(),
                 sessionQuestion.getSession().getStack(),
                 sessionQuestion.getSession().getDifficulty(),
                 sessionQuestion.getQuestion().getContent(),
                 request.getAnswerText(),
                 evaluationResult,
-                followupReason
+                followupReason,
+                sessionQuestion.getSession().getInterviewerCharacter()
         );
-        savedAnswer.setCoachingMessage(coachingMessage);
+        savedAnswer.setCoachingMessage(coachingMessage.coachingMessage());
         interviewAnswerRepository.save(savedAnswer);
-        int followupRemaining = Math.max(0, MAX_FOLLOWUP_PER_QUESTION - sessionQuestion.getFollowupCount());
+        int followupRemaining = Math.max(0, maxFollowupPerQuestion - sessionQuestion.getFollowupCount());
 
         return InterviewAnswerSubmitResponse.builder()
                 .answerId(String.valueOf(savedAnswer.getId()))
@@ -168,7 +175,9 @@ public class InterviewAnswerService {
                         .followupReason(followupReason)
                         .followupRemaining(followupRemaining)
                         .build())
-                .coachingMessage(coachingMessage)
+                .feedbackSummary(coachingMessage.feedbackSummary())
+                .coachingMessage(coachingMessage.coachingMessage())
+                .coachingAvailable(coachingMessage.coachingAvailable())
                 .followupQuestion(followupQuestion)
                 .interviewerEmotion(interviewerEmotion)
                 .nextQuestion(nextQuestion)
@@ -204,7 +213,8 @@ public class InterviewAnswerService {
     }
 
     private String resolveInterviewerEmotion(InterviewSessionQuestion sessionQuestion, AnswerEvaluationResult evaluationResult) {
-        boolean shouldPressure = evaluationResult.isFollowupRequired() || evaluationResult.getTotalScore() < 3.0;
+        double pressureThreshold = isJobseekerDifficulty(sessionQuestion.getSession().getDifficulty()) ? 2.6 : 2.9;
+        boolean shouldPressure = evaluationResult.isFollowupRequired() || evaluationResult.getTotalScore() < pressureThreshold;
         if (shouldPressure && sessionQuestion.getSession().getInterviewerPressureCount() < MAX_PRESSURE_PER_SESSION) {
             sessionQuestion.getSession().setInterviewerPressureCount(sessionQuestion.getSession().getInterviewerPressureCount() + 1);
             return InterviewerEmotion.PRESSURE;
@@ -215,6 +225,16 @@ public class InterviewAnswerService {
         }
 
         return InterviewerEmotion.NEUTRAL;
+    }
+
+    private int resolveMaxFollowupPerQuestion(InterviewSession session) {
+        return isJobseekerDifficulty(session.getDifficulty())
+                ? MAX_FOLLOWUP_PER_QUESTION_JOBSEEKER
+                : MAX_FOLLOWUP_PER_QUESTION_JUNIOR;
+    }
+
+    private boolean isJobseekerDifficulty(String difficulty) {
+        return !"junior".equalsIgnoreCase(difficulty);
     }
 
     private InterviewSessionQuestion resolveActiveSessionQuestion(Long sessionId) {

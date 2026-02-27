@@ -18,7 +18,9 @@ public class InterviewAnswerSubmitResponse {
     private String interviewerCharacter;
     private LocalDateTime submittedAt;
     private EvaluationDto evaluation;
+    private String feedbackSummary;
     private String coachingMessage;
+    private boolean coachingAvailable;
     private String followupQuestion;
     private String interviewerEmotion;
     private NextQuestionDto nextQuestion;

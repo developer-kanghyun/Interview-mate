@@ -5,19 +5,26 @@ import com.interviewmate.domain.ai.EvaluationWeights;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class EvaluateAnswerUseCase {
 
-    public AnswerEvaluationResult execute(String question, String answer) {
+    public AnswerEvaluationResult execute(String question, String answer, String difficulty, String stack) {
         String normalizedAnswer = answer == null ? "" : answer.trim();
         int answerLength = normalizedAnswer.length();
+        String normalizedDifficulty = normalizeDifficulty(difficulty);
+        List<String> keywordPool = buildKeywordPool(question, stack);
 
-        double accuracy = calculateAccuracy(question, normalizedAnswer, answerLength);
-        double logic = calculateLogic(normalizedAnswer, answerLength);
-        double depth = calculateDepth(answerLength);
-        double delivery = calculateDelivery(normalizedAnswer);
+        double accuracy = calculateAccuracy(normalizedAnswer, answerLength, normalizedDifficulty, keywordPool);
+        double logic = calculateLogic(normalizedAnswer, answerLength, normalizedDifficulty);
+        double depth = calculateDepth(answerLength, normalizedDifficulty);
+        double delivery = calculateDelivery(normalizedAnswer, answerLength);
 
         EvaluationWeights weights = EvaluationWeights.defaultWeights();
         double weightedTotal = (accuracy * weights.getAccuracy()
@@ -25,7 +32,8 @@ public class EvaluateAnswerUseCase {
                 + depth * weights.getDepth()
                 + delivery * weights.getDelivery()) / 100.0;
 
-        boolean followupRequired = weightedTotal < 3.2;
+        double followupThreshold = "jobseeker".equals(normalizedDifficulty) ? 2.8 : 3.0;
+        boolean followupRequired = weightedTotal < followupThreshold;
         String followupReason = followupRequired ? determineFollowupReason(accuracy, logic, depth) : "none";
 
         return AnswerEvaluationResult.builder()
@@ -39,77 +47,118 @@ public class EvaluateAnswerUseCase {
                 .build();
     }
 
-    private double calculateAccuracy(String question, String answer, int answerLength) {
+    private double calculateAccuracy(String answer, int answerLength, String difficulty, List<String> keywordPool) {
         if (answer.isBlank()) {
             return 1.0;
         }
+
+        double baseScore = resolveAccuracyBase(answerLength, difficulty);
         if (containsWeakSignal(answer)) {
-            return 2.2;
+            baseScore -= 0.6;
         }
 
-        double baseScore = answerLength > 120 ? 3.8 : 3.2;
-        String lowerCaseQuestion = question == null ? "" : question.toLowerCase();
-        boolean acidQuestion = lowerCaseQuestion.contains("acid");
-        List<String> coreKeywords = extractCoreKeywords(question);
-        if (coreKeywords.isEmpty()) {
-            return baseScore;
+        int matchedKeywords = countKeywordMatches(answer, keywordPool);
+        if (matchedKeywords >= 2) {
+            return clampScore(Math.max(baseScore, 3.5) + Math.min(0.3, (matchedKeywords - 2) * 0.1));
+        }
+        if (matchedKeywords == 1) {
+            return clampScore(Math.max(baseScore, 3.0));
+        }
+        if (answerLength >= 120) {
+            baseScore -= 0.2;
+        }
+        return clampScore(baseScore);
+    }
+
+    private double resolveAccuracyBase(int answerLength, String difficulty) {
+        if ("jobseeker".equals(difficulty)) {
+            if (answerLength < 25) {
+                return 2.0;
+            }
+            if (answerLength < 60) {
+                return 2.6;
+            }
+            if (answerLength < 120) {
+                return 3.0;
+            }
+            return 3.2;
         }
 
-        int matchedKeywords = 0;
-        String lowerCaseAnswer = answer.toLowerCase();
-        for (String keyword : coreKeywords) {
-            if (lowerCaseAnswer.contains(keyword)) {
-                matchedKeywords += 1;
+        if (answerLength < 25) {
+            return 1.8;
+        }
+        if (answerLength < 60) {
+            return 2.4;
+        }
+        if (answerLength < 120) {
+            return 2.9;
+        }
+        return 3.2;
+    }
+
+    private double calculateLogic(String answer, int answerLength, String difficulty) {
+        double baseScore;
+
+        if ("jobseeker".equals(difficulty)) {
+            if (answerLength < 30) {
+                baseScore = 2.2;
+            } else if (answerLength < 80) {
+                baseScore = 2.9;
+            } else {
+                baseScore = 3.4;
+            }
+        } else {
+            if (answerLength < 30) {
+                baseScore = 2.0;
+            } else if (answerLength < 80) {
+                baseScore = 2.7;
+            } else {
+                baseScore = 3.4;
             }
         }
 
-        if (acidQuestion && matchedKeywords < 2 && answerLength >= 80) {
-            return Math.max(1.0, baseScore - 1.0);
-        }
-        if (matchedKeywords == 0 && answerLength >= 80) {
-            return Math.max(1.0, baseScore - 1.0);
-        }
-        if (matchedKeywords >= Math.max(1, coreKeywords.size() / 2)) {
-            return Math.min(4.0, baseScore + 0.5);
-        }
-        return baseScore;
-    }
-
-    private double calculateLogic(String answer, int answerLength) {
-        double baseScore;
-        if (answerLength < 30) {
-            baseScore = 1.8;
-        } else if (answerLength < 80) {
-            baseScore = 2.8;
-        } else {
-            baseScore = 3.6;
-        }
-
         int connectorCount = countLogicalConnectors(answer);
-        if (connectorCount >= 2) {
-            return Math.min(4.0, baseScore + 0.3);
+        if ("jobseeker".equals(difficulty) && connectorCount >= 1) {
+            return clampScore(baseScore + 0.3);
         }
-        if (answerLength >= 80 && connectorCount == 0) {
-            return Math.max(1.0, baseScore - 0.3);
+        if (!"jobseeker".equals(difficulty) && connectorCount >= 2) {
+            return clampScore(baseScore + 0.3);
         }
-        return baseScore;
+        if (!"jobseeker".equals(difficulty) && answerLength >= 90 && connectorCount == 0) {
+            return clampScore(baseScore - 0.2);
+        }
+        return clampScore(baseScore);
     }
 
-    private double calculateDepth(int answerLength) {
+    private double calculateDepth(int answerLength, String difficulty) {
+        if ("jobseeker".equals(difficulty)) {
+            if (answerLength < 40) {
+                return 2.2;
+            }
+            if (answerLength < 100) {
+                return 3.0;
+            }
+            return 3.5;
+        }
+
         if (answerLength < 40) {
-            return 1.6;
+            return 1.8;
         }
         if (answerLength < 100) {
-            return 2.9;
+            return 2.8;
         }
-        return 3.7;
+        return 3.6;
     }
 
-    private double calculateDelivery(String answer) {
+    private double calculateDelivery(String answer, int answerLength) {
         if (answer.isBlank()) {
             return 1.0;
         }
-        return answer.contains(".") || answer.contains(",") ? 3.5 : 2.8;
+        double score = answer.contains(".") || answer.contains(",") ? 3.4 : 2.9;
+        if (answerLength >= 100 && countLogicalConnectors(answer) >= 1) {
+            score += 0.2;
+        }
+        return clampScore(score);
     }
 
     private boolean containsWeakSignal(String answer) {
@@ -118,6 +167,38 @@ public class EvaluateAnswerUseCase {
                 || lowerCaseAnswer.contains("기억이 안")
                 || lowerCaseAnswer.contains("아마")
                 || lowerCaseAnswer.contains("대충");
+    }
+
+    private List<String> buildKeywordPool(String question, String stack) {
+        Set<String> keywords = new LinkedHashSet<>();
+        keywords.addAll(extractCoreKeywords(question));
+        keywords.addAll(parseStackKeywords(stack));
+        return new ArrayList<>(keywords);
+    }
+
+    private List<String> parseStackKeywords(String stack) {
+        if (stack == null || stack.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(stack.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .collect(Collectors.toList());
+    }
+
+    private int countKeywordMatches(String answer, List<String> keywords) {
+        if (keywords.isEmpty()) {
+            return 0;
+        }
+        String lowerCaseAnswer = answer.toLowerCase(Locale.ROOT);
+        int matched = 0;
+        for (String keyword : keywords) {
+            String normalizedKeyword = keyword.toLowerCase(Locale.ROOT).trim();
+            if (!normalizedKeyword.isBlank() && lowerCaseAnswer.contains(normalizedKeyword)) {
+                matched += 1;
+            }
+        }
+        return matched;
     }
 
     private List<String> extractCoreKeywords(String question) {
@@ -166,6 +247,13 @@ public class EvaluateAnswerUseCase {
         return count;
     }
 
+    private String normalizeDifficulty(String difficulty) {
+        if ("junior".equalsIgnoreCase(difficulty)) {
+            return "junior";
+        }
+        return "jobseeker";
+    }
+
     private String determineFollowupReason(double accuracy, double logic, double depth) {
         if (accuracy <= logic && accuracy <= depth) {
             return "factual_error_or_uncertainty";
@@ -174,6 +262,10 @@ public class EvaluateAnswerUseCase {
             return "missing_core_detail";
         }
         return "weak_reasoning";
+    }
+
+    private double clampScore(double value) {
+        return Math.max(1.0, Math.min(4.0, value));
     }
 
     private double roundOneDecimal(double value) {

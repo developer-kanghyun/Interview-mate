@@ -22,6 +22,9 @@ public enum ErrorCode {
     // 429 Too Many Requests
     RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMIT_EXCEEDED", "요청 횟수가 초과되었습니다."),
 
+    // 503 Service Unavailable
+    UPSTREAM_AI_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "UPSTREAM_AI_UNAVAILABLE", "AI 서비스가 일시적으로 불안정합니다."),
+
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "서버 내부 오류가 발생했습니다.");
     

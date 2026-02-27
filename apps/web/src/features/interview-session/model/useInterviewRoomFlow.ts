@@ -286,16 +286,25 @@ export function useInterviewRoomFlow({
         }
 
         const needsCoachWarning = response.totalScore < COACH_WARNING_SCORE_THRESHOLD;
-        const coachContent = needsCoachWarning
-          ? `답변 보완이 필요합니다.\n${response.feedbackSummary}\n${response.coaching}`
-          : `${response.feedbackSummary}\n${response.coaching}`;
+        const coachContent = [response.feedbackSummary, response.coaching]
+          .map((item) => item?.trim())
+          .filter((item): item is string => Boolean(item))
+          .join("\n");
 
-        appendMessage({
-          id: `coach-${Date.now()}`,
-          role: "coach",
-          content: coachContent,
-          tone: needsCoachWarning ? "error" : "default"
-        });
+        if (coachContent) {
+          appendMessage({
+            id: `coach-${Date.now()}`,
+            role: "coach",
+            content: coachContent,
+            tone: needsCoachWarning ? "error" : "default"
+          });
+        } else if (!response.coachingAvailable) {
+          showToast({
+            message: "코칭 생성이 지연되었습니다. 다음 답변으로 진행해 주세요.",
+            variant: "info",
+            dedupeKey: "coach:unavailable"
+          });
+        }
 
         if (response.isSessionComplete) {
           if (isGuestUser) {
@@ -340,6 +349,7 @@ export function useInterviewRoomFlow({
       sessionId,
       setAuthPromptReason,
       setUiError,
+      showToast,
       showToastError,
       startQuestionStream,
       stopQuestionStream,

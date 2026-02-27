@@ -48,8 +48,9 @@ export type AxisKey = "technical" | "problemSolving" | "communication" | "delive
 export type AxisScores = Record<AxisKey, number>;
 
 export type SubmitAnswerResponse = {
-  feedbackSummary: string;
-  coaching: string;
+  feedbackSummary: string | null;
+  coaching: string | null;
+  coachingAvailable: boolean;
   axisScores: AxisScores;
   totalScore: number;
   suggestedEmotion: InterviewEmotion;
@@ -203,22 +204,6 @@ function buildAxisScoresFromApi(data: {
     communication: toPercentScore(data.depth),
     delivery: toPercentScore(data.delivery)
   };
-}
-
-function buildFollowupMessage(reason: string | null | undefined) {
-  if (reason === "factual_error_or_uncertainty") {
-    return "핵심 개념 정확도가 낮습니다. 정의와 근거를 먼저 제시해 주세요.";
-  }
-  if (reason === "missing_core_detail") {
-    return "핵심 디테일이 부족합니다. 실무 예시를 포함해 확장해 주세요.";
-  }
-  if (reason === "weak_reasoning") {
-    return "추론 근거가 약합니다. 결론-근거-예시 순서로 재구성해 주세요.";
-  }
-  if (reason === "followup_limit_reached") {
-    return "꼬리질문 한도에 도달했습니다. 다음 문항에서 구조화된 답변을 시도해 주세요.";
-  }
-  return "답변 보강이 필요합니다. 핵심 개념과 근거를 함께 설명해 주세요.";
 }
 
 async function refreshCurrentQuestionFromState(sessionId: string) {
@@ -653,8 +638,9 @@ export async function submitAnswer(
 
   const data = readResponseData(submitResponse, "답변 제출 실패");
 
-  const followupUsedCount = Math.max(0, 2 - data.evaluation.followup_remaining);
+  const previousFollowupCount = runtimeState.currentQuestion.followupCount;
   const shouldAskFollowup = Boolean(data.evaluation.followup_required && data.followup_question);
+  const followupUsedCount = shouldAskFollowup ? previousFollowupCount + 1 : 0;
 
   if (data.session_completed) {
     runtimeState.status = "completed";
@@ -679,13 +665,13 @@ export async function submitAnswer(
     await refreshCurrentQuestionFromState(sessionId);
   }
 
-  const summary = data.evaluation.followup_required
-    ? buildFollowupMessage(data.evaluation.followup_reason)
-    : "답변 흐름이 좋습니다. 다음 문항도 결론-근거-예시 순서를 유지해 보세요.";
+  const summary = data.feedback_summary?.trim() || null;
+  const coachingMessage = data.coaching_message?.trim() || null;
 
   return {
     feedbackSummary: summary,
-    coaching: data.coaching_message,
+    coaching: coachingMessage,
+    coachingAvailable: Boolean(data.coaching_available),
     axisScores: buildAxisScoresFromApi(data.evaluation),
     totalScore: toPercentScore(data.evaluation.total_score),
     suggestedEmotion: mapEmotion(data.interviewer_emotion),
@@ -709,7 +695,7 @@ function mapReportToInterviewReport(reportResponse: SessionReportResponse): Inte
     questionId: question.question_id,
     order: question.question_order,
     question: question.question_content,
-    feedback: question.improvement_tip || question.coaching_message,
+    feedback: question.improvement_tip || question.coaching_message || "피드백을 불러오지 못했습니다.",
     totalScore: toPercentScore(question.score.total_score)
   }));
 
