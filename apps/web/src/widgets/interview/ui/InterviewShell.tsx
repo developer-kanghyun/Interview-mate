@@ -97,7 +97,7 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
               disabled={isNavigationBusy}
               className="rounded-full px-6 py-2.5 text-base font-bold transition-transform"
             >
-              study
+              학습
             </Button>
 
             <div className="ml-2 mr-1 h-6 w-px bg-im-border/80" /> {/* Divider */}

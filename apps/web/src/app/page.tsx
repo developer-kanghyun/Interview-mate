@@ -9,6 +9,7 @@ import { clearStoredSessionId } from "@/shared/auth/session";
 import { BrandIdentityLink } from "@/shared/ui/BrandIdentityLink";
 import { ReportShowcaseSection } from "@/features/landing/ui/ReportShowcaseSection";
 import { LearningShowcaseSection } from "@/features/landing/ui/LearningShowcaseSection";
+import { CtaShowcaseSection } from "@/features/landing/ui/CtaShowcaseSection";
 
 const fadeUp: any = {
   initial: { opacity: 0, y: 40 },
@@ -79,7 +80,7 @@ export default function HomePage() {
               href="/study"
               className="rounded-full px-5 py-2 text-base font-bold text-im-text-main transition-colors hover:bg-im-surface"
             >
-              study
+              학습
             </Link>
 
             <div className="ml-2 mr-1 h-6 w-px bg-im-border/80" />
@@ -316,6 +317,8 @@ export default function HomePage() {
               <ReportShowcaseSection />
               <LearningShowcaseSection />
             </div>
+
+            <CtaShowcaseSection />
 
           </div>
         </section>
