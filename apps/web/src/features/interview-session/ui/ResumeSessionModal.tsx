@@ -1,4 +1,5 @@
 import { Button } from "@/shared/ui/Button";
+import { LoadingSpinner } from "@/shared/ui/LoadingSpinner";
 
 type ResumeSessionModalProps = {
   sessionId: string;
@@ -29,8 +30,15 @@ export function ResumeSessionModal({ sessionId, isGuest, isLoading, onContinue, 
           <Button variant="secondary" onClick={onStartNew} disabled={isLoading}>
             새 면접 시작
           </Button>
-          <Button onClick={() => void onContinue()} disabled={isLoading}>
-            {isLoading ? "처리 중..." : continueLabel}
+          <Button onClick={() => void onContinue()} disabled={isLoading} className="gap-2">
+            {isLoading ? (
+              <>
+                <LoadingSpinner size="sm" tone="on-primary" />
+                처리 중...
+              </>
+            ) : (
+              continueLabel
+            )}
           </Button>
         </div>
       </div>

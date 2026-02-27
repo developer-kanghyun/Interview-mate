@@ -133,7 +133,7 @@ function resolveStepFromPath(pathname: string | null): InterviewStep | null {
   if (pathname === "/setup") {
     return "setup";
   }
-  if (pathname === "/insights") {
+  if (pathname === "/insights" || pathname === "/study") {
     return "insights";
   }
   if (pathname === "/report" || /^\/report\/[^/]+$/.test(pathname)) {
@@ -157,6 +157,13 @@ function resolveSessionIdFromPath(pathname: string | null) {
 }
 
 function buildRetryPreset(weakKeywords: string[], fallback: StartInterviewPayload): RetryPreset {
+  if (fallback.jobRole !== "backend" && fallback.jobRole !== "frontend") {
+    return {
+      jobRole: fallback.jobRole,
+      stack: fallback.stack
+    };
+  }
+
   const keywordText = weakKeywords.join(" ").toLowerCase();
 
   const backendSignals = ["api", "db", "sql", "transaction", "spring", "jpa", "redis", "cache", "서버", "백엔드"];
@@ -188,24 +195,30 @@ function buildRetryPreset(weakKeywords: string[], fallback: StartInterviewPayloa
 function mapRoleFromApi(role: string | null | undefined): StartInterviewPayload["jobRole"] {
   switch (role) {
     case "frontend":
-    case "app":
-    case "cloud":
-    case "data":
-    case "design":
-    case "pm":
-      return role;
+      return "frontend";
     case "backend":
+      return "backend";
+    case "app":
+      return "app";
+    case "cloud":
+      return "cloud";
+    case "data":
+      return "data";
+    case "design":
+      return "design";
+    case "pm":
+      return "pm";
     default:
       return "backend";
   }
 }
 
-function defaultStackByRole(role: StartInterviewPayload["jobRole"]) {
+function defaultStackByRole(role: StartInterviewPayload["jobRole"]): string {
   switch (role) {
-    case "backend":
-      return "Spring Boot";
     case "frontend":
       return "Next.js";
+    case "backend":
+      return "Spring Boot";
     case "app":
       return "React Native";
     case "cloud":
@@ -231,20 +244,14 @@ function mapCharacterFromApi(character: "luna" | "jet" | "iron" | null | undefin
   return "iron";
 }
 
-function mapDifficultyFromApi(difficulty: string | null | undefined): StartInterviewPayload["difficulty"] {
-  return difficulty === "junior" ? "junior" : "jobseeker";
-}
-
 function buildSetupPayloadFromSessionState(
   state: Awaited<ReturnType<typeof getInterviewSessionState>>["data"]
 ): StartInterviewPayload {
   const jobRole = mapRoleFromApi(state.job_role);
   return {
     jobRole,
-    stack: typeof state.stack === "string" && state.stack.trim().length > 0
-      ? state.stack.trim()
-      : defaultStackByRole(jobRole),
-    difficulty: mapDifficultyFromApi(state.difficulty),
+    stack: defaultStackByRole(jobRole),
+    difficulty: "jobseeker",
     questionCount: state.total_questions,
     timerSeconds: 120,
     character: mapCharacterFromApi(state.interviewer_character),
@@ -320,7 +327,7 @@ export function useInterviewShellOrchestrator(
     if (next === "setup") {
       syncPathname("/setup");
     } else if (next === "insights") {
-      syncPathname("/insights");
+      syncPathname("/study");
     } else if (next === "report") {
       if (sessionId) {
         syncPathname(`/report/${encodeURIComponent(sessionId)}`);

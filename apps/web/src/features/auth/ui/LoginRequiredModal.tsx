@@ -1,4 +1,5 @@
 import { Button } from "@/shared/ui/Button";
+import { LoadingSpinner } from "@/shared/ui/LoadingSpinner";
 
 type LoginRequiredModalProps = {
   message: string;
@@ -24,8 +25,15 @@ export function LoginRequiredModal({ message, onLogin, onClose, isLoading = fals
           <Button variant="secondary" onClick={onClose} disabled={isLoading}>
             닫기
           </Button>
-          <Button onClick={() => void onLogin()} disabled={isLoading}>
-            {isLoading ? "로그인 이동 중..." : "Google 로그인"}
+          <Button onClick={() => void onLogin()} disabled={isLoading} className="gap-2">
+            {isLoading ? (
+              <>
+                <LoadingSpinner size="sm" tone="on-primary" />
+                로그인 이동 중...
+              </>
+            ) : (
+              "Google 로그인"
+            )}
           </Button>
         </div>
       </div>

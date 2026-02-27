@@ -6,7 +6,9 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { getMyProfile, getGoogleAuthUrl } from "@/shared/api/interview";
 import { clearStoredSessionId } from "@/shared/auth/session";
-import { Target, Brain, Layers, Mic } from "lucide-react";
+import { BrandIdentityLink } from "@/shared/ui/BrandIdentityLink";
+import { ReportShowcaseSection } from "@/features/landing/ui/ReportShowcaseSection";
+import { LearningShowcaseSection } from "@/features/landing/ui/LearningShowcaseSection";
 
 const fadeUp: any = {
   initial: { opacity: 0, y: 40 },
@@ -21,23 +23,6 @@ const scaleUp: any = {
   viewport: { once: true, margin: "-50px" },
   transition: { duration: 0.8, ease: "easeOut" }
 };
-
-function AnimatedNumber({ value }: { value: number }) {
-  const [display, setDisplay] = useState(0);
-  useEffect(() => {
-    let startTime: number;
-    const duration = 1500;
-    const update = (currentTime: number) => {
-      if (!startTime) startTime = currentTime;
-      const progress = Math.min((currentTime - startTime) / duration, 1);
-      const ease = 1 - Math.pow(1 - progress, 4); // easeOutQuart
-      setDisplay(Math.floor(ease * value));
-      if (progress < 1) requestAnimationFrame(update);
-    };
-    requestAnimationFrame(update);
-  }, [value]);
-  return <span>{display}</span>;
-}
 
 export default function HomePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -75,15 +60,8 @@ export default function HomePage() {
     <div className="relative flex min-h-dvh flex-col bg-white font-display">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b border-im-border bg-white/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-im-primary text-sm font-extrabold text-white">
-              IM
-            </div>
-            <span className="text-sm font-bold tracking-tight text-im-text-main">
-              Interview Mate
-            </span>
-          </div>
+        <div className="mx-auto flex h-[60px] max-w-6xl items-center justify-between px-6">
+          <BrandIdentityLink />
           <div className="flex items-center gap-1 sm:gap-2">
             <Link
               href="/setup"
@@ -98,10 +76,10 @@ export default function HomePage() {
               리포트
             </Link>
             <Link
-              href="/insights"
+              href="/study"
               className="rounded-full px-5 py-2 text-base font-bold text-im-text-main transition-colors hover:bg-im-surface"
             >
-              학습
+              study
             </Link>
 
             <div className="ml-2 mr-1 h-6 w-px bg-im-border/80" />
@@ -173,7 +151,7 @@ export default function HomePage() {
                   href="/setup"
                   className="flex h-16 min-w-[260px] items-center justify-center gap-2 rounded-full bg-im-primary px-10 text-lg font-extrabold text-white shadow-glow transition-[background-color,transform,box-shadow] hover:-translate-y-1 hover:bg-im-primary-hover active:scale-95"
                 >
-                  무료로 시작하기
+                  시작하기
                 </Link>
               </motion.div>
             </motion.article>
@@ -183,7 +161,6 @@ export default function HomePage() {
               transition={{ ...scaleUp.transition, delay: 0.1 }}
               className="group relative flex h-full min-h-[500px] flex-col items-center justify-center overflow-hidden rounded-[2.5rem] border border-im-primary/15 bg-im-subtle p-0 shadow-sm lg:col-span-5"
             >
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 z-10" />
               <Image
                 src="/images/interview_scene.png"
                 alt="AI 모의면접 - 밝고 긍정적인 분위기의 면접 장면"
@@ -204,20 +181,20 @@ export default function HomePage() {
               className="rounded-[2rem] border border-im-border/60 bg-white p-6 shadow-sm lg:col-span-12"
             >
               <div className="grid gap-4 sm:grid-cols-3">
-                <div className="flex flex-col items-center text-center rounded-2xl border border-transparent bg-im-subtle/50 px-4 py-8 relative transition-all duration-300 hover:border-im-primary/30 hover:bg-im-primary/5 hover:shadow-glow">
+                <div className="flex flex-col items-center text-center rounded-2xl border border-transparent bg-im-subtle/50 px-4 py-8 relative transition-all duration-300 hover:border-im-primary/30 hover:shadow-glow">
                   <span className="text-3xl mb-2 relative z-10">🧑‍💻</span>
-                  <p className="text-base font-bold text-im-text-main relative z-10">성향별 3인의 면접관</p>
-                  <p className="text-sm mt-1 text-im-text-muted relative z-10">격려형 루나, 실전형 제트, 압박형 아이언. 나에게 맞는 난이도와 분위기를 선택하세요.</p>
+                  <p className="text-base font-bold text-im-text-main relative z-10">내 스타일에 맞는 면접관</p>
+                  <p className="text-sm mt-1 text-im-text-muted relative z-10">격려형 루나, 실전형 제트, 압박형 아이언. 오늘 컨디션에 맞는 난이도를 고르세요.</p>
                 </div>
-                <div className="flex flex-col items-center text-center rounded-2xl border border-transparent bg-im-subtle/50 px-4 py-8 relative transition-all duration-300 hover:border-im-primary/30 hover:bg-im-primary/5 hover:shadow-glow">
+                <div className="flex flex-col items-center text-center rounded-2xl border border-transparent bg-im-subtle/50 px-4 py-8 relative transition-all duration-300 hover:border-im-primary/30 hover:shadow-glow">
                   <span className="text-3xl mb-2 relative z-10">🎙️</span>
-                  <p className="text-base font-bold text-im-text-main relative z-10">음성 인식 &amp; 꼬리질문</p>
-                  <p className="text-sm mt-1 text-im-text-muted relative z-10">답변의 허점과 논리적 비약을 파고드는 실시간 꼬리질문으로 실전 감각을 키웁니다.</p>
+                  <p className="text-base font-bold text-im-text-main relative z-10">허점을 놓치지 않는 꼬리질문</p>
+                  <p className="text-sm mt-1 text-im-text-muted relative z-10">답변 직후, 사실 오류와 논리적 비약을 즉시 파고드는 후속 질문이 이어집니다.</p>
                 </div>
-                <div className="flex flex-col items-center text-center rounded-2xl border border-transparent bg-im-subtle/50 px-4 py-8 relative transition-all duration-300 hover:border-im-primary/30 hover:bg-im-primary/5 hover:shadow-glow">
+                <div className="flex flex-col items-center text-center rounded-2xl border border-transparent bg-im-subtle/50 px-4 py-8 relative transition-all duration-300 hover:border-im-primary/30 hover:shadow-glow">
                   <span className="text-3xl mb-2 relative z-10">📊</span>
-                  <p className="text-base font-bold text-im-text-main relative z-10">4축 정밀 채점 리포트</p>
-                  <p className="text-sm mt-1 text-im-text-muted relative z-10">정확성, 논리성, 깊이, 전달력 기반의 입체적인 피드백을 제공합니다.</p>
+                  <p className="text-base font-bold text-im-text-main relative z-10">감이 아닌 근거로 채점</p>
+                  <p className="text-sm mt-1 text-im-text-muted relative z-10">정확성·논리성·깊이·전달력 4축 점수와 감점 사유를 한눈에 확인합니다.</p>
                 </div>
               </div>
             </motion.div>
@@ -243,11 +220,11 @@ export default function HomePage() {
                 <ul className="mt-8 space-y-4">
                   <li className="flex items-center gap-3 text-im-text-main font-medium">
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-im-primary/10 text-im-primary">✓</span>
-                    존댓말과 캐릭터별 어조 차등 적용
+                    캐릭터별 어조 차등 적용
                   </li>
                   <li className="flex items-center gap-3 text-im-text-main font-medium">
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-im-primary/10 text-im-primary">✓</span>
-                    답변 수준에 따른 실시간 무드 변환 (Neutral / Encourage / Pressure)
+                    답변 수준에 따른 실시간 무드 변환
                   </li>
                 </ul>
               </motion.div>
@@ -265,156 +242,79 @@ export default function HomePage() {
 
             {/* Feature 2: Deep Follow-up Questions */}
             <div className="grid items-center gap-12 lg:grid-cols-2">
-              <motion.div {...scaleUp} className="relative aspect-[4/3] rounded-[2.5rem] bg-slate-900 border border-slate-800 overflow-hidden shadow-sm p-8 flex flex-col justify-end">
-                <div className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-900" />
-                <div className="relative z-10 space-y-4">
-                  <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-slate-700 flex-shrink-0" />
-                    <div className="bg-slate-700 text-slate-200 rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm max-w-[85%]">
-                      JPA 영속성 컨텍스트의 이점 중 1차 캐시에 대해 설명해주세요.
-                    </div>
-                  </div>
-                  <div className="flex justify-end gap-3">
-                    <div className="bg-im-primary text-white rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm max-w-[85%]">
-                      네, 1차 캐시는 엔티티를 조회할 때 데이터를 임시로 저장하여 DB 조회를 줄여주는 역할을 합니다.
-                    </div>
-                  </div>
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.5 }}
-                    className="flex gap-3"
+              <motion.div
+                {...scaleUp}
+                className="relative flex aspect-[4/3] flex-col justify-end overflow-hidden rounded-[2.5rem] border border-im-border/60 bg-slate-50 p-8 shadow-sm"
+              >
+                {/* Animated Ambient Background Orbs */}
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
+                  transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+                  className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-indigo-400/30 blur-3xl"
+                />
+                <motion.div
+                  animate={{ scale: [1, 1.5, 1], opacity: [0.1, 0.4, 0.1] }}
+                  transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+                  className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-emerald-400/20 blur-3xl"
+                />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0 }}
+                  whileInView={{ opacity: 0.4, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.6, duration: 1.5 }}
+                  className="absolute left-1/4 top-1/2 h-48 w-48 rounded-full bg-rose-400/30 blur-3xl"
+                />
+
+                <div className="relative z-10 grid gap-3 w-full">
+                  {/* Interviewer (Initial Question) */}
+                  <article className="max-w-[85%] rounded-2xl px-5 py-3.5 justify-self-start bg-white/90 text-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.03)] backdrop-blur-xl border border-white/60">
+                    <p className="whitespace-pre-wrap text-[13px] sm:text-sm leading-[1.6]">JPA 영속성 컨텍스트의 이점 중 1차 캐시에 대해 설명해주세요.</p>
+                  </article>
+                  
+                  {/* User (Answer) */}
+                  <article className="max-w-[85%] rounded-2xl px-5 py-3.5 justify-self-end bg-slate-200 text-slate-900 shadow-sm border border-slate-300/50">
+                    <p className="whitespace-pre-wrap text-[13px] sm:text-sm leading-[1.6]">네, 1차 캐시는 엔티티를 조회할 때 데이터를 임시로 저장하여 DB 조회를 줄여주는 역할을 합니다.</p>
+                  </article>
+                  
+                  {/* Coach/Interviewer (Tail Question - Error/Negative Tone) */}
+                  <motion.article
+                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                    whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.7, type: "spring", stiffness: 200, damping: 20 }}
+                    className="relative overflow-hidden max-w-[90%] rounded-2xl px-5 py-3.5 justify-self-start bg-rose-100/90 text-rose-900 shadow-[0_8px_30px_rgba(244,63,94,0.12)] backdrop-blur-xl border border-rose-200/50"
                   >
-                    <div className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center text-xs font-bold flex-shrink-0">Q</div>
-                    <div className="bg-rose-500/10 text-rose-200 border border-rose-500/20 rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm max-w-[85%]">
-                      (압박 꼬리질문) 동시성 이슈가 발생할 수 있는 멀티 스레드 환경에서도 1차 캐시가 안전하게 동작할까요? 그 이유는 무엇이죠?
-                    </div>
-                  </motion.div>
+                    <p className="relative z-10 whitespace-pre-wrap text-[13px] sm:text-sm leading-[1.6] font-bold text-rose-950">
+                      동시성 이슈가 발생할 수 있는 멀티 스레드 환경에서도 1차 캐시가 안전하게 동작할까요? 그 이유는 무엇이죠?
+                    </p>
+                  </motion.article>
                 </div>
               </motion.div>
               <motion.div {...fadeUp}>
                 <h2 className="text-3xl font-black tracking-tight text-im-text-main md:text-5xl">
-                  빈틈을 파고드는<br />&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-im-primary">실시간 꼬리질문</span>
+                  빈틈을 파고드는<br /><span className="text-im-primary">실시간 꼬리질문</span>
                 </h2>
                 <p className="mt-6 text-lg leading-relaxed text-im-text-muted">
                   단순한 일문일답은 면접이 아닙니다. 답변에서 <strong>사실 오류, 핵심 누락, 근거 부족</strong>이
-                  감지되면, 면접관은 즉각적으로 압박 꼬리질문을 던집니다. 키보드 타이핑이 아닌
+                  감지되면, 면접관은 즉각적으로 꼬리질문을 던집니다. 키보드 타이핑이 아닌
                   실제 목소리로 당황하지 않고 방어하는 대본 없는 진짜 면접을 경험하세요.
                 </p>
                 <div className="mt-8 flex gap-4">
                   <div className="flex flex-col gap-2 rounded-2xl bg-im-subtle px-5 py-4 w-1/2">
-                    <span className="text-sm font-bold text-im-text-main">SSE 스트리밍</span>
-                    <span className="text-xs text-im-text-muted">기다림 없는 실시간 답변 스트리밍</span>
+                    <span className="text-sm font-bold text-im-text-main">답변 즉시 분석</span>
+                    <span className="text-xs text-im-text-muted">문장이 끝나는 순간, AI가 허점을 감지하고 후속 질문으로 이어갑니다.</span>
                   </div>
                   <div className="flex flex-col gap-2 rounded-2xl bg-im-subtle px-5 py-4 w-1/2">
-                    <span className="text-sm font-bold text-im-text-main">음성 기반 폴백</span>
-                    <span className="text-xs text-im-text-muted">마이크 불가 시 텍스트 전환 완벽 지원</span>
+                    <span className="text-sm font-bold text-im-text-main">음성 / 텍스트 자유 전환</span>
+                    <span className="text-xs text-im-text-muted">마이크가 안 되면 텍스트로, 다시 되면 음성으로. 끊김 없이 이어갑니다.</span>
                   </div>
                 </div>
               </motion.div>
             </div>
 
-            {/* Feature 3: 4-Axis Grading */}
-            <div className="grid items-center gap-12 lg:grid-cols-2">
-              <motion.div {...fadeUp} className="order-2 lg:order-1">
-                <h2 className="text-3xl font-black tracking-tight text-im-text-main md:text-5xl">
-                  합격을 가르는 디테일<br /><span className="text-im-primary">4축 정밀 채점 리포트</span>
-                </h2>
-                <p className="mt-6 text-lg leading-relaxed text-im-text-muted">
-                  &apos;잘하셨습니다&apos; 같은 모호한 평가는 배제합니다. 제출된 답변은 AI 파이프라인과
-                  도메인 규칙 검사를 거쳐 <strong>정확성, 논리성, 깊이, 전달력</strong>의
-                  4축으로 세밀하게 채점됩니다. 오답 개념 키워드와 길이 제한된 모범 예시 답안을 통해
-                  내일 당장 써먹을 수 있는 &apos;다음 액션&apos;을 제안받아보세요.
-                </p>
-                <Link
-                  href="/insights"
-                  className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-full border border-im-border bg-white px-6 text-sm font-bold text-im-text-main shadow-sm transition-[hover,transform] hover:border-im-primary hover:bg-im-primary/5 active:scale-95"
-                >
-                  리포트 샘플 보기 →
-                </Link>
-              </motion.div>
-              {/* 3D Perspective Container */}
-              <div className="order-1 lg:order-2 relative aspect-square sm:aspect-[4/3]" style={{ perspective: "1200px" }}>
-                {/* The 3D Isometric Card */}
-                <motion.div
-                  initial={{ opacity: 0, rotateX: 40, rotateY: -8, scale: 0.85, y: 60 }}
-                  whileInView={{ opacity: 1, rotateX: 0, rotateY: 0, scale: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-80px" }}
-                  transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
-                  className="w-full h-full rounded-[2.5rem] bg-white border border-slate-200 shadow-[0_20px_60px_rgba(0,0,0,0.08)] overflow-hidden"
-                  style={{ transformStyle: "preserve-3d" }}
-                >
-                  {/* Floating animation wrapper */}
-                  <motion.div
-                    animate={{ y: [0, -8, 0] }}
-                    transition={{ duration: 5, ease: "easeInOut", repeat: Infinity, repeatType: "loop" }}
-                    className="w-full h-full flex flex-col"
-                  >
-                    {/* Dashboard Header */}
-                    <div className="flex items-center gap-3 px-6 sm:px-8 pt-6 sm:pt-8 pb-4 border-b border-slate-100">
-                      <div className="flex gap-1.5">
-                        <div className="w-3 h-3 rounded-full bg-red-400" />
-                        <div className="w-3 h-3 rounded-full bg-amber-400" />
-                        <div className="w-3 h-3 rounded-full bg-green-400" />
-                      </div>
-                      <span className="text-xs font-bold text-slate-400 tracking-wide ml-2">AI 채점 리포트</span>
-                    </div>
-
-                    {/* Dashboard Body */}
-                    <div className="flex-1 flex flex-col justify-center px-6 sm:px-8 py-5 sm:py-6 gap-4 sm:gap-5">
-                      {/* 4 Metric Rows — staggered entrance */}
-                      {[
-                        { label: "정확성", score: 94, color: "bg-im-primary", icon: Target, desc: "핵심 원리를 정확히 짚어냈습니다" },
-                        { label: "논리성", score: 88, color: "bg-blue-500", icon: Brain, desc: "인과관계가 명확합니다" },
-                        { label: "깊이",   score: 76, color: "bg-amber-500", icon: Layers, desc: "한계점 설명이 누락되었습니다" },
-                        { label: "전달력", score: 92, color: "bg-rose-400", icon: Mic, desc: "간결하고 매끄러운 전달입니다" },
-                      ].map((m, i) => (
-                        <motion.div
-                          key={m.label}
-                          initial={{ opacity: 0, x: -30 }}
-                          whileInView={{ opacity: 1, x: 0 }}
-                          viewport={{ once: true, margin: "-50px" }}
-                          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.5 + i * 0.15 }}
-                          className="flex items-center gap-3 sm:gap-4"
-                        >
-                          <div className={`shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${m.color}/10 flex items-center justify-center`}>
-                            <m.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${m.color.replace('bg-', 'text-')}`} strokeWidth={2.5} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-baseline justify-between mb-1.5">
-                              <span className="text-xs sm:text-sm font-bold text-slate-800">{m.label}</span>
-                              <span className={`text-sm sm:text-base font-black tabular-nums ${m.color.replace('bg-', 'text-')}`}>
-                                <AnimatedNumber value={m.score} /><span className="text-[10px] font-bold text-slate-300 ml-0.5">점</span>
-                              </span>
-                            </div>
-                            <div className="h-1.5 sm:h-2 rounded-full bg-slate-100 overflow-hidden">
-                              <motion.div
-                                initial={{ width: 0 }}
-                                whileInView={{ width: `${m.score}%` }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.8 + i * 0.15 }}
-                                className={`h-full rounded-full ${m.color}`}
-                              />
-                            </div>
-                            <p className="text-[10px] sm:text-xs text-slate-400 font-medium mt-1 truncate">{m.desc}</p>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-
-                    {/* Dashboard Footer */}
-                    <div className="px-6 sm:px-8 pb-6 sm:pb-8 pt-2 border-t border-slate-100">
-                      <motion.p 
-                        initial={{ opacity: 0 }}
-                        whileInView={{ opacity: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.8, delay: 1.4 }}
-                        className="text-[11px] sm:text-xs text-slate-400 leading-relaxed"
-                      >
-                        <span className="font-bold text-slate-600">AI 종합 코멘트:</span> JPA 1차 캐시의 기본 원리를 잘 짚었으나, 멀티 스레드 환경에서의 한계점을 덧붙이면 더 완벽합니다.
-                      </motion.p>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              </div>
+            <div className="space-y-24">
+              <ReportShowcaseSection />
+              <LearningShowcaseSection />
             </div>
 
           </div>

@@ -6,6 +6,7 @@ import { TodoBox } from "@/shared/cards/TodoBox";
 import { Button } from "@/shared/ui/Button";
 import { Chip } from "@/shared/ui/Chip";
 import { InlineNotice } from "@/shared/ui/InlineNotice";
+import { LoadingSpinner } from "@/shared/ui/LoadingSpinner";
 
 type ReportViewProps = {
   report: InterviewReport | null;
@@ -36,7 +37,10 @@ export function ReportView({
     return (
       <div className="mx-auto max-w-5xl px-4 py-8">
         <div className="rounded-[2rem] border border-im-border/60 bg-white p-6 text-sm text-im-text-muted shadow-sm">
-          리포트를 불러오는 중입니다. 잠시만 기다려 주세요.
+          <div className="flex items-center gap-3">
+            <LoadingSpinner size="md" tone="primary" label="리포트 로딩 중" />
+            <span>리포트를 불러오는 중입니다. 잠시만 기다려 주세요.</span>
+          </div>
         </div>
       </div>
     );
@@ -53,9 +57,11 @@ export function ReportView({
               Google 로그인
             </Button>
           ) : null}
-          <Button variant="secondary" onClick={onRestart} disabled={isBusy}>
-            설정으로 이동
-          </Button>
+          {!isAuthError ? (
+            <Button variant="secondary" onClick={onRestart} disabled={isBusy}>
+              설정으로 이동
+            </Button>
+          ) : null}
           {!isAuthError ? (
             <Button onClick={onRetry} disabled={isBusy}>
               다시 시도
@@ -141,8 +147,15 @@ export function ReportView({
         <Button variant="secondary" onClick={onRestart} disabled={isBusy}>
           새 면접 시작
         </Button>
-        <Button onClick={onGoInsights} disabled={isBusy || isGoingInsights}>
-          {isGoingInsights ? "인사이트 불러오는 중…" : "인사이트 보기"}
+        <Button onClick={onGoInsights} disabled={isBusy || isGoingInsights} className="gap-2">
+          {isGoingInsights ? (
+            <>
+              <LoadingSpinner size="sm" tone="on-primary" />
+              학습 불러오는 중…
+            </>
+          ) : (
+            "학습 보기"
+          )}
         </Button>
       </div>
     </div>

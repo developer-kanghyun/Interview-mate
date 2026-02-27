@@ -11,6 +11,7 @@ import { InlineNotice } from "@/shared/ui/InlineNotice";
 import { useInterviewShellState } from "@/widgets/interview/model/useInterviewShellState";
 import type { InterviewStep } from "@/features/interview-session/model/interviewSession.constants";
 import { getAuthRequiredMessage } from "@/shared/auth/session";
+import { BrandIdentityLink } from "@/shared/ui/BrandIdentityLink";
 
 type InterviewShellProps = {
   initialStep?: InterviewStep;
@@ -51,6 +52,7 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
         difficultyLabel={shellState.difficultyLabel}
         questionOrder={shellState.questionOrder}
         totalQuestions={shellState.totalQuestions}
+        followupCount={shellState.followupCount}
         streamingQuestionText={shellState.streamingQuestionText}
         isQuestionStreaming={shellState.isQuestionStreaming}
         isResumeResolving={shellState.isResumeResolving}
@@ -69,13 +71,8 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
     <div className="min-h-dvh bg-white">
       {/* Header */}
       <div className="sticky top-0 z-30 border-b border-im-border bg-white">
-        <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-6 py-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-im-primary text-xs font-extrabold text-white">
-            IM
-          </div>
-          <span className="text-sm font-bold tracking-tight text-im-text-main">
-            Interview Mate
-          </span>
+        <div className="mx-auto flex h-[60px] w-full max-w-6xl items-center gap-3 px-6">
+          <BrandIdentityLink />
 
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
             <Button
@@ -100,7 +97,7 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
               disabled={isNavigationBusy}
               className="rounded-full px-6 py-2.5 text-base font-bold transition-transform"
             >
-              학습
+              study
             </Button>
 
             <div className="ml-2 mr-1 h-6 w-px bg-im-border/80" /> {/* Divider */}
@@ -184,7 +181,6 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
             isRetryingWeakness={shellState.isRetryingWeakness}
             onRefresh={() => void shellState.handleGoInsights()}
             onRetryWeakness={shellState.handleRetryWeakness}
-            onBackSetup={() => shellState.setStep("setup")}
           />
         ) : null}
       </div>

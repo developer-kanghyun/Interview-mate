@@ -1,8 +1,8 @@
 "use client";
 
 import { Button } from "@/shared/ui/Button";
-import { Chip } from "@/shared/ui/Chip";
-import { useState } from "react";
+import { LoadingSpinner } from "@/shared/ui/LoadingSpinner";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import type { InterviewCharacter, StartInterviewPayload } from "@/shared/api/interview-client";
 import { motion } from "framer-motion";
@@ -28,6 +28,7 @@ const stacksByJobId: Record<VisualJobId, string[]> = {
 };
 
 const MAX_STACKS = 3;
+const stepBodyClass = "flex flex-col items-center gap-8";
 
 const characterOptions: Array<{
   key: InterviewCharacter;
@@ -56,8 +57,17 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
   const [selectedStacks, setSelectedStacks] = useState<string[]>([]);
   const [visualJobId, setVisualJobId] = useState<VisualJobId>("frontend");
   const isSetupBusy = isStarting;
+  const isNextDisabled = isSetupBusy || (step === 2 && selectedStacks.length === 0);
 
   const currentStackOptions = stacksByJobId[visualJobId];
+
+  useEffect(() => {
+    const parsedStacks = value.stack
+      .split(",")
+      .map((stack) => stack.trim())
+      .filter((stack) => stack.length > 0 && currentStackOptions.includes(stack));
+    setSelectedStacks((previous) => (previous.join("|") === parsedStacks.join("|") ? previous : parsedStacks));
+  }, [currentStackOptions, value.stack]);
 
 
   const nextStep = () => {
@@ -79,7 +89,7 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
         <div className="mb-5 flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-im-primary">Interview Setup</p>
-            <p className="mt-1 text-xs text-im-text-muted">직무, 난이도, 면접관을 순서대로 선택하세요.</p>
+            <p className="mt-1 text-sm font-semibold text-im-text-muted sm:text-base">직무, 난이도, 면접관을 순서대로 선택하세요.</p>
           </div>
         </div>
 
@@ -102,7 +112,7 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
-            className="flex flex-col items-center gap-8 rounded-2xl border border-im-border/50 bg-im-subtle p-5 sm:p-6"
+            className={stepBodyClass}
           >
             <div className="text-center">
               <h1 className="text-2xl font-black tracking-tight text-im-text-main sm:text-3xl">
@@ -115,13 +125,13 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
             <div className="grid w-full gap-3 sm:grid-cols-2 md:grid-cols-3">
               {(
                 [
-                  { id: "frontend", label: "프론트엔드", role: "frontend" },
-                  { id: "backend", label: "백엔드", role: "backend" },
-                  { id: "app", label: "앱개발 (iOS/Android)", role: "frontend" },
-                  { id: "cloud", label: "클라우드 엔지니어링", role: "backend" },
-                  { id: "data", label: "데이터 분석", role: "backend" },
-                  { id: "design", label: "디자인 / 마케팅", role: "frontend" },
-                  { id: "pm", label: "PM", role: "frontend" }
+                  { id: "frontend", label: "프론트엔드" },
+                  { id: "backend", label: "백엔드" },
+                  { id: "app", label: "앱개발 (iOS/Android)" },
+                  { id: "cloud", label: "클라우드 엔지니어링" },
+                  { id: "data", label: "데이터 분석" },
+                  { id: "design", label: "디자인 / 마케팅" },
+                  { id: "pm", label: "PM" }
                 ] as const
               ).map((job) => {
                 const isSelected = visualJobId === job.id;
@@ -164,7 +174,7 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
-            className="flex flex-col items-center gap-8 rounded-2xl border border-im-border/50 bg-im-subtle p-5 sm:p-6"
+            className={stepBodyClass}
           >
             <div className="text-center">
               <h1 className="text-2xl font-black tracking-tight text-im-text-main sm:text-3xl">
@@ -248,7 +258,7 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
-            className="flex flex-col items-center gap-8 rounded-2xl border border-im-border/50 bg-im-subtle p-5 sm:p-6"
+            className={stepBodyClass}
           >
             <div className="text-center">
               <h1 className="text-2xl font-black tracking-tight text-im-text-main sm:text-3xl">
@@ -293,7 +303,6 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
                         <p className={`text-sm font-bold ${value.character === character.key ? "text-im-primary" : "text-im-text-main"}`}>
                           {character.name}
                         </p>
-                        {value.character === character.key ? <Chip variant="info">선택됨</Chip> : null}
                       </div>
                       <p className="mt-1 text-xs text-im-text-muted">{character.summary}</p>
                     </div>
@@ -311,12 +320,19 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
         </Button>
 
         {step < 3 ? (
-          <Button onClick={nextStep} disabled={isSetupBusy} className="px-6">
-            다음 →
+          <Button onClick={nextStep} disabled={isNextDisabled} className="px-6">
+            다음
           </Button>
         ) : (
-          <Button onClick={onStart} disabled={isStarting} className="min-w-[180px] shadow-glow">
-            {isStarting ? "면접 준비 중..." : "🚀 면접 시작"}
+          <Button onClick={onStart} disabled={isStarting} className="min-w-[180px] gap-2 shadow-glow">
+            {isStarting ? (
+              <>
+                <LoadingSpinner size="sm" tone="on-primary" />
+                면접 준비 중...
+              </>
+            ) : (
+              "면접 시작"
+            )}
           </Button>
         )}
       </div>

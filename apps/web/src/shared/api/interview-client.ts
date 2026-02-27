@@ -109,6 +109,7 @@ type SessionRuntimeState = {
 const streamStateBySessionId = new Map<string, SessionRuntimeState>();
 const CHAT_STREAM_ENDPOINT = "/api/chat";
 const STREAM_IDLE_TIMEOUT_MS = 12_000;
+const ENABLE_REMOTE_QUESTION_STREAM = process.env.NEXT_PUBLIC_ENABLE_REMOTE_QUESTION_STREAM === "true";
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -157,20 +158,22 @@ function mapEmotion(value: string | null | undefined): InterviewEmotion {
 function mapRole(value: string | null | undefined): InterviewRole {
   switch (value) {
     case "frontend":
-    case "app":
-    case "cloud":
-    case "data":
-    case "design":
-    case "pm":
-      return value;
+      return "frontend";
     case "backend":
+      return "backend";
+    case "app":
+      return "app";
+    case "cloud":
+      return "cloud";
+    case "data":
+      return "data";
+    case "design":
+      return "design";
+    case "pm":
+      return "pm";
     default:
       return "backend";
   }
-}
-
-function mapDifficulty(value: string | null | undefined): InterviewDifficulty {
-  return value === "junior" ? "junior" : "jobseeker";
 }
 
 function mapStatus(value: string | null | undefined): "in_progress" | "completed" {
@@ -202,6 +205,22 @@ function buildAxisScoresFromApi(data: {
   };
 }
 
+function buildFollowupMessage(reason: string | null | undefined) {
+  if (reason === "factual_error_or_uncertainty") {
+    return "핵심 개념 정확도가 낮습니다. 정의와 근거를 먼저 제시해 주세요.";
+  }
+  if (reason === "missing_core_detail") {
+    return "핵심 디테일이 부족합니다. 실무 예시를 포함해 확장해 주세요.";
+  }
+  if (reason === "weak_reasoning") {
+    return "추론 근거가 약합니다. 결론-근거-예시 순서로 재구성해 주세요.";
+  }
+  if (reason === "followup_limit_reached") {
+    return "꼬리질문 한도에 도달했습니다. 다음 문항에서 구조화된 답변을 시도해 주세요.";
+  }
+  return "답변 보강이 필요합니다. 핵심 개념과 근거를 함께 설명해 주세요.";
+}
+
 async function refreshCurrentQuestionFromState(sessionId: string) {
   const stateResponse = await getInterviewSessionState(sessionId);
   const state = stateResponse.data;
@@ -211,13 +230,6 @@ async function refreshCurrentQuestionFromState(sessionId: string) {
     return state;
   }
 
-  const role = mapRole(state.job_role);
-  existing.payload.jobRole = role;
-  existing.payload.stack =
-    typeof state.stack === "string" && state.stack.trim().length > 0
-      ? state.stack.trim()
-      : defaultStackByRole(role);
-  existing.payload.difficulty = mapDifficulty(state.difficulty);
   existing.status = mapStatus(state.status);
   existing.totalQuestions = state.total_questions;
   existing.answeredQuestions = state.answered_questions;
@@ -300,15 +312,11 @@ export async function restoreInterviewSession(sessionId: string): Promise<void> 
   }
 
   const role = mapRole(state.job_role);
-  const difficulty = mapDifficulty(state.difficulty);
-  const stack = typeof state.stack === "string" && state.stack.trim().length > 0
-    ? state.stack.trim()
-    : defaultStackByRole(role);
   streamStateBySessionId.set(sessionId, {
     payload: {
       jobRole: role,
-      stack,
-      difficulty,
+      stack: defaultStackByRole(role),
+      difficulty: "jobseeker",
       questionCount: state.total_questions,
       timerSeconds: 120,
       character: mapCharacterFromApi(state.interviewer_character),
@@ -523,6 +531,15 @@ export function streamQuestion(
   let stopRequested = false;
   let cursor = 0;
 
+  // 기본값은 로컬 스트리밍으로 고정해 프록시 오류(/api/chat 500) 의존을 제거한다.
+  if (!ENABLE_REMOTE_QUESTION_STREAM) {
+    const cleanup = streamQuestionLocallyFromContent(question, onEvent, cursor);
+    return () => {
+      stopRequested = true;
+      cleanup();
+    };
+  }
+
   const clearIdleTimer = () => {
     if (idleTimer !== null) {
       window.clearTimeout(idleTimer);
@@ -662,11 +679,9 @@ export async function submitAnswer(
     await refreshCurrentQuestionFromState(sessionId);
   }
 
-  const followupReasonDetail = data.evaluation.followup_reason?.trim() ?? "";
-  const coachingMessage = data.coaching_message?.trim() ?? "";
   const summary = data.evaluation.followup_required
-    ? followupReasonDetail || coachingMessage || "답변 보강이 필요합니다. 핵심 개념과 근거를 함께 설명해 주세요."
-    : coachingMessage || "답변 흐름이 좋습니다. 다음 문항도 결론-근거-예시 순서를 유지해 보세요.";
+    ? buildFollowupMessage(data.evaluation.followup_reason)
+    : "답변 흐름이 좋습니다. 다음 문항도 결론-근거-예시 순서를 유지해 보세요.";
 
   return {
     feedbackSummary: summary,
@@ -736,10 +751,10 @@ export async function getReport(sessionId: string): Promise<InterviewReport> {
 
 function defaultStackByRole(role: InterviewRole) {
   switch (role) {
-    case "backend":
-      return "Spring Boot";
     case "frontend":
       return "Next.js";
+    case "backend":
+      return "Spring Boot";
     case "app":
       return "React Native";
     case "cloud":
@@ -800,9 +815,6 @@ export async function listSessions(days = 30): Promise<SessionHistoryItem[]> {
     const stateData = stateMap.get(sessionId);
 
     const role = mapRole(stateData?.job_role);
-    const stack = typeof stateData?.stack === "string" && stateData.stack.trim().length > 0
-      ? stateData.stack.trim()
-      : defaultStackByRole(role);
     const scoreAverage =
       answers.length === 0
         ? 0
@@ -814,7 +826,7 @@ export async function listSessions(days = 30): Promise<SessionHistoryItem[]> {
       sessionId,
       startedAt,
       role,
-      stack,
+      stack: defaultStackByRole(role),
       totalScore: scoreAverage,
       questionCount: stateData?.total_questions ?? Math.max(1, ...answers.map((item) => item.question_order)),
       status: mapStatus(stateData?.status)

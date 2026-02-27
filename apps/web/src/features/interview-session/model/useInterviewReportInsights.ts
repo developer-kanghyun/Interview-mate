@@ -154,7 +154,7 @@ export function useInterviewReportInsights({
     setUiError(null);
     setAuthPromptReason(null);
     setInsightsErrorMessage(null);
-    syncPathname("/insights");
+    syncPathname("/study");
     setStep("insights");
     setIsInsightsLoading(true);
 
