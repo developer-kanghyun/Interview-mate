@@ -4,7 +4,9 @@ import dynamic from "next/dynamic";
 import { useCallback, type FocusEvent, type KeyboardEvent, type RefObject } from "react";
 import { ChatBoard, type ChatMessage } from "@/shared/chat/ChatBoard";
 import { Button } from "@/shared/ui/Button";
+import { LoadingSpinner } from "@/shared/ui/LoadingSpinner";
 import { Textarea } from "@/shared/ui/Textarea";
+import { BrandIdentityLink } from "@/shared/ui/BrandIdentityLink";
 import { Mic, MicOff } from "lucide-react";
 
 import type { InterviewCharacter, InterviewEmotion } from "@/shared/api/interview-client";
@@ -32,6 +34,7 @@ type RoomViewProps = {
   difficultyLabel: string;
   questionOrder: number;
   totalQuestions: number;
+  followupCount: number;
   streamingQuestionText: string;
   isQuestionStreaming: boolean;
   isResumeResolving: boolean;
@@ -61,6 +64,7 @@ export function RoomView({
   difficultyLabel,
   questionOrder,
   totalQuestions,
+  followupCount,
   streamingQuestionText,
   isQuestionStreaming,
   isResumeResolving,
@@ -110,30 +114,34 @@ export function RoomView({
   return (
     <div className="flex h-dvh min-h-dvh w-full flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,_#fff8f2,_#ffffff_50%,_#f7fafc)] text-im-text-main">
       {/* Minimal Header */}
-      <header className="sticky top-0 z-20 flex h-[72px] shrink-0 items-center justify-between border-b border-slate-200/70 bg-white/85 px-4 backdrop-blur-md sm:px-6">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-im-primary text-xs font-extrabold text-white">
-            IM
+      <header className="sticky top-0 z-20 flex h-[60px] shrink-0 items-center justify-between border-b border-slate-200/70 bg-white/90 px-4 backdrop-blur-md sm:px-6">
+        <div className="flex min-w-0 items-center gap-6">
+          <BrandIdentityLink className="shrink-0" />
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <p className="hidden min-w-0 max-w-[860px] truncate text-sm font-semibold text-slate-700 md:block lg:text-base">
+              {jobRoleLabel}
+              <span className="mx-2 text-slate-300">|</span>
+              {stackLabel}
+              <span className="mx-2 text-slate-300">|</span>
+              {difficultyLabel}
+            </p>
           </div>
-          <span className="truncate text-base font-black tracking-tight text-im-text-main">Interview Room</span>
-          <span className="hidden items-center rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-bold text-slate-700 sm:inline-flex">
-            {jobRoleLabel}
-          </span>
-          <span className="hidden max-w-[260px] items-center truncate rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-bold text-slate-700 md:inline-flex">
-            {stackLabel}
-          </span>
-          <span className="hidden items-center rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-bold text-slate-700 lg:inline-flex">
-            {difficultyLabel}
-          </span>
         </div>
 
         <Button
           variant="ghost"
           onClick={onExit}
           disabled={!canExit}
-          className="rounded-xl text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+          className="gap-2 rounded-xl text-rose-500 hover:bg-rose-50 hover:text-rose-600"
         >
-          {isExiting ? "리포트 불러오는 중..." : "나가기"}
+          {isExiting ? (
+            <>
+              <LoadingSpinner size="sm" tone="primary" />
+              리포트 불러오는 중...
+            </>
+          ) : (
+            "나가기"
+          )}
         </Button>
       </header>
 
@@ -176,6 +184,9 @@ export function RoomView({
               <span className="mr-2 text-sm font-black text-im-primary sm:text-base">
                 {questionOrder}/{totalQuestions}
               </span>
+              {followupCount > 0 ? (
+                <span className="mr-2 text-sm font-semibold text-emerald-700 sm:text-base">(꼬리질문)</span>
+              ) : null}
               {streamingQuestionText || "질문을 불러오는 중입니다..."}
               {isQuestionStreaming ? <span className="sse-caret" /> : null}
             </p>
@@ -219,9 +230,16 @@ export function RoomView({
                 data-testid="room-submit-answer"
                 onClick={onSubmitAnswer}
                 disabled={!canSubmitAnswer}
-                className="min-w-[120px] rounded-xl"
+                className="min-w-[120px] gap-2 rounded-xl"
               >
-                {isSubmitting ? "제출 중..." : "답변 완료"}
+                {isSubmitting ? (
+                  <>
+                    <LoadingSpinner size="sm" tone="on-primary" />
+                    제출 중...
+                  </>
+                ) : (
+                  "답변 완료"
+                )}
               </Button>
             </div>
           </footer>

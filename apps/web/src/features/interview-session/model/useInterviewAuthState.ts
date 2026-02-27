@@ -56,7 +56,7 @@ export function useInterviewAuthState({
       return `/interview/${sessionId}`;
     }
     if (step === "insights") {
-      return "/insights";
+      return "/study";
     }
     if (step === "setup") {
       return "/setup";
