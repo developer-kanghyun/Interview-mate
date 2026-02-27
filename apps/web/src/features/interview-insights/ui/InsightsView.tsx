@@ -3,6 +3,8 @@ import { SubCard } from "@/shared/cards/SubCard";
 import { Button } from "@/shared/ui/Button";
 import { Chip } from "@/shared/ui/Chip";
 import { InlineNotice } from "@/shared/ui/InlineNotice";
+import { LoadingSpinner } from "@/shared/ui/LoadingSpinner";
+import { mapRoleLabel } from "@/features/interview-session/model/interviewSession.constants";
 
 type InsightsViewProps = {
   sessions: SessionHistoryItem[];
@@ -13,7 +15,6 @@ type InsightsViewProps = {
   isRetryingWeakness: boolean;
   onRefresh: () => void | Promise<void>;
   onRetryWeakness: () => void | Promise<void>;
-  onBackSetup: () => void;
 };
 
 function formatSessionStatus(status: SessionHistoryItem["status"]) {
@@ -28,8 +29,7 @@ export function InsightsView({
   errorMessage,
   isRetryingWeakness,
   onRefresh,
-  onRetryWeakness,
-  onBackSetup
+  onRetryWeakness
 }: InsightsViewProps) {
   const isActionBusy = isLoading || isRetryingWeakness;
 
@@ -37,7 +37,7 @@ export function InsightsView({
     <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-8">
       {/* Insights Header */}
       <header className="rounded-[2rem] border border-im-border/60 bg-white p-8 text-center shadow-sm">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-im-primary">study</p>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-im-primary">학습</p>
         <h1 className="mt-2 text-2xl font-black tracking-tight text-im-text-main sm:text-3xl">학습하기</h1>
         <p className="mt-2 text-sm text-im-text-muted">
           최근 30일 세션 이력과 약점 키워드를 바탕으로 복습 루프를 이어갑니다.
@@ -49,7 +49,10 @@ export function InsightsView({
         <ul className="grid gap-3">
           {isLoading ? (
             <li className="rounded-2xl border border-im-border/50 bg-im-subtle p-4 text-sm text-im-text-muted">
-              최근 30일 세션 기록을 불러오는 중입니다…
+              <div className="flex items-center gap-3">
+                <LoadingSpinner size="sm" tone="primary" label="세션 목록 로딩 중" />
+                <span>최근 30일 세션 기록을 불러오는 중입니다…</span>
+              </div>
             </li>
           ) : errorMessage ? (
             <li>
@@ -72,7 +75,7 @@ export function InsightsView({
               <li key={session.sessionId} className="rounded-2xl border border-im-border bg-white p-4 transition-[background-color,border-color,transform] hover:-translate-y-0.5 hover:border-im-primary/30 hover:bg-im-primary/5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-bold text-im-text-main">
-                    {session.role === "backend" ? "백엔드" : "프론트엔드"} · {session.stack}
+                    {mapRoleLabel(session.role)} · {session.stack}
                   </p>
                   <Chip variant={session.status === "completed" ? "success" : "info"}>
                     {formatSessionStatus(session.status)}
@@ -115,11 +118,15 @@ export function InsightsView({
 
       {/* Actions */}
       <div className="flex flex-wrap justify-end gap-2 rounded-[2rem] border border-im-border/60 bg-white p-3 shadow-sm">
-        <Button variant="secondary" onClick={onBackSetup} disabled={isActionBusy}>
-          면접 탭으로
-        </Button>
-        <Button onClick={() => void onRetryWeakness()} disabled={isActionBusy}>
-          {isRetryingWeakness ? "재시작 준비 중…" : "약점 기반 다시 연습"}
+        <Button onClick={() => void onRetryWeakness()} disabled={isActionBusy} className="gap-2">
+          {isRetryingWeakness ? (
+            <>
+              <LoadingSpinner size="sm" tone="on-primary" />
+              재시작 준비 중…
+            </>
+          ) : (
+            "약점 기반 다시 연습"
+          )}
         </Button>
       </div>
     </div>

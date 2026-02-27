@@ -246,7 +246,7 @@ export type HealthApiResponse = {
 };
 
 export async function startInterviewSession(payload: {
-  jobRole: "backend" | "frontend";
+  jobRole: "backend" | "frontend" | "app" | "cloud" | "data" | "design" | "pm";
   stack: string;
   difficulty: "jobseeker" | "junior";
   interviewerCharacter: "luna" | "jet" | "iron";

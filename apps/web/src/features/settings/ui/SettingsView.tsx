@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import { getMyProfile } from "@/shared/api/interview";
 import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
+import { LoadingSpinner } from "@/shared/ui/LoadingSpinner";
 import { Select } from "@/shared/ui/Select";
 import {
   getInterviewPreferences,
@@ -20,8 +21,13 @@ const defaultPreferences: InterviewPreferences = {
 };
 
 const stackOptionsByRole: Record<InterviewPreferences["jobRole"], string[]> = {
-  backend: ["Spring Boot", "NestJS", "Node.js"],
-  frontend: ["React", "Next.js", "Vue"]
+  backend: ["Spring Boot", "NestJS", "Node.js", "Django"],
+  frontend: ["React", "Next.js", "Vue", "TypeScript"],
+  app: ["React Native", "Flutter", "Swift", "Kotlin"],
+  cloud: ["AWS", "GCP", "Kubernetes", "Terraform"],
+  data: ["Python", "SQL", "Pandas", "Spark"],
+  design: ["Figma", "UX Research", "Google Analytics", "SEO"],
+  pm: ["PRD", "Roadmap", "A/B Testing", "GA4"]
 };
 
 function getInitialPreferences() {
@@ -82,8 +88,17 @@ export function SettingsView() {
 
           {accountError ? <p className="text-rose-600">{accountError}</p> : null}
 
-          <Button variant="secondary" onClick={() => void loadAccount()} disabled={isLoadingAccount}>
-            {isLoadingAccount ? "불러오는 중..." : accountState ? "다시 불러오기" : "계정 정보 불러오기"}
+          <Button variant="secondary" onClick={() => void loadAccount()} disabled={isLoadingAccount} className="gap-2">
+            {isLoadingAccount ? (
+              <>
+                <LoadingSpinner size="sm" tone="primary" />
+                불러오는 중...
+              </>
+            ) : accountState ? (
+              "다시 불러오기"
+            ) : (
+              "계정 정보 불러오기"
+            )}
           </Button>
         </div>
       </Card>
@@ -106,6 +121,11 @@ export function SettingsView() {
             >
               <option value="backend">백엔드</option>
               <option value="frontend">프론트엔드</option>
+              <option value="app">앱개발</option>
+              <option value="cloud">클라우드 엔지니어링</option>
+              <option value="data">데이터 분석</option>
+              <option value="design">디자인/마케팅</option>
+              <option value="pm">PM</option>
             </Select>
           </label>
 

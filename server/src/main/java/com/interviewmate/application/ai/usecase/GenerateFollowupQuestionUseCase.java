@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.Locale;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -38,9 +40,19 @@ public class GenerateFollowupQuestionUseCase {
     }
 
     private String fallbackQuestion(String jobRole) {
-        if ("frontend".equalsIgnoreCase(jobRole)) {
+        if (isFrontendRoleFamily(jobRole)) {
             return "지금 답변에서 렌더링 성능과 사용자 경험 관점을 더 구체적으로 설명해 주세요.";
         }
         return "지금 답변의 핵심 근거를 예시와 함께 더 구체적으로 설명해 주세요.";
+    }
+
+    private boolean isFrontendRoleFamily(String jobRole) {
+        if (jobRole == null) {
+            return false;
+        }
+        return switch (jobRole.toLowerCase(Locale.ROOT)) {
+            case "frontend", "app", "design", "pm" -> true;
+            default -> false;
+        };
     }
 }

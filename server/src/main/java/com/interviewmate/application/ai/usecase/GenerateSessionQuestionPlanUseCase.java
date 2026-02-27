@@ -257,12 +257,22 @@ public class GenerateSessionQuestionPlanUseCase {
     }
 
     private String buildFallbackContent(String role, String stack, String category, int index, int seedOffset) {
-        if ("frontend".equals(role)) {
+        if (isFrontendRoleFamily(role)) {
             List<String> templates = "cs".equals(category) ? FRONTEND_CS_TEMPLATES : FRONTEND_JOB_TEMPLATES;
             return pickTemplate(templates, index, seedOffset).formatted(stack);
         }
         List<String> templates = "cs".equals(category) ? BACKEND_CS_TEMPLATES : BACKEND_JOB_TEMPLATES;
         return pickTemplate(templates, index, seedOffset).formatted(stack);
+    }
+
+    private boolean isFrontendRoleFamily(String role) {
+        if (role == null) {
+            return false;
+        }
+        return switch (role.toLowerCase(Locale.ROOT)) {
+            case "frontend", "app", "design", "pm" -> true;
+            default -> false;
+        };
     }
 
     private String pickTemplate(List<String> templates, int index, int seedOffset) {

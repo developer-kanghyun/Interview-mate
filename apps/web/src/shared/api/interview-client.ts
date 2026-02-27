@@ -10,7 +10,7 @@ import {
 } from "@/shared/api/interview";
 import { getAuthRequiredMessage } from "@/shared/auth/session";
 
-export type InterviewRole = "backend" | "frontend";
+export type InterviewRole = "backend" | "frontend" | "app" | "cloud" | "data" | "design" | "pm";
 export type InterviewDifficulty = "jobseeker" | "junior";
 export type InterviewCharacter = "zet" | "luna" | "iron";
 export type InterviewEmotion = "neutral" | "encourage" | "pressure";
@@ -109,6 +109,7 @@ type SessionRuntimeState = {
 const streamStateBySessionId = new Map<string, SessionRuntimeState>();
 const CHAT_STREAM_ENDPOINT = "/api/chat";
 const STREAM_IDLE_TIMEOUT_MS = 12_000;
+const ENABLE_REMOTE_QUESTION_STREAM = process.env.NEXT_PUBLIC_ENABLE_REMOTE_QUESTION_STREAM === "true";
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -155,7 +156,24 @@ function mapEmotion(value: string | null | undefined): InterviewEmotion {
 }
 
 function mapRole(value: string | null | undefined): InterviewRole {
-  return value === "frontend" ? "frontend" : "backend";
+  switch (value) {
+    case "frontend":
+      return "frontend";
+    case "backend":
+      return "backend";
+    case "app":
+      return "app";
+    case "cloud":
+      return "cloud";
+    case "data":
+      return "data";
+    case "design":
+      return "design";
+    case "pm":
+      return "pm";
+    default:
+      return "backend";
+  }
 }
 
 function mapStatus(value: string | null | undefined): "in_progress" | "completed" {
@@ -513,6 +531,15 @@ export function streamQuestion(
   let stopRequested = false;
   let cursor = 0;
 
+  // 기본값은 로컬 스트리밍으로 고정해 프록시 오류(/api/chat 500) 의존을 제거한다.
+  if (!ENABLE_REMOTE_QUESTION_STREAM) {
+    const cleanup = streamQuestionLocallyFromContent(question, onEvent, cursor);
+    return () => {
+      stopRequested = true;
+      cleanup();
+    };
+  }
+
   const clearIdleTimer = () => {
     if (idleTimer !== null) {
       window.clearTimeout(idleTimer);
@@ -723,7 +750,24 @@ export async function getReport(sessionId: string): Promise<InterviewReport> {
 }
 
 function defaultStackByRole(role: InterviewRole) {
-  return role === "backend" ? "Spring Boot" : "Next.js";
+  switch (role) {
+    case "frontend":
+      return "Next.js";
+    case "backend":
+      return "Spring Boot";
+    case "app":
+      return "React Native";
+    case "cloud":
+      return "AWS";
+    case "data":
+      return "Python";
+    case "design":
+      return "Figma";
+    case "pm":
+      return "PRD";
+    default:
+      return "Spring Boot";
+  }
 }
 
 function pickLatestDate(values: string[]) {

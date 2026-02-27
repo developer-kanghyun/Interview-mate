@@ -133,7 +133,7 @@ function resolveStepFromPath(pathname: string | null): InterviewStep | null {
   if (pathname === "/setup") {
     return "setup";
   }
-  if (pathname === "/insights") {
+  if (pathname === "/insights" || pathname === "/study") {
     return "insights";
   }
   if (pathname === "/report" || /^\/report\/[^/]+$/.test(pathname)) {
@@ -157,6 +157,13 @@ function resolveSessionIdFromPath(pathname: string | null) {
 }
 
 function buildRetryPreset(weakKeywords: string[], fallback: StartInterviewPayload): RetryPreset {
+  if (fallback.jobRole !== "backend" && fallback.jobRole !== "frontend") {
+    return {
+      jobRole: fallback.jobRole,
+      stack: fallback.stack
+    };
+  }
+
   const keywordText = weakKeywords.join(" ").toLowerCase();
 
   const backendSignals = ["api", "db", "sql", "transaction", "spring", "jpa", "redis", "cache", "서버", "백엔드"];
@@ -186,7 +193,45 @@ function buildRetryPreset(weakKeywords: string[], fallback: StartInterviewPayloa
 }
 
 function mapRoleFromApi(role: string | null | undefined): StartInterviewPayload["jobRole"] {
-  return role === "frontend" ? "frontend" : "backend";
+  switch (role) {
+    case "frontend":
+      return "frontend";
+    case "backend":
+      return "backend";
+    case "app":
+      return "app";
+    case "cloud":
+      return "cloud";
+    case "data":
+      return "data";
+    case "design":
+      return "design";
+    case "pm":
+      return "pm";
+    default:
+      return "backend";
+  }
+}
+
+function defaultStackByRole(role: StartInterviewPayload["jobRole"]): string {
+  switch (role) {
+    case "frontend":
+      return "Next.js";
+    case "backend":
+      return "Spring Boot";
+    case "app":
+      return "React Native";
+    case "cloud":
+      return "AWS";
+    case "data":
+      return "Python";
+    case "design":
+      return "Figma";
+    case "pm":
+      return "PRD";
+    default:
+      return "Spring Boot";
+  }
 }
 
 function mapCharacterFromApi(character: "luna" | "jet" | "iron" | null | undefined): InterviewCharacter {
@@ -205,7 +250,7 @@ function buildSetupPayloadFromSessionState(
   const jobRole = mapRoleFromApi(state.job_role);
   return {
     jobRole,
-    stack: jobRole === "backend" ? "Spring Boot" : "Next.js",
+    stack: defaultStackByRole(jobRole),
     difficulty: "jobseeker",
     questionCount: state.total_questions,
     timerSeconds: 120,
@@ -282,7 +327,7 @@ export function useInterviewShellOrchestrator(
     if (next === "setup") {
       syncPathname("/setup");
     } else if (next === "insights") {
-      syncPathname("/insights");
+      syncPathname("/study");
     } else if (next === "report") {
       if (sessionId) {
         syncPathname(`/report/${encodeURIComponent(sessionId)}`);
