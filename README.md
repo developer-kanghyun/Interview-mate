@@ -96,22 +96,30 @@ npm install
 npm --prefix ./apps/web install
 ```
 
-2. 백엔드 실행 (`:8080`)
+2. 환경 파일 초기화
+
+```bash
+npm run init:env
+```
+
+3. 백엔드 실행 (`:8080`, 기본 `local` 프로필/H2)
 
 ```bash
 npm run run:server
 ```
 
-3. 프론트 실행 (`:3000`)
+4. 프론트 실행 (`:3000`)
 
 ```bash
 npm run dev:web
 ```
 
-4. 접속
+5. 접속
 
 - Web: `http://localhost:3000`
 - Backend health: `http://localhost:8080/health`
+
+> 참고: 운영/배포 환경에서는 PostgreSQL + Redis를 사용하고, 로컬 기본 실행(`run:server`)은 `local` 프로필(H2 인메모리)로 동작합니다.
 
 ## 자주 쓰는 명령어
 
@@ -142,3 +150,24 @@ cd apps/web && npm run lint && npm run build
 # E2E
 cd apps/web && npx playwright test
 ```
+
+## CI/CD
+
+- PR/Push 시 자동 CI: `.github/workflows/ci.yml`
+  - Web: lint + build
+  - Server: Gradle test
+- `main` 브랜치에서 CI 성공 시 자동 CD: `.github/workflows/cd.yml`
+  - Frontend: Vercel production 배포
+  - Backend: Render 배포 트리거 및 완료 상태(`live`)까지 확인
+
+### GitHub Secrets (필수)
+
+- `VERCEL_TOKEN`
+- `RENDER_API_KEY`
+
+### 업데이트 반영 흐름
+
+1. 브랜치에서 작업 후 Push
+2. PR 생성/검토 (CI 자동 실행)
+3. `main` 머지
+4. CD가 프론트/백엔드를 자동 배포
