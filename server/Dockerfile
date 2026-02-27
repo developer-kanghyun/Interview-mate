@@ -1,5 +1,5 @@
 # Stage 1: 빌드 및 레이어 추출
-FROM eclipse-temurin:21-jdk-focal AS builder
+FROM eclipse-temurin:21-jdk AS builder
 WORKDIR /build
 
 COPY gradlew settings.gradle build.gradle ./
@@ -11,7 +11,7 @@ RUN ./gradlew bootJar -x test --no-daemon
 RUN java -Djarmode=layertools -jar build/libs/*.jar extract --destination extracted
 
 # Stage 2: 런타임
-FROM eclipse-temurin:21-jre-focal
+FROM eclipse-temurin:21-jre
 WORKDIR /app
 
 # 보안: Non-root 유저 설정

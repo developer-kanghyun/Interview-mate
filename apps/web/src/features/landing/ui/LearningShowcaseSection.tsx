@@ -61,55 +61,34 @@ export function LearningShowcaseSection() {
             className="absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-blue-400/20 blur-3xl"
           />
 
-          <div className="relative z-10 w-full max-w-[320px]">
-            {/* The Magnetizing Target Area */}
-            <div className="relative rounded-[1.5rem] border border-white/80 bg-white/70 p-6 text-center shadow-[0_8px_30px_rgba(0,0,0,0.04)] backdrop-blur-md">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-100 text-orange-500 ring-4 ring-white">
-                <RotateCcw className="h-6 w-6" strokeWidth={2} />
+          <div className="relative z-10 w-full max-w-[340px]">
+            {/* Mock Data*/}
+            <div className="rounded-[1.5rem] border border-white/80 bg-white/80 p-5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] backdrop-blur-md">
+              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-100 text-orange-500">
+                  <RotateCcw className="h-4.5 w-4.5" strokeWidth={2.2} />
+                </div>
+                <div>
+                  <p className="text-[13px] font-bold text-slate-800">재도전 질문 세트</p>
+                  <p className="text-[10px] text-slate-400">약점 기반 자동 생성 · 3문항</p>
+                </div>
               </div>
-              <p className="text-sm font-bold text-slate-800">재도전 질문 세트 생성 중...</p>
-              <p className="mt-1 text-[11px] font-medium text-slate-500">발견된 취약 키워드 3개 결합 완료</p>
 
-              {/* Status Loader */}
-              <div className="mx-auto mt-5 h-1.5 w-3/4 overflow-hidden rounded-full bg-slate-100">
-                <motion.div
-                  initial={{ width: "0%" }}
-                  whileInView={{ width: "100%" }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.5, duration: 2, ease: "easeInOut" }}
-                  className="h-full bg-orange-400"
-                />
+              <div className="space-y-2.5">
+                <div className="flex items-center gap-3 rounded-xl bg-rose-50/80 px-3.5 py-2.5 border border-rose-100/60">
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-200/80 text-[10px] font-bold text-rose-700">1</div>
+                  <p className="text-[12px] font-medium text-slate-700 leading-snug">JPA 영속성 컨텍스트에서 1차 캐시의 동시성 문제는?</p>
+                </div>
+                <div className="flex items-center gap-3 rounded-xl bg-amber-50/80 px-3.5 py-2.5 border border-amber-100/60">
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-200/80 text-[10px] font-bold text-amber-700">2</div>
+                  <p className="text-[12px] font-medium text-slate-700 leading-snug">CORS Preflight 요청의 발생 조건을 설명해주세요.</p>
+                </div>
+                <div className="flex items-center gap-3 rounded-xl bg-sky-50/80 px-3.5 py-2.5 border border-sky-100/60">
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sky-200/80 text-[10px] font-bold text-sky-700">3</div>
+                  <p className="text-[12px] font-medium text-slate-700 leading-snug">useEffect의 클린업 함수는 언제 실행되나요?</p>
+                </div>
               </div>
             </div>
-
-            {/* Floating Weakness Chips (Subtle Magnet Effect) */}
-            <motion.div
-              initial={{ opacity: 0, y: 30, x: -30 }}
-              whileInView={{ opacity: 1, y: -10, x: 20 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.8, duration: 0.8, type: "spring" }}
-              className="absolute -top-12 -left-6 rounded-full border border-rose-200/60 bg-white/90 px-3.5 py-1.5 text-xs font-bold text-rose-600 shadow-sm backdrop-blur-sm"
-            >
-              # JPA 영속성
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: -30, x: 30 }}
-              whileInView={{ opacity: 1, y: 10, x: -20 }}
-              viewport={{ once: true }}
-              transition={{ delay: 1.1, duration: 0.8, type: "spring" }}
-              className="absolute -right-8 top-16 rounded-full border border-sky-200/60 bg-white/90 px-3.5 py-1.5 text-xs font-bold text-sky-600 shadow-sm backdrop-blur-sm"
-            >
-              # CORS Preflight
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 30, x: 10 }}
-              whileInView={{ opacity: 1, y: 15, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 1.4, duration: 0.8, type: "spring" }}
-              className="absolute -bottom-8 left-12 rounded-full border border-emerald-200/60 bg-white/90 px-3.5 py-1.5 text-xs font-bold text-emerald-600 shadow-sm backdrop-blur-sm"
-            >
-              # React useEffect
-            </motion.div>
           </div>
         </div>
 
