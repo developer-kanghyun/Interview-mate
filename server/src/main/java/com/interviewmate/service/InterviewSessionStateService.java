@@ -69,6 +69,8 @@ public class InterviewSessionStateService {
                 .status(session.getStatus())
                 .endReason(session.getEndReason())
                 .jobRole(session.getJobRole())
+                .stack(session.getStack())
+                .difficulty(session.getDifficulty())
                 .interviewerCharacter(session.getInterviewerCharacter())
                 .totalQuestions(session.getTotalQuestions())
                 .answeredQuestions(answeredQuestions)

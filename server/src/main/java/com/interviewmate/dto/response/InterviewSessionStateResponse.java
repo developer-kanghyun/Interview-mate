@@ -15,6 +15,8 @@ public class InterviewSessionStateResponse {
     private String status;
     private String endReason;
     private String jobRole;
+    private String stack;
+    private String difficulty;
     private String interviewerCharacter;
     private int totalQuestions;
     private int answeredQuestions;

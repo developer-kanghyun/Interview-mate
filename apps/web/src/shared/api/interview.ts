@@ -149,6 +149,8 @@ export type SessionStateResponse = {
     status: string;
     end_reason: string | null;
     job_role: string;
+    stack: string | null;
+    difficulty: string | null;
     interviewer_character: "luna" | "jet" | "iron";
     total_questions: number;
     answered_questions: number;

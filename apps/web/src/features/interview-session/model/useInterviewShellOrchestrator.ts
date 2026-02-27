@@ -231,14 +231,20 @@ function mapCharacterFromApi(character: "luna" | "jet" | "iron" | null | undefin
   return "iron";
 }
 
+function mapDifficultyFromApi(difficulty: string | null | undefined): StartInterviewPayload["difficulty"] {
+  return difficulty === "junior" ? "junior" : "jobseeker";
+}
+
 function buildSetupPayloadFromSessionState(
   state: Awaited<ReturnType<typeof getInterviewSessionState>>["data"]
 ): StartInterviewPayload {
   const jobRole = mapRoleFromApi(state.job_role);
   return {
     jobRole,
-    stack: defaultStackByRole(jobRole),
-    difficulty: "jobseeker",
+    stack: typeof state.stack === "string" && state.stack.trim().length > 0
+      ? state.stack.trim()
+      : defaultStackByRole(jobRole),
+    difficulty: mapDifficultyFromApi(state.difficulty),
     questionCount: state.total_questions,
     timerSeconds: 120,
     character: mapCharacterFromApi(state.interviewer_character),

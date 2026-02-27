@@ -169,6 +169,10 @@ function mapRole(value: string | null | undefined): InterviewRole {
   }
 }
 
+function mapDifficulty(value: string | null | undefined): InterviewDifficulty {
+  return value === "junior" ? "junior" : "jobseeker";
+}
+
 function mapStatus(value: string | null | undefined): "in_progress" | "completed" {
   return value === "completed" ? "completed" : "in_progress";
 }
@@ -223,6 +227,13 @@ async function refreshCurrentQuestionFromState(sessionId: string) {
     return state;
   }
 
+  const role = mapRole(state.job_role);
+  existing.payload.jobRole = role;
+  existing.payload.stack =
+    typeof state.stack === "string" && state.stack.trim().length > 0
+      ? state.stack.trim()
+      : defaultStackByRole(role);
+  existing.payload.difficulty = mapDifficulty(state.difficulty);
   existing.status = mapStatus(state.status);
   existing.totalQuestions = state.total_questions;
   existing.answeredQuestions = state.answered_questions;
@@ -305,11 +316,15 @@ export async function restoreInterviewSession(sessionId: string): Promise<void> 
   }
 
   const role = mapRole(state.job_role);
+  const difficulty = mapDifficulty(state.difficulty);
+  const stack = typeof state.stack === "string" && state.stack.trim().length > 0
+    ? state.stack.trim()
+    : defaultStackByRole(role);
   streamStateBySessionId.set(sessionId, {
     payload: {
       jobRole: role,
-      stack: defaultStackByRole(role),
-      difficulty: "jobseeker",
+      stack,
+      difficulty,
       questionCount: state.total_questions,
       timerSeconds: 120,
       character: mapCharacterFromApi(state.interviewer_character),
@@ -799,6 +814,9 @@ export async function listSessions(days = 30): Promise<SessionHistoryItem[]> {
     const stateData = stateMap.get(sessionId);
 
     const role = mapRole(stateData?.job_role);
+    const stack = typeof stateData?.stack === "string" && stateData.stack.trim().length > 0
+      ? stateData.stack.trim()
+      : defaultStackByRole(role);
     const scoreAverage =
       answers.length === 0
         ? 0
@@ -810,7 +828,7 @@ export async function listSessions(days = 30): Promise<SessionHistoryItem[]> {
       sessionId,
       startedAt,
       role,
-      stack: defaultStackByRole(role),
+      stack,
       totalScore: scoreAverage,
       questionCount: stateData?.total_questions ?? Math.max(1, ...answers.map((item) => item.question_order)),
       status: mapStatus(stateData?.status)
