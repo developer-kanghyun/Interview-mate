@@ -26,6 +26,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest
@@ -93,8 +95,8 @@ class InterviewAnswerServiceTest {
                 VALUES (101, 'backend', 'cs', 'easy', 'REST와 RPC의 차이를 설명해보세요.', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """);
         jdbcTemplate.update("""
-                INSERT INTO interview_sessions (id, user_id, job_role, interviewer_character, total_questions, status, started_at, created_at, updated_at)
-                VALUES (10, 1, 'backend', 'jet', 2, 'in_progress', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                INSERT INTO interview_sessions (id, user_id, job_role, stack, difficulty, interviewer_character, total_questions, status, started_at, created_at, updated_at)
+                VALUES (10, 1, 'backend', 'Spring Boot', 'junior', 'jet', 2, 'in_progress', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """);
         jdbcTemplate.update("""
                 INSERT INTO interview_session_questions (id, session_id, question_id, question_order, followup_count, created_at)
@@ -111,6 +113,7 @@ class InterviewAnswerServiceTest {
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any()
         ))
                 .thenReturn("핵심 근거를 더 구체적으로 설명해 주세요.");
@@ -121,10 +124,16 @@ class InterviewAnswerServiceTest {
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any()
         ))
-                .thenReturn("핵심은 좋습니다. 다음 답변에서는 근거를 더 명확히 제시해보세요.");
+                .thenReturn(new GenerateRealtimeCoachingUseCase.RealtimeCoachingResult(
+                        "핵심은 좋습니다.",
+                        "다음 답변에서는 근거를 더 명확히 제시해보세요.",
+                        true
+                ));
         when(adaptNextQuestionUseCase.execute(
+                org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
@@ -153,6 +162,8 @@ class InterviewAnswerServiceTest {
         assertThat(response.getEvaluation().getFollowupRemaining()).isEqualTo(2);
         assertThat(response.getInterviewerEmotion()).isNotBlank();
         assertThat(response.getCoachingMessage()).isNotBlank();
+        assertThat(response.getFeedbackSummary()).isNotBlank();
+        assertThat(response.isCoachingAvailable()).isTrue();
         assertThat(response.getFollowupQuestion()).isNull();
         assertThat(interviewAnswerRepository.count()).isEqualTo(1);
         var storedAnswer = interviewAnswerRepository.findById(Long.valueOf(response.getAnswerId())).orElseThrow();
@@ -241,13 +252,64 @@ class InterviewAnswerServiceTest {
     }
 
     @Test
+    void testSubmitAnswerPassesCharacterToFollowupAndCoachingUseCases() {
+        InterviewAnswerSubmitRequest request = new InterviewAnswerSubmitRequest();
+        request.setQuestionId(100L);
+        request.setAnswerText("잘 모르겠습니다.");
+        request.setInputType("text");
+
+        interviewAnswerService.submitAnswer(10L, request);
+
+        verify(generateFollowupQuestionUseCase).execute(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                eq("jet")
+        );
+        verify(generateRealtimeCoachingUseCase).execute(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                eq("jet")
+        );
+    }
+
+    @Test
+    void testSubmitAnswerPassesCharacterToAdaptNextQuestionUseCase() {
+        jdbcTemplate.update("UPDATE interview_questions SET is_active = false WHERE id = 101");
+
+        InterviewAnswerSubmitRequest request = new InterviewAnswerSubmitRequest();
+        request.setQuestionId(100L);
+        request.setAnswerText("ACID는 원자성, 일관성, 고립성, 지속성으로 트랜잭션 안정성을 보장하며 상황에 맞는 격리 수준 선택이 중요합니다.");
+        request.setInputType("text");
+
+        interviewAnswerService.submitAnswer(10L, request);
+
+        verify(adaptNextQuestionUseCase).execute(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                eq("jet")
+        );
+    }
+
+    @Test
     void testSubmitAnswerAllowsGuestFollowupBeforeCompletion() {
         jdbcTemplate.update(
                 "INSERT INTO users (id, api_key, is_guest, created_at, updated_at) VALUES (2, 'guest-key', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
         );
         jdbcTemplate.update("""
-                INSERT INTO interview_sessions (id, user_id, job_role, interviewer_character, total_questions, status, started_at, created_at, updated_at)
-                VALUES (20, 2, 'backend', 'jet', 1, 'in_progress', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                INSERT INTO interview_sessions (id, user_id, job_role, stack, difficulty, interviewer_character, total_questions, status, started_at, created_at, updated_at)
+                VALUES (20, 2, 'backend', 'Spring Boot', 'jobseeker', 'jet', 1, 'in_progress', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """);
         jdbcTemplate.update("""
                 INSERT INTO interview_session_questions (id, session_id, question_id, question_order, followup_count, created_at)
@@ -264,7 +326,7 @@ class InterviewAnswerServiceTest {
         assertThat(response.getEvaluation()).isNotNull();
         assertThat(response.getEvaluation().isFollowupRequired()).isTrue();
         assertThat(response.getEvaluation().getFollowupReason()).isNotEqualTo("none");
-        assertThat(response.getEvaluation().getFollowupRemaining()).isEqualTo(1);
+        assertThat(response.getEvaluation().getFollowupRemaining()).isEqualTo(0);
         assertThat(response.getFollowupQuestion()).isNotBlank();
         assertThat(response.getNextQuestion()).isNull();
         assertThat(response.getSessionStatus()).isEqualTo("in_progress");
@@ -282,8 +344,8 @@ class InterviewAnswerServiceTest {
                 "INSERT INTO users (id, api_key, is_guest, created_at, updated_at) VALUES (3, 'guest-key-2', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
         );
         jdbcTemplate.update("""
-                INSERT INTO interview_sessions (id, user_id, job_role, interviewer_character, total_questions, status, started_at, created_at, updated_at)
-                VALUES (30, 3, 'backend', 'jet', 1, 'in_progress', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                INSERT INTO interview_sessions (id, user_id, job_role, stack, difficulty, interviewer_character, total_questions, status, started_at, created_at, updated_at)
+                VALUES (30, 3, 'backend', 'Spring Boot', 'jobseeker', 'jet', 1, 'in_progress', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """);
         jdbcTemplate.update("""
                 INSERT INTO interview_session_questions (id, session_id, question_id, question_order, followup_count, created_at)
@@ -297,21 +359,16 @@ class InterviewAnswerServiceTest {
 
         InterviewAnswerSubmitResponse first = interviewAnswerService.submitAnswer(30L, request);
         InterviewAnswerSubmitResponse second = interviewAnswerService.submitAnswer(30L, request);
-        InterviewAnswerSubmitResponse third = interviewAnswerService.submitAnswer(30L, request);
 
         assertThat(first.getEvaluation().isFollowupRequired()).isTrue();
-        assertThat(first.getEvaluation().getFollowupRemaining()).isEqualTo(1);
+        assertThat(first.getEvaluation().getFollowupRemaining()).isEqualTo(0);
         assertThat(first.isSessionCompleted()).isFalse();
 
-        assertThat(second.getEvaluation().isFollowupRequired()).isTrue();
-        assertThat(second.getEvaluation().getFollowupRemaining()).isEqualTo(0);
-        assertThat(second.isSessionCompleted()).isFalse();
-
-        assertThat(third.getEvaluation().isFollowupRequired()).isFalse();
-        assertThat(third.getEvaluation().getFollowupReason()).isEqualTo("followup_limit_reached");
-        assertThat(third.getFollowupQuestion()).isNull();
-        assertThat(third.getSessionStatus()).isEqualTo("completed");
-        assertThat(third.isSessionCompleted()).isTrue();
+        assertThat(second.getEvaluation().isFollowupRequired()).isFalse();
+        assertThat(second.getEvaluation().getFollowupReason()).isEqualTo("followup_limit_reached");
+        assertThat(second.getFollowupQuestion()).isNull();
+        assertThat(second.getSessionStatus()).isEqualTo("completed");
+        assertThat(second.isSessionCompleted()).isTrue();
     }
 
     @Test

@@ -2,11 +2,14 @@ package com.interviewmate.integration;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.interviewmate.application.ai.port.AiChatPort;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -17,6 +20,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient(timeout = "30000")
@@ -30,9 +35,51 @@ class InterviewFlowIntegrationTest extends IntegrationTestSupport {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @MockBean
+    private AiChatPort aiChatPort;
+
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
         registry.add("app.rate-limit.enabled", () -> "false");
+    }
+
+    @BeforeEach
+    void setUpAiMock() {
+        when(aiChatPort.requestSingleResponse(anyString(), anyString()))
+                .thenAnswer(invocation -> {
+                    String systemPrompt = invocation.getArgument(0, String.class);
+                    if (systemPrompt.contains("JSON 배열")) {
+                        return """
+                                [
+                                  {"category":"job","difficulty":"easy","content":"Spring Boot 서비스에서 트랜잭션 경계를 나누는 기준을 설명해보세요."},
+                                  {"category":"job","difficulty":"easy","content":"Spring Boot API에서 예외 처리 흐름을 설계하는 방법을 설명해보세요."},
+                                  {"category":"cs","difficulty":"easy","content":"Spring Boot 앱에서 REST 상태코드 선택 기준을 설명해보세요."},
+                                  {"category":"job","difficulty":"medium","content":"Spring Boot에서 캐시 무효화 시점을 결정하는 기준을 설명해보세요."},
+                                  {"category":"cs","difficulty":"medium","content":"Spring Boot 환경에서 동시성 이슈를 줄이는 기본 전략을 설명해보세요."},
+                                  {"category":"job","difficulty":"easy","content":"Spring Boot 프로젝트에서 로깅과 모니터링을 설계하는 기준을 설명해보세요."},
+                                  {"category":"job","difficulty":"easy","content":"Spring Boot 기반 배포에서 롤백 절차를 준비하는 방법을 설명해보세요."}
+                                ]
+                                """;
+                    }
+                    if (systemPrompt.contains("JSON 객체")) {
+                        return """
+                                {
+                                  "summary": "핵심 요지는 잘 전달되었습니다.",
+                                  "coaching": "다음 답변에서는 근거와 예시를 한 문장씩 덧붙여 보세요."
+                                }
+                                """;
+                    }
+                    if (systemPrompt.contains("후속 꼬리질문")) {
+                        return "지금 답변에서 적용 사례를 하나만 더 들어 설명해 주세요.";
+                    }
+                    if (systemPrompt.contains("다음 질문의 핵심 주제")) {
+                        return "원본 질문의 핵심 주제를 유지해 근거 중심으로 다시 설명해 주세요.";
+                    }
+                    if (systemPrompt.contains("모범답안")) {
+                        return "핵심 개념을 정의하고 근거를 제시한 뒤, 실무 적용 예시로 마무리하면 좋습니다.";
+                    }
+                    return "핵심 개념을 먼저 설명해 주세요.";
+                });
     }
 
     @Test
@@ -70,7 +117,8 @@ class InterviewFlowIntegrationTest extends IntegrationTestSupport {
         assertThat(answerResponseJson.path("data").path("session_id").asText()).isEqualTo(sessionId);
         assertThat(answerResponseJson.path("data").path("question_id").asText()).isEqualTo(questionId);
         assertThat(answerResponseJson.path("data").path("evaluation").path("total_score").asDouble()).isGreaterThan(0.0);
-        assertThat(answerResponseJson.path("data").path("coaching_message").asText()).isNotBlank();
+        assertThat(answerResponseJson.path("data").path("coaching_available").asBoolean()).isTrue();
+        assertThat(answerResponseJson.path("data").path("feedback_summary").asText()).isNotBlank();
     }
 
     @Test

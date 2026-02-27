@@ -2,6 +2,7 @@ package com.interviewmate.application.ai.usecase;
 
 import com.interviewmate.application.ai.port.AiChatPort;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -26,7 +27,8 @@ class GenerateFollowupQuestionUseCaseTest {
                 "jobseeker",
                 "트랜잭션과 락을 설명해보세요.",
                 "데이터 정합성을 위해 트랜잭션을 사용합니다.",
-                "이전 답변 요약"
+                "이전 답변 요약",
+                "jet"
         );
 
         assertThat(followupQuestion).contains("트랜잭션");
@@ -47,9 +49,33 @@ class GenerateFollowupQuestionUseCaseTest {
                 "jobseeker",
                 "트랜잭션과 락을 설명해보세요.",
                 "잘 모르겠습니다.",
-                "이전 답변 요약"
+                "이전 답변 요약",
+                "luna"
         );
 
         assertThat(followupQuestion).contains("핵심 근거");
+    }
+
+    @Test
+    void testExecuteIncludesIronToneGuideInPrompt() {
+        AiChatPort aiChatPort = mock(AiChatPort.class);
+        when(aiChatPort.requestSingleResponse(anyString(), anyString()))
+                .thenReturn("핵심 실패 원인을 기준으로 동시성 대응 전략을 다시 설명해 주세요.");
+
+        GenerateFollowupQuestionUseCase useCase = new GenerateFollowupQuestionUseCase(aiChatPort);
+        useCase.execute(
+                "backend",
+                "Spring Boot",
+                "junior",
+                "트랜잭션과 락을 설명해보세요.",
+                "잘 모르겠습니다.",
+                "이전 답변 요약",
+                "iron"
+        );
+
+        ArgumentCaptor<String> systemPromptCaptor = ArgumentCaptor.forClass(String.class);
+        verify(aiChatPort).requestSingleResponse(systemPromptCaptor.capture(), anyString());
+        assertThat(systemPromptCaptor.getValue()).contains("캐릭터: 아이언");
+        assertThat(systemPromptCaptor.getValue()).contains("아이언 추가 가드레일");
     }
 }
