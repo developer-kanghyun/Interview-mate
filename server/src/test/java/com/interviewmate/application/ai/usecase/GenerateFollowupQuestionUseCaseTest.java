@@ -2,6 +2,7 @@ package com.interviewmate.application.ai.usecase;
 
 import com.interviewmate.application.ai.port.AiChatPort;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -50,6 +51,28 @@ class GenerateFollowupQuestionUseCaseTest {
                 "이전 답변 요약"
         );
 
-        assertThat(followupQuestion).contains("핵심 근거");
+        assertThat(followupQuestion).contains("가장 중요한 개념");
+    }
+
+    @Test
+    void testExecuteBuildsJobseekerSpecificPromptGuide() {
+        AiChatPort aiChatPort = mock(AiChatPort.class);
+        when(aiChatPort.requestSingleResponse(anyString(), anyString()))
+                .thenReturn("핵심 개념을 한 가지 예시와 함께 설명해 주세요.");
+
+        GenerateFollowupQuestionUseCase useCase = new GenerateFollowupQuestionUseCase(aiChatPort);
+
+        useCase.execute(
+                "pm",
+                "PRD",
+                "jobseeker",
+                "우선순위를 어떻게 정하나요?",
+                "impact effort로 정합니다.",
+                "이전 답변 요약"
+        );
+
+        ArgumentCaptor<String> systemPromptCaptor = ArgumentCaptor.forClass(String.class);
+        verify(aiChatPort).requestSingleResponse(systemPromptCaptor.capture(), anyString());
+        assertThat(systemPromptCaptor.getValue()).contains("취준생 기준");
     }
 }

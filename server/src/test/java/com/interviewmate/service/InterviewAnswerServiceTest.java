@@ -366,4 +366,25 @@ class InterviewAnswerServiceTest {
                 .isInstanceOf(AppException.class)
                 .hasMessageContaining("이미 종료된 세션입니다.");
     }
+
+    @Test
+    void testSubmitAnswerAppliesSingleFollowupLimitForJobseeker() {
+        jdbcTemplate.update("UPDATE interview_sessions SET difficulty = 'jobseeker' WHERE id = 10");
+
+        InterviewAnswerSubmitRequest request = new InterviewAnswerSubmitRequest();
+        request.setQuestionId(100L);
+        request.setAnswerText("잘 모르겠습니다.");
+        request.setInputType("text");
+
+        InterviewAnswerSubmitResponse first = interviewAnswerService.submitAnswer(10L, request);
+        InterviewAnswerSubmitResponse second = interviewAnswerService.submitAnswer(10L, request);
+
+        assertThat(first.getEvaluation().isFollowupRequired()).isTrue();
+        assertThat(first.getEvaluation().getFollowupRemaining()).isEqualTo(0);
+
+        assertThat(second.getEvaluation().isFollowupRequired()).isFalse();
+        assertThat(second.getEvaluation().getFollowupReason()).isEqualTo("followup_limit_reached");
+        assertThat(second.getNextQuestion()).isNotNull();
+        assertThat(second.getNextQuestion().getQuestionId()).isEqualTo("101");
+    }
 }

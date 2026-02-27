@@ -97,4 +97,17 @@ class EvaluateAnswerUseCaseTest {
         assertThat(structured.getLogic()).isGreaterThan(unstructured.getLogic());
         assertThat(structured.getDelivery()).isGreaterThan(unstructured.getDelivery());
     }
+
+    @Test
+    void testExecuteUsesLowerFollowupThresholdForJobseeker() {
+        EvaluateAnswerUseCase useCase = new EvaluateAnswerUseCase();
+
+        String answer = "트랜잭션은 ACID를 기반으로 동작하고 커밋과 롤백으로 데이터 정합성을 지킵니다";
+        AnswerEvaluationResult juniorResult = useCase.execute("트랜잭션의 ACID를 설명해보세요.", answer, "junior");
+        AnswerEvaluationResult jobseekerResult = useCase.execute("트랜잭션의 ACID를 설명해보세요.", answer, "jobseeker");
+
+        assertThat(jobseekerResult.getTotalScore()).isEqualTo(juniorResult.getTotalScore());
+        assertThat(juniorResult.isFollowupRequired()).isTrue();
+        assertThat(jobseekerResult.isFollowupRequired()).isFalse();
+    }
 }

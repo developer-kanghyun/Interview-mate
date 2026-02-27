@@ -137,6 +137,39 @@ class InterviewSessionControllerTest {
     }
 
     @Test
+    void testStartInterviewSessionAcceptsExtendedRole() throws Exception {
+        InterviewSessionStartResponse mockResponse = InterviewSessionStartResponse.builder()
+                .sessionId("session-pm")
+                .jobRole("pm")
+                .interviewerCharacter("jet")
+                .totalQuestions(7)
+                .status("in_progress")
+                .startedAt(LocalDateTime.now())
+                .firstQuestion(InterviewSessionStartResponse.FirstQuestionDto.builder()
+                        .questionId("q-pm-1")
+                        .category("job")
+                        .difficulty("easy")
+                        .content("PM 우선순위 기준을 설명해보세요.")
+                        .build())
+                .build();
+
+        when(interviewSessionService.startSession(any(), anyLong())).thenReturn(mockResponse);
+
+        InterviewSessionStartRequest request = new InterviewSessionStartRequest();
+        request.setJobRole("pm");
+        request.setStack("PRD");
+        request.setDifficulty("jobseeker");
+
+        mockMvc.perform(post("/api/interview/sessions/start")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-API-Key", "test-key")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.job_role").value("pm"));
+    }
+
+    @Test
     void testStartInterviewSessionWithInvalidRoleReturns400() throws Exception {
         InterviewSessionStartRequest request = new InterviewSessionStartRequest();
         request.setJobRole("ios");

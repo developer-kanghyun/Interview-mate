@@ -43,7 +43,9 @@ class GenerateSessionQuestionPlanUseCaseTest {
         assertThat(result).hasSize(3);
         assertThat(result.get(0).category()).isEqualTo("job");
         assertThat(result.get(1).category()).isEqualTo("cs");
-        assertThat(result.get(2).difficulty()).isEqualTo("hard");
+        assertThat(result)
+                .extracting(GenerateSessionQuestionPlanUseCase.GeneratedQuestion::difficulty)
+                .containsExactly("easy", "easy", "medium");
     }
 
     @Test
@@ -54,6 +56,9 @@ class GenerateSessionQuestionPlanUseCaseTest {
 
         assertThat(result).hasSize(4);
         assertThat(result.get(0).content()).contains("Next.js");
+        assertThat(result)
+                .extracting(GenerateSessionQuestionPlanUseCase.GeneratedQuestion::difficulty)
+                .containsExactly("medium", "medium", "hard", "hard");
     }
 
     @Test
@@ -95,5 +100,17 @@ class GenerateSessionQuestionPlanUseCaseTest {
         assertThat(result)
                 .extracting(GenerateSessionQuestionPlanUseCase.GeneratedQuestion::content)
                 .noneMatch(content -> content.matches(".*\\(\\d+\\)$"));
+    }
+
+    @Test
+    void executeKeepsJobseekerDifficultyProfileEasyHeavy() {
+        when(aiChatPort.requestSingleResponse(anyString(), anyString())).thenThrow(new RuntimeException("timeout"));
+
+        List<GenerateSessionQuestionPlanUseCase.GeneratedQuestion> result = useCase.execute("pm", "PRD,Roadmap", "jobseeker", 7);
+
+        assertThat(result).hasSize(7);
+        assertThat(result)
+                .extracting(GenerateSessionQuestionPlanUseCase.GeneratedQuestion::difficulty)
+                .containsExactly("easy", "easy", "easy", "easy", "easy", "medium", "medium");
     }
 }

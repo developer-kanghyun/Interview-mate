@@ -4,11 +4,13 @@ import com.interviewmate.application.ai.port.AiChatPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,5 +43,16 @@ class AdaptNextQuestionUseCaseTest {
         String result = useCase.execute("frontend", "Next.js", "jobseeker", baseQuestion, "답변 요약");
 
         assertThat(result).isEqualTo(baseQuestion);
+    }
+
+    @Test
+    void executeAddsJobseekerDifficultyGuardToPrompt() {
+        when(aiChatPort.requestSingleResponse(anyString(), anyString())).thenReturn("기초 개념을 다시 설명해보세요.");
+
+        useCase.execute("frontend", "Next.js", "jobseeker", "상태 관리를 설명해보세요.", "답변 요약");
+
+        ArgumentCaptor<String> systemPromptCaptor = ArgumentCaptor.forClass(String.class);
+        verify(aiChatPort).requestSingleResponse(systemPromptCaptor.capture(), anyString());
+        assertThat(systemPromptCaptor.getValue()).contains("취준생 기준");
     }
 }
