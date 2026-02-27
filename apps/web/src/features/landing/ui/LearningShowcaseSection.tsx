@@ -62,31 +62,28 @@ export function LearningShowcaseSection() {
           />
 
           <div className="relative z-10 w-full max-w-[340px]">
-            {/* Mock Data*/}
-            <div className="rounded-[1.5rem] border border-white/80 bg-white/80 p-5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] backdrop-blur-md">
-              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-100 text-orange-500">
-                  <RotateCcw className="h-4.5 w-4.5" strokeWidth={2.2} />
-                </div>
-                <div>
-                  <p className="text-[13px] font-bold text-slate-800">재도전 질문 세트</p>
-                  <p className="text-[10px] text-slate-400">약점 기반 자동 생성 · 3문항</p>
-                </div>
+            <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-200/70">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-100 text-orange-500">
+                <RotateCcw className="h-4.5 w-4.5" strokeWidth={2.2} />
               </div>
+              <div>
+                <p className="text-[13px] font-bold text-slate-800">재도전 질문 세트</p>
+                <p className="text-[10px] text-slate-400">약점 기반 자동 생성 · 3문항</p>
+              </div>
+            </div>
 
-              <div className="space-y-2.5">
-                <div className="flex items-center gap-3 rounded-xl bg-rose-50/80 px-3.5 py-2.5 border border-rose-100/60">
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-200/80 text-[10px] font-bold text-rose-700">1</div>
-                  <p className="text-[12px] font-medium text-slate-700 leading-snug">JPA 영속성 컨텍스트에서 1차 캐시의 동시성 문제는?</p>
-                </div>
-                <div className="flex items-center gap-3 rounded-xl bg-amber-50/80 px-3.5 py-2.5 border border-amber-100/60">
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-200/80 text-[10px] font-bold text-amber-700">2</div>
-                  <p className="text-[12px] font-medium text-slate-700 leading-snug">CORS Preflight 요청의 발생 조건을 설명해주세요.</p>
-                </div>
-                <div className="flex items-center gap-3 rounded-xl bg-sky-50/80 px-3.5 py-2.5 border border-sky-100/60">
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sky-200/80 text-[10px] font-bold text-sky-700">3</div>
-                  <p className="text-[12px] font-medium text-slate-700 leading-snug">useEffect의 클린업 함수는 언제 실행되나요?</p>
-                </div>
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-3 rounded-xl bg-rose-50/80 px-3.5 py-2.5 border border-rose-100/60">
+                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-200/80 text-[10px] font-bold text-rose-700">1</div>
+                <p className="text-[12px] font-medium text-slate-700 leading-snug">JPA 영속성 컨텍스트에서 1차 캐시의 동시성 문제는?</p>
+              </div>
+              <div className="flex items-center gap-3 rounded-xl bg-amber-50/80 px-3.5 py-2.5 border border-amber-100/60">
+                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-200/80 text-[10px] font-bold text-amber-700">2</div>
+                <p className="text-[12px] font-medium text-slate-700 leading-snug">CORS Preflight 요청의 발생 조건을 설명해주세요.</p>
+              </div>
+              <div className="flex items-center gap-3 rounded-xl bg-sky-50/80 px-3.5 py-2.5 border border-sky-100/60">
+                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sky-200/80 text-[10px] font-bold text-sky-700">3</div>
+                <p className="text-[12px] font-medium text-slate-700 leading-snug">useEffect의 클린업 함수는 언제 실행되나요?</p>
               </div>
             </div>
           </div>
