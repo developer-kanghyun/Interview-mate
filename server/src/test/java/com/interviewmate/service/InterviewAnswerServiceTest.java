@@ -195,7 +195,7 @@ class InterviewAnswerServiceTest {
 
         assertThat(response.getEvaluation()).isNotNull();
         assertThat(response.getEvaluation().isFollowupRequired()).isFalse();
-        assertThat(response.getEvaluation().getFollowupReason()).isEqualTo("followup_limit_reached");
+        assertThat(response.getEvaluation().getFollowupReason()).contains("꼬리질문 한도");
         assertThat(response.getEvaluation().getFollowupRemaining()).isEqualTo(0);
         assertThat(response.getInterviewerEmotion()).isEqualTo("pressure");
         assertThat(response.getFollowupQuestion()).isNull();
@@ -263,7 +263,7 @@ class InterviewAnswerServiceTest {
 
         assertThat(response.getEvaluation()).isNotNull();
         assertThat(response.getEvaluation().isFollowupRequired()).isTrue();
-        assertThat(response.getEvaluation().getFollowupReason()).isNotEqualTo("none");
+        assertThat(response.getEvaluation().getFollowupReason()).isNotBlank();
         assertThat(response.getEvaluation().getFollowupRemaining()).isEqualTo(1);
         assertThat(response.getFollowupQuestion()).isNotBlank();
         assertThat(response.getNextQuestion()).isNull();
@@ -308,7 +308,7 @@ class InterviewAnswerServiceTest {
         assertThat(second.isSessionCompleted()).isFalse();
 
         assertThat(third.getEvaluation().isFollowupRequired()).isFalse();
-        assertThat(third.getEvaluation().getFollowupReason()).isEqualTo("followup_limit_reached");
+        assertThat(third.getEvaluation().getFollowupReason()).contains("꼬리질문 한도");
         assertThat(third.getFollowupQuestion()).isNull();
         assertThat(third.getSessionStatus()).isEqualTo("completed");
         assertThat(third.isSessionCompleted()).isTrue();
@@ -383,7 +383,7 @@ class InterviewAnswerServiceTest {
         assertThat(first.getEvaluation().getFollowupRemaining()).isEqualTo(0);
 
         assertThat(second.getEvaluation().isFollowupRequired()).isFalse();
-        assertThat(second.getEvaluation().getFollowupReason()).isEqualTo("followup_limit_reached");
+        assertThat(second.getEvaluation().getFollowupReason()).contains("꼬리질문 한도");
         assertThat(second.getNextQuestion()).isNotNull();
         assertThat(second.getNextQuestion().getQuestionId()).isEqualTo("101");
     }

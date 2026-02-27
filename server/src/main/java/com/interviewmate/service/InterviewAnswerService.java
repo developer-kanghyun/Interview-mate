@@ -89,7 +89,7 @@ public class InterviewAnswerService {
         if (followupRequired) {
             if (sessionQuestion.getFollowupCount() >= maxFollowupPerQuestion) {
                 followupRequired = false;
-                followupReason = "followup_limit_reached";
+                followupReason = "꼬리질문 한도에 도달했습니다. 다음 질문에서 구조화된 답변을 시도해 주세요.";
             } else {
                 String recentAnswerSummary = summarizeRecentAnswers(sessionQuestion.getSession(), request.getAnswerText());
                 followupQuestion = generateFollowupQuestionUseCase.execute(

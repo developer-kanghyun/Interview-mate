@@ -49,7 +49,7 @@ public class InterviewAnswer {
     @Column(name = "followup_required")
     private Boolean followupRequired;
 
-    @Column(name = "followup_reason", length = 80)
+    @Column(name = "followup_reason", columnDefinition = "TEXT")
     private String followupReason;
 
     @Column(name = "coaching_message", length = 400)

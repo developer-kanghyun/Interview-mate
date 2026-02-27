@@ -202,22 +202,6 @@ function buildAxisScoresFromApi(data: {
   };
 }
 
-function buildFollowupMessage(reason: string | null | undefined) {
-  if (reason === "factual_error_or_uncertainty") {
-    return "핵심 개념 정확도가 낮습니다. 정의와 근거를 먼저 제시해 주세요.";
-  }
-  if (reason === "missing_core_detail") {
-    return "핵심 디테일이 부족합니다. 실무 예시를 포함해 확장해 주세요.";
-  }
-  if (reason === "weak_reasoning") {
-    return "추론 근거가 약합니다. 결론-근거-예시 순서로 재구성해 주세요.";
-  }
-  if (reason === "followup_limit_reached") {
-    return "꼬리질문 한도에 도달했습니다. 다음 문항에서 구조화된 답변을 시도해 주세요.";
-  }
-  return "답변 보강이 필요합니다. 핵심 개념과 근거를 함께 설명해 주세요.";
-}
-
 async function refreshCurrentQuestionFromState(sessionId: string) {
   const stateResponse = await getInterviewSessionState(sessionId);
   const state = stateResponse.data;
@@ -678,9 +662,11 @@ export async function submitAnswer(
     await refreshCurrentQuestionFromState(sessionId);
   }
 
+  const followupReasonDetail = data.evaluation.followup_reason?.trim() ?? "";
+  const coachingMessage = data.coaching_message?.trim() ?? "";
   const summary = data.evaluation.followup_required
-    ? buildFollowupMessage(data.evaluation.followup_reason)
-    : "답변 흐름이 좋습니다. 다음 문항도 결론-근거-예시 순서를 유지해 보세요.";
+    ? followupReasonDetail || coachingMessage || "답변 보강이 필요합니다. 핵심 개념과 근거를 함께 설명해 주세요."
+    : coachingMessage || "답변 흐름이 좋습니다. 다음 문항도 결론-근거-예시 순서를 유지해 보세요.";
 
   return {
     feedbackSummary: summary,
