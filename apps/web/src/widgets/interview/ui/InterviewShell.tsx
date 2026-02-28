@@ -152,7 +152,7 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
             onChange={shellState.setSetupPayload}
             onStart={shellState.handleStartInterview}
             isStarting={shellState.isStarting}
-            canStart={!shellState.isAuthRequired}
+            canStart={shellState.authStatus !== "loading" && !shellState.isAuthRequired}
           />
         ) : null}
 
@@ -176,6 +176,7 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
             sessions={shellState.sessions}
             weakKeywords={shellState.weakKeywords}
             studyGuide={shellState.studyGuide}
+            questionGuides={shellState.questionGuides}
             isLoading={shellState.isInsightsLoading}
             errorMessage={shellState.insightsErrorMessage}
             isRetryingWeakness={shellState.isRetryingWeakness}

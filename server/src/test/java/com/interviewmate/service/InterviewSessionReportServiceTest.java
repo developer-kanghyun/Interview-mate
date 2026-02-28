@@ -111,6 +111,9 @@ class InterviewSessionReportServiceTest {
         assertThat(response.getQuestions()).hasSize(2);
         assertThat(response.getQuestions().get(0).getModelAnswer()).isNotBlank();
         assertThat(response.getQuestions().get(0).getCoachingMessage()).isNotBlank();
+        assertThat(response.getQuestions().get(0).getWhyWeak()).isNotBlank();
+        assertThat(response.getQuestions().get(0).getHowToAnswer()).isNotBlank();
+        assertThat(response.getQuestions().get(0).getExampleAnswer()).isNotBlank();
         assertThat(response.getQuestions().get(0).getInterviewerEmotion()).isEqualTo("pressure");
         assertThat(response.getQuestions().get(0).getWeakConceptKeywords()).isNotEmpty();
         assertThat(response.getScoreSummary()).isNotNull();
