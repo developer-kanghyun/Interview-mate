@@ -58,7 +58,6 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
   const [visualJobId, setVisualJobId] = useState<VisualJobId>("frontend");
   const isSetupBusy = isStarting;
   const isNextDisabled = isSetupBusy || (step === 2 && selectedStacks.length === 0);
-  const isStartDisabled = isSetupBusy || !canStart;
 
   const currentStackOptions = stacksByJobId[visualJobId];
 
@@ -325,14 +324,12 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
             다음
           </Button>
         ) : (
-          <Button onClick={onStart} disabled={isStartDisabled} className="min-w-[180px] gap-2 shadow-glow">
+          <Button onClick={onStart} disabled={isStarting} className="min-w-[180px] gap-2 shadow-glow">
             {isStarting ? (
               <>
                 <LoadingSpinner size="sm" tone="on-primary" />
                 면접 준비 중...
               </>
-            ) : !canStart ? (
-              "인증 확인 중..."
             ) : (
               "면접 시작"
             )}

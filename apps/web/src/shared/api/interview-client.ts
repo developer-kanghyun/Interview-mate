@@ -23,8 +23,6 @@ export type StartInterviewPayload = {
   timerSeconds: number;
   character: InterviewCharacter;
   reactionEnabled: boolean;
-  retryMode?: "none" | "weak_first";
-  sourceSessionId?: string;
 };
 
 export type StartInterviewResponse = {
@@ -71,20 +69,6 @@ export type ReportQuestionFeedback = {
   question: string;
   feedback: string;
   totalScore: number;
-  whyWeak: string;
-  howToAnswer: string;
-  exampleAnswer: string;
-};
-
-export type ReportQuestionGuide = {
-  questionId: string;
-  order: number;
-  question: string;
-  interviewerEmotion: InterviewEmotion;
-  weakConceptKeywords: string[];
-  actionTip: string;
-  howToAnswer: string;
-  exampleAnswer: string;
 };
 
 export type InterviewReport = {
@@ -95,7 +79,6 @@ export type InterviewReport = {
   weakKeywords: string[];
   questionFeedback: ReportQuestionFeedback[];
   studyGuide: string[];
-  questionGuides: ReportQuestionGuide[];
 };
 
 export type SessionHistoryItem = {
@@ -271,38 +254,12 @@ function readResponseData<T>(response: { success: boolean; data: T }, fallbackMe
   return response.data;
 }
 
-function isUnwrappedReportPayload(value: unknown): value is SessionReportResponse["data"] {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-
-  const candidate = value as Partial<SessionReportResponse["data"]>;
-  return (
-    typeof candidate.session_id === "string" &&
-    typeof candidate.total_questions === "number" &&
-    typeof candidate.answered_questions === "number" &&
-    typeof candidate.score_summary === "object" &&
-    candidate.score_summary !== null &&
-    Array.isArray(candidate.questions)
-  );
-}
-
-function readReportData(response: SessionReportResponse | SessionReportResponse["data"]) {
-  if (isUnwrappedReportPayload(response)) {
-    return response;
-  }
-  return readResponseData(response, "리포트 조회 실패");
-}
-
 export async function startInterview(payload: StartInterviewPayload): Promise<StartInterviewResponse> {
-  const parsedSourceSessionId = payload.sourceSessionId ? Number(payload.sourceSessionId) : undefined;
   const startResponse = await startInterviewSession({
     jobRole: payload.jobRole,
     stack: payload.stack,
     difficulty: payload.difficulty,
-    interviewerCharacter: mapCharacterToApi(payload.character),
-    retryMode: payload.retryMode,
-    sourceSessionId: Number.isFinite(parsedSourceSessionId) ? parsedSourceSessionId : undefined
+    interviewerCharacter: mapCharacterToApi(payload.character)
   });
 
   const data = readResponseData(startResponse, "세션 시작 실패");
@@ -729,7 +686,7 @@ export async function submitAnswer(
 }
 
 function mapReportToInterviewReport(reportResponse: SessionReportResponse): InterviewReport {
-  const data = readReportData(reportResponse);
+  const data = readResponseData(reportResponse, "리포트 조회 실패");
 
   const axisScores = buildAxisScoresFromApi(data.score_summary);
   const totalScore = toPercentScore(data.score_summary.total_score);
@@ -739,42 +696,13 @@ function mapReportToInterviewReport(reportResponse: SessionReportResponse): Inte
     order: question.question_order,
     question: question.question_content,
     feedback: question.improvement_tip || question.coaching_message || "피드백을 불러오지 못했습니다.",
-    totalScore: toPercentScore(question.score.total_score),
-    whyWeak:
-      question.why_weak?.trim() ||
-      question.improvement_tip ||
-      "핵심 개념과 근거 설명이 부족해 답변 설득력이 낮았습니다.",
-    howToAnswer:
-      question.how_to_answer?.trim() ||
-      question.coaching_message?.trim() ||
-      "답변을 결론-근거-예시 순서로 구성해 주세요.",
-    exampleAnswer:
-      question.example_answer?.trim() ||
-      question.model_answer?.trim() ||
-      "예시 답변을 생성하지 못했습니다."
+    totalScore: toPercentScore(question.score.total_score)
   }));
 
-  const questionGuides: ReportQuestionGuide[] = data.questions.map((question) => ({
-    questionId: question.question_id,
-    order: question.question_order,
-    question: question.question_content,
-    interviewerEmotion: mapEmotion(question.interviewer_emotion),
-    weakConceptKeywords: question.weak_concept_keywords ?? [],
-    actionTip: question.coaching_message || question.improvement_tip || "핵심 개념부터 답변하세요.",
-    howToAnswer:
-      question.how_to_answer?.trim() ||
-      question.coaching_message?.trim() ||
-      "결론-근거-예시 구조로 답변하세요.",
-    exampleAnswer:
-      question.example_answer?.trim() ||
-      question.model_answer?.trim() ||
-      "예시 답변을 생성하지 못했습니다."
-  }));
-
-  const studyGuide = dedupeAndLimitGuide([
+  const studyGuide = [
     ...data.priority_focuses.map((focus) => `${focus} 축을 우선적으로 보완하세요.`),
     ...data.questions.slice(0, 3).map((question) => question.improvement_tip)
-  ]);
+  ].filter(Boolean);
 
   const summary = `총 ${data.answered_questions}/${data.total_questions}문항 답변, 성과 레벨 ${data.performance_level}.`;
 
@@ -785,31 +713,8 @@ function mapReportToInterviewReport(reportResponse: SessionReportResponse): Inte
     axisScores,
     weakKeywords: data.weak_keywords,
     questionFeedback,
-    studyGuide,
-    questionGuides
+    studyGuide
   };
-}
-
-function dedupeAndLimitGuide(items: Array<string | null | undefined>) {
-  const deduped: string[] = [];
-  const seen = new Set<string>();
-
-  for (const rawItem of items) {
-    const item = rawItem?.trim();
-    if (!item) {
-      continue;
-    }
-    if (seen.has(item)) {
-      continue;
-    }
-    seen.add(item);
-    deduped.push(item);
-    if (deduped.length >= 3) {
-      break;
-    }
-  }
-
-  return deduped;
 }
 
 export async function getReport(sessionId: string): Promise<InterviewReport> {
@@ -818,12 +723,7 @@ export async function getReport(sessionId: string): Promise<InterviewReport> {
     const report = mapReportToInterviewReport(reportResponse);
     streamStateBySessionId.delete(sessionId);
     return report;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    if (message !== "세션이 아직 종료되지 않았습니다.") {
-      throw error;
-    }
-
+  } catch {
     await endInterviewSession(sessionId, "user_end").catch(() => {
       // 이미 종료된 세션이면 무시
     });

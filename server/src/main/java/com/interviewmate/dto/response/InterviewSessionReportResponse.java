@@ -51,8 +51,5 @@ public class InterviewSessionReportResponse {
         private List<String> weakPoints;
         private List<String> weakConceptKeywords;
         private String improvementTip;
-        private String whyWeak;
-        private String howToAnswer;
-        private String exampleAnswer;
     }
 }
