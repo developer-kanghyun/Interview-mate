@@ -1,6 +1,6 @@
 import { getAuthRequiredMessage } from "@/shared/auth/session";
 
-const DEFAULT_TIMEOUT_MS = 10_000;
+const DEFAULT_TIMEOUT_MS = 25_000;
 
 type HttpMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
