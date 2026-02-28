@@ -12,9 +12,9 @@ import { usePathname } from "next/navigation";
 import {
   hasInterviewRuntimeState,
   pingBackendHealth,
+  type InterviewCharacter,
   type ReportQuestionGuide,
   restoreInterviewSession,
-  type InterviewCharacter,
   type InterviewEmotion,
   type InterviewReport,
   type SessionHistoryItem,
@@ -35,6 +35,12 @@ import { useInterviewResumeState } from "@/features/interview-session/model/useI
 import { useInterviewRoomFlow } from "@/features/interview-session/model/useInterviewRoomFlow";
 import { useInterviewReportInsights } from "@/features/interview-session/model/useInterviewReportInsights";
 import { useStartSession } from "@/features/interview/start-session/model/useStartSession";
+import {
+  buildRetryPreset,
+  buildSetupPayloadFromSessionState,
+  resolveSessionIdFromPath,
+  resolveStepFromPath
+} from "@/features/interview-session/model/interviewShell.utils";
 import {
   resolveAvatarReportState,
   type AvatarState
@@ -118,148 +124,10 @@ export type UseInterviewShellStateResult = {
   handleDismissResumeCandidate: () => void;
 };
 
-type RetryPreset = {
-  jobRole?: StartInterviewPayload["jobRole"];
-  stack?: StartInterviewPayload["stack"];
-};
-
 export type UseInterviewShellStateOptions = {
   initialStep?: InterviewStep;
   initialSessionId?: string | null;
 };
-
-function resolveStepFromPath(pathname: string | null): InterviewStep | null {
-  if (!pathname) {
-    return null;
-  }
-  if (pathname === "/setup") {
-    return "setup";
-  }
-  if (pathname === "/insights" || pathname === "/study") {
-    return "insights";
-  }
-  if (pathname === "/report" || /^\/report\/[^/]+$/.test(pathname)) {
-    return "report";
-  }
-  if (/^\/interview\/[^/]+$/.test(pathname)) {
-    return "room";
-  }
-  return null;
-}
-
-function resolveSessionIdFromPath(pathname: string | null) {
-  if (!pathname) {
-    return null;
-  }
-  const matched = pathname.match(/^\/(?:interview|report)\/([^/]+)$/);
-  if (!matched) {
-    return null;
-  }
-  return decodeURIComponent(matched[1]);
-}
-
-function buildRetryPreset(weakKeywords: string[], fallback: StartInterviewPayload): RetryPreset {
-  if (fallback.jobRole !== "backend" && fallback.jobRole !== "frontend") {
-    return {
-      jobRole: fallback.jobRole,
-      stack: fallback.stack
-    };
-  }
-
-  const keywordText = weakKeywords.join(" ").toLowerCase();
-
-  const backendSignals = ["api", "db", "sql", "transaction", "spring", "jpa", "redis", "cache", "서버", "백엔드"];
-  const frontendSignals = ["react", "next", "vue", "ui", "ux", "렌더링", "상태", "프론트", "컴포넌트", "css", "접근성"];
-
-  const hasBackendSignal = backendSignals.some((signal) => keywordText.includes(signal));
-  const hasFrontendSignal = frontendSignals.some((signal) => keywordText.includes(signal));
-
-  if (hasBackendSignal && !hasFrontendSignal) {
-    return {
-      jobRole: "backend",
-      stack: "Spring Boot"
-    };
-  }
-
-  if (hasFrontendSignal && !hasBackendSignal) {
-    return {
-      jobRole: "frontend",
-      stack: "Next.js"
-    };
-  }
-
-  return {
-    jobRole: fallback.jobRole,
-    stack: fallback.stack
-  };
-}
-
-function mapRoleFromApi(role: string | null | undefined): StartInterviewPayload["jobRole"] {
-  switch (role) {
-    case "frontend":
-      return "frontend";
-    case "backend":
-      return "backend";
-    case "app":
-      return "app";
-    case "cloud":
-      return "cloud";
-    case "data":
-      return "data";
-    case "design":
-      return "design";
-    case "pm":
-      return "pm";
-    default:
-      return "backend";
-  }
-}
-
-function defaultStackByRole(role: StartInterviewPayload["jobRole"]): string {
-  switch (role) {
-    case "frontend":
-      return "Next.js";
-    case "backend":
-      return "Spring Boot";
-    case "app":
-      return "React Native";
-    case "cloud":
-      return "AWS";
-    case "data":
-      return "Python";
-    case "design":
-      return "Figma";
-    case "pm":
-      return "PRD";
-    default:
-      return "Spring Boot";
-  }
-}
-
-function mapCharacterFromApi(character: "luna" | "jet" | "iron" | null | undefined): InterviewCharacter {
-  if (character === "jet") {
-    return "zet";
-  }
-  if (character === "luna") {
-    return "luna";
-  }
-  return "iron";
-}
-
-function buildSetupPayloadFromSessionState(
-  state: Awaited<ReturnType<typeof getInterviewSessionState>>["data"]
-): StartInterviewPayload {
-  const jobRole = mapRoleFromApi(state.job_role);
-  return {
-    jobRole,
-    stack: defaultStackByRole(jobRole),
-    difficulty: "jobseeker",
-    questionCount: state.total_questions,
-    timerSeconds: 120,
-    character: mapCharacterFromApi(state.interviewer_character),
-    reactionEnabled: true
-  };
-}
 
 export function useInterviewShellOrchestrator(
   options: UseInterviewShellStateOptions = {}
