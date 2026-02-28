@@ -127,7 +127,21 @@ export function ReportView({
                 </Chip>
               </div>
               <p className="mt-2 text-sm font-bold text-im-text-main">{item.question}</p>
-              <p className="mt-2 text-sm text-im-text-muted">{item.feedback}</p>
+              <div className="mt-3 space-y-3">
+                <div>
+                  <p className="text-xs font-semibold text-im-primary">왜 약한지</p>
+                  <p className="mt-1 text-sm text-im-text-muted">{item.whyWeak}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-im-primary">이렇게 답하면 됩니다</p>
+                  <p className="mt-1 text-sm text-im-text-muted">{item.howToAnswer}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-im-primary">예시 답변</p>
+                  <p className="mt-1 text-sm text-im-text-muted">{item.exampleAnswer}</p>
+                </div>
+              </div>
+              <p className="mt-3 text-xs text-im-text-muted">코멘트: {item.feedback}</p>
             </li>
           ))}
         </ul>
