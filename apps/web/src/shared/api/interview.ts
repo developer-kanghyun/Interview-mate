@@ -1,10 +1,11 @@
 import { requestJson } from "@/shared/api/http";
 
-const REPORT_REQUEST_TIMEOUT_MS = 60_000;
+const REPORT_REQUEST_TIMEOUT_MS = 90_000;
 const AUTH_REQUEST_TIMEOUT_MS = 25_000;
 const HEALTH_REQUEST_TIMEOUT_MS = 25_000;
-const START_SESSION_TIMEOUT_MS = 60_000;
-const SUBMIT_ANSWER_TIMEOUT_MS = 60_000;
+const START_SESSION_TIMEOUT_MS = 90_000;
+const SUBMIT_ANSWER_TIMEOUT_MS = 180_000;
+const SESSION_READ_TIMEOUT_MS = 30_000;
 
 export type SessionStartResponse = {
   success: boolean;
@@ -312,6 +313,7 @@ export async function getInterviewSessionReport(sessionId: string) {
 export async function getInterviewSessionStudy(sessionId: string) {
   return requestJson<SessionStudyResponse>(`/api/interview/sessions/${sessionId}/study`, {
     method: "GET",
+    timeoutMs: SESSION_READ_TIMEOUT_MS,
     fallbackMessage: "공부 가이드 조회 실패"
   });
 }
@@ -319,6 +321,7 @@ export async function getInterviewSessionStudy(sessionId: string) {
 export async function getInterviewSessionTimeline(sessionId: string) {
   return requestJson<SessionTimelineResponse>(`/api/interview/sessions/${sessionId}/timeline`, {
     method: "GET",
+    timeoutMs: SESSION_READ_TIMEOUT_MS,
     fallbackMessage: "세션 타임라인 조회 실패"
   });
 }
@@ -326,6 +329,7 @@ export async function getInterviewSessionTimeline(sessionId: string) {
 export async function getInterviewSessionState(sessionId: string) {
   return requestJson<SessionStateResponse>(`/api/interview/sessions/${sessionId}`, {
     method: "GET",
+    timeoutMs: SESSION_READ_TIMEOUT_MS,
     fallbackMessage: "세션 상태 조회 실패"
   });
 }
@@ -333,6 +337,7 @@ export async function getInterviewSessionState(sessionId: string) {
 export async function endInterviewSession(sessionId: string, reason: "user_end" | "completed_all_questions" = "user_end") {
   return requestJson<SessionEndResponse>(`/api/interview/sessions/${sessionId}/end`, {
     method: "POST",
+    timeoutMs: SESSION_READ_TIMEOUT_MS,
     body: {
       reason
     },
@@ -343,6 +348,7 @@ export async function endInterviewSession(sessionId: string, reason: "user_end" 
 export async function getLatestActiveInterviewSession() {
   return requestJson<LatestActiveSessionApiResponse>("/api/interview/sessions/latest-active", {
     method: "GET",
+    timeoutMs: SESSION_READ_TIMEOUT_MS,
     fallbackMessage: "최근 진행 세션 조회 실패"
   });
 }
@@ -350,6 +356,7 @@ export async function getLatestActiveInterviewSession() {
 export async function getInterviewHistory(days = 30) {
   return requestJson<InterviewHistoryApiResponse>(`/api/interview/history?days=${days}`, {
     method: "GET",
+    timeoutMs: SESSION_READ_TIMEOUT_MS,
     fallbackMessage: "히스토리 조회 실패"
   });
 }
