@@ -21,14 +21,20 @@ import { useInterviewerSpeech } from "@/features/interview-session/model/useInte
 import { useQuestionStreaming } from "@/features/interview-session/model/useQuestionStreaming";
 import { useSpeechToText } from "@/shared/lib/useSpeechToText";
 import {
+  buildCoachContent,
+  createAnswerErrorMessage,
+  createCoachFeedbackMessage,
+  createPauseMessage,
+  createUserAnswerMessage,
+  isCoachWarning
+} from "@/features/interview-session/model/interviewRoom.utils";
+import {
   getAvatarTransientDurationMs,
   resolveAvatarTransientStateFromAnswer,
   type AvatarState,
   type AvatarTransientState
 } from "@/entities/avatar/model/avatarBehaviorMachine";
 import { getAuthRequiredMessage } from "@/shared/auth/session";
-
-const COACH_WARNING_SCORE_THRESHOLD = 70;
 
 type ToastVariant = "info" | "success" | "warning" | "error";
 type ShowToast = (options: {
@@ -254,11 +260,7 @@ export function useInterviewRoomFlow({
       }
 
       const submittedAnswer = sourceAnswer.trim();
-      appendMessage({
-        id: `answer-${Date.now()}`,
-        role: "user",
-        content: submittedAnswer
-      });
+      appendMessage(createUserAnswerMessage(submittedAnswer));
 
       setAnswerText("");
       setIsSubmitting(true);
@@ -285,19 +287,11 @@ export function useInterviewRoomFlow({
           clearAvatarCue();
         }
 
-        const needsCoachWarning = response.totalScore < COACH_WARNING_SCORE_THRESHOLD;
-        const coachContent = [response.feedbackSummary, response.coaching]
-          .map((item) => item?.trim())
-          .filter((item): item is string => Boolean(item))
-          .join("\n");
+        const needsCoachWarning = isCoachWarning(response.totalScore);
+        const coachContent = buildCoachContent(response.feedbackSummary, response.coaching);
 
         if (coachContent) {
-          appendMessage({
-            id: `coach-${Date.now()}`,
-            role: "coach",
-            content: coachContent,
-            tone: needsCoachWarning ? "error" : "default"
-          });
+          appendMessage(createCoachFeedbackMessage(coachContent, needsCoachWarning));
         } else if (!response.coachingAvailable) {
           showToast({
             message: "코칭 생성이 지연되었습니다. 다음 답변으로 진행해 주세요.",
@@ -328,12 +322,7 @@ export function useInterviewRoomFlow({
         setAnswerText(submittedAnswer);
         setAvatarState("listening");
 
-        appendMessage({
-          id: `error-${Date.now()}`,
-          role: "coach",
-          content: `요청 처리 중 오류가 발생했습니다: ${message}`,
-          tone: "error"
-        });
+        appendMessage(createAnswerErrorMessage(message));
       } finally {
         setIsSubmitting(false);
       }
@@ -405,11 +394,7 @@ export function useInterviewRoomFlow({
   const handlePause = useCallback(() => {
     clearAvatarCue();
     setAvatarState("idle");
-    appendMessage({
-      id: `pause-${Date.now()}`,
-      role: "coach",
-      content: "일시정지 상태입니다. 준비되면 답변 완료 버튼으로 계속 진행하세요."
-    });
+    appendMessage(createPauseMessage());
   }, [appendMessage, clearAvatarCue]);
 
   const resetRoomState = useCallback(
