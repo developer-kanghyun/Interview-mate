@@ -17,12 +17,7 @@ jobs:
         with:
           node-version: "22"
           cache: "npm"
-          cache-dependency-path: |
-            package-lock.json
-            apps/web/package-lock.json
-
-      - name: Install workspace dependencies
-        run: npm ci
+          cache-dependency-path: apps/web/package-lock.json
 
       - name: Install web dependencies
         run: npm --prefix ./apps/web ci
