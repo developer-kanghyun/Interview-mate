@@ -35,6 +35,8 @@ import { useInterviewResumeState } from "@/features/interview-session/model/useI
 import { useInterviewRoomFlow } from "@/features/interview-session/model/useInterviewRoomFlow";
 import { useInterviewReportInsights } from "@/features/interview-session/model/useInterviewReportInsights";
 import { useStartSession } from "@/features/interview/start-session/model/useStartSession";
+import { useInterviewShellNavigation } from "@/features/interview-session/model/useInterviewShellNavigation";
+import { useInterviewShellToast } from "@/features/interview-session/model/useInterviewShellToast";
 import {
   buildRetryPreset,
   buildSetupPayloadFromSessionState,
@@ -139,7 +141,6 @@ export function useInterviewShellOrchestrator(
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isExiting, setIsExiting] = useState(false);
   const [uiError, setUiError] = useState<string | null>(null);
-  const [toastError, setToastError] = useState<{ message: string; dedupeKey?: string } | null>(null);
   const [backendStatus, setBackendStatus] = useState<"checking" | "ok" | "error">("checking");
   const [backendStatusMessage, setBackendStatusMessage] = useState<string | null>(null);
   const autoRestoreAttemptedSessionRef = useRef<string | null>(null);
@@ -175,76 +176,12 @@ export function useInterviewShellOrchestrator(
     }
     autoRestoreAttemptedSessionRef.current = null;
   }, [step]);
-
-  const syncPathname = useCallback((nextPath: string, mode: "push" | "replace" = "push") => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    if (window.location.pathname === nextPath) {
-      return;
-    }
-
-    if (mode === "replace") {
-      window.history.replaceState(window.history.state, "", nextPath);
-      return;
-    }
-
-    window.history.pushState(window.history.state, "", nextPath);
-  }, []);
-
-  const updateStep = useCallback((next: InterviewStep) => {
-    if (next === "setup") {
-      syncPathname("/setup");
-    } else if (next === "insights") {
-      syncPathname("/study");
-    } else if (next === "report") {
-      if (sessionId) {
-        syncPathname(`/report/${encodeURIComponent(sessionId)}`);
-      } else {
-        syncPathname("/report");
-      }
-    }
-    setStep(next);
-  }, [sessionId, syncPathname]);
+  const { syncPathname, updateStep } = useInterviewShellNavigation(sessionId, setStep);
 
   const updateSetupPayload = useCallback((next: StartInterviewPayload) => {
     setSetupPayload(next);
   }, []);
-
-  const showToast = useCallback(
-    (options: {
-      message: string;
-      variant?: "info" | "success" | "warning" | "error";
-      dedupeKey?: string;
-      title?: string;
-    }) => {
-      pushToast({
-        message: options.message,
-        variant: options.variant,
-        dedupeKey: options.dedupeKey,
-        title: options.title
-      });
-    },
-    [pushToast]
-  );
-
-  const showToastError = useCallback((message: string, dedupeKey?: string) => {
-    setToastError({ message, dedupeKey });
-  }, []);
-
-  useEffect(() => {
-    if (!toastError) {
-      return;
-    }
-
-    showToast({
-      message: toastError.message,
-      variant: "error",
-      dedupeKey: toastError.dedupeKey ?? `error:${toastError.message}`
-    });
-    setToastError(null);
-  }, [showToast, toastError]);
+  const { showToast, showToastError } = useInterviewShellToast(pushToast);
 
   const {
     resumeCandidateSessionId,
