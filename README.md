@@ -156,18 +156,13 @@ cd apps/web && npx playwright test
 - PR/Push 시 자동 CI: `.github/workflows/ci.yml`
   - Web: lint + build
   - Server: Gradle test
-- `main` 브랜치에서 CI 성공 시 자동 CD: `.github/workflows/cd.yml`
-  - Frontend: Vercel production 배포
-  - Backend: Render 배포 트리거 및 완료 상태(`live`)까지 확인
-
-### GitHub Secrets (필수)
-
-- `VERCEL_TOKEN`
-- `RENDER_API_KEY`
+- CD (배포)는 Git 연동 기반으로 자동 동작
+  - Frontend: Vercel 프로젝트 `web`이 GitHub `developer-kanghyun/Interview-mate`의 `main` 브랜치와 연결되어 main push 시 자동 배포
+  - Backend: Render 서비스 `interview-mate-api`가 동일 리포 `main` 브랜치 `server` 디렉터리를 auto deploy(commit trigger)로 자동 배포
 
 ### 업데이트 반영 흐름
 
 1. 브랜치에서 작업 후 Push
 2. PR 생성/검토 (CI 자동 실행)
 3. `main` 머지
-4. CD가 프론트/백엔드를 자동 배포
+4. Vercel/Render가 프론트/백엔드를 자동 배포
