@@ -1,4 +1,4 @@
-import type { ReportQuestionGuide, SessionHistoryItem } from "@/shared/api/interview-client";
+import type { SessionHistoryItem } from "@/shared/api/interview-client";
 import { SubCard } from "@/shared/cards/SubCard";
 import { Button } from "@/shared/ui/Button";
 import { Chip } from "@/shared/ui/Chip";
@@ -10,7 +10,6 @@ type InsightsViewProps = {
   sessions: SessionHistoryItem[];
   weakKeywords: string[];
   studyGuide: string[];
-  questionGuides: ReportQuestionGuide[];
   isLoading: boolean;
   errorMessage: string | null;
   isRetryingWeakness: boolean;
@@ -26,7 +25,6 @@ export function InsightsView({
   sessions,
   weakKeywords,
   studyGuide,
-  questionGuides,
   isLoading,
   errorMessage,
   isRetryingWeakness,
@@ -117,28 +115,6 @@ export function InsightsView({
           </ul>
         </SubCard>
       </div>
-
-      <SubCard title="질문별 상세 가이드">
-        {questionGuides.length === 0 ? (
-          <p className="text-sm text-im-text-muted">질문별 가이드는 리포트 생성 후 자동으로 표시됩니다.</p>
-        ) : (
-          <ul className="grid gap-3">
-            {questionGuides.map((guide) => (
-              <li
-                key={`${guide.questionId}:${guide.order}`}
-                className="rounded-2xl border border-im-border bg-im-subtle p-4"
-              >
-                <p className="text-xs font-bold text-im-text-muted">Q{guide.order}</p>
-                <p className="mt-2 text-sm font-bold text-im-text-main">{guide.question}</p>
-                <p className="mt-2 text-xs font-semibold text-im-primary">이렇게 답하면 됩니다</p>
-                <p className="mt-1 text-sm text-im-text-muted">{guide.howToAnswer}</p>
-                <p className="mt-3 text-xs font-semibold text-im-primary">예시 답변</p>
-                <p className="mt-1 text-sm text-im-text-muted">{guide.exampleAnswer}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </SubCard>
 
       {/* Actions */}
       <div className="flex flex-wrap justify-end gap-2 rounded-[2rem] border border-im-border/60 bg-white p-3 shadow-sm">

@@ -4,8 +4,6 @@ import com.interviewmate.application.ai.usecase.GenerateSessionQuestionPlanUseCa
 import com.interviewmate.dto.request.InterviewSessionStartRequest;
 import com.interviewmate.dto.response.InterviewSessionStartResponse;
 import com.interviewmate.global.error.AppException;
-import com.interviewmate.global.error.ErrorCode;
-import com.interviewmate.repository.InterviewAnswerRepository;
 import com.interviewmate.repository.InterviewQuestionRepository;
 import com.interviewmate.repository.InterviewSessionQuestionRepository;
 import com.interviewmate.repository.InterviewSessionRepository;
@@ -28,7 +26,6 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -45,9 +42,6 @@ class InterviewSessionServiceTest {
 
     @Autowired
     private InterviewSessionQuestionRepository interviewSessionQuestionRepository;
-
-    @Autowired
-    private InterviewAnswerRepository interviewAnswerRepository;
 
     @Autowired
     private InterviewQuestionRepository interviewQuestionRepository;
@@ -75,7 +69,6 @@ class InterviewSessionServiceTest {
 
     @BeforeEach
     void setUp() {
-        interviewAnswerRepository.deleteAll();
         interviewSessionQuestionRepository.deleteAll();
         interviewSessionRepository.deleteAll();
         interviewQuestionRepository.deleteAll();
@@ -155,161 +148,6 @@ class InterviewSessionServiceTest {
         assertThatThrownBy(() -> interviewSessionService.startSession(request, 1L))
                 .isInstanceOf(AppException.class)
                 .hasMessageContaining("면접 질문 생성에 실패했습니다");
-    }
-
-    @Test
-    void testStartSessionWeakFirstPrioritizesWeakQuestionsThenGeneratesRemainder() {
-        jdbcTemplate.update("""
-                INSERT INTO interview_questions (id, job_role, question_category, difficulty, content, is_active, created_at, updated_at)
-                VALUES (410, 'backend', 'job', 'easy', '약점 질문 낮은 점수', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                """);
-        jdbcTemplate.update("""
-                INSERT INTO interview_questions (id, job_role, question_category, difficulty, content, is_active, created_at, updated_at)
-                VALUES (411, 'backend', 'job', 'medium', '강점 질문', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                """);
-        jdbcTemplate.update("""
-                INSERT INTO interview_questions (id, job_role, question_category, difficulty, content, is_active, created_at, updated_at)
-                VALUES (412, 'backend', 'cs', 'medium', '약점 질문 꼬리질문', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                """);
-        jdbcTemplate.update("""
-                INSERT INTO interview_sessions (id, user_id, job_role, stack, difficulty, interviewer_character, total_questions, status, started_at, created_at, updated_at)
-                VALUES (40, 1, 'backend', 'Spring Boot', 'jobseeker', 'jet', 3, 'completed', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                """);
-        jdbcTemplate.update("""
-                INSERT INTO interview_session_questions (id, session_id, question_id, question_order, followup_count, created_at)
-                VALUES (4100, 40, 410, 1, 0, CURRENT_TIMESTAMP)
-                """);
-        jdbcTemplate.update("""
-                INSERT INTO interview_session_questions (id, session_id, question_id, question_order, followup_count, created_at)
-                VALUES (4101, 40, 411, 2, 0, CURRENT_TIMESTAMP)
-                """);
-        jdbcTemplate.update("""
-                INSERT INTO interview_session_questions (id, session_id, question_id, question_order, followup_count, created_at)
-                VALUES (4102, 40, 412, 3, 0, CURRENT_TIMESTAMP)
-                """);
-        jdbcTemplate.update("""
-                INSERT INTO interview_answers (
-                    id, session_question_id, answer_text, input_type, interviewer_emotion,
-                    score_accuracy, score_logic, score_depth, score_delivery, score_total,
-                    followup_required, followup_reason, coaching_message, created_at
-                ) VALUES (
-                    6100, 4100, '답변1', 'text', 'pressure',
-                    2.1, 2.3, 2.5, 2.7, 2.4,
-                    false, 'none', '개선 필요', CURRENT_TIMESTAMP
-                )
-                """);
-        jdbcTemplate.update("""
-                INSERT INTO interview_answers (
-                    id, session_question_id, answer_text, input_type, interviewer_emotion,
-                    score_accuracy, score_logic, score_depth, score_delivery, score_total,
-                    followup_required, followup_reason, coaching_message, created_at
-                ) VALUES (
-                    6101, 4101, '답변2', 'text', 'encourage',
-                    4.2, 4.1, 4.0, 4.0, 4.1,
-                    false, 'none', '좋음', CURRENT_TIMESTAMP
-                )
-                """);
-        jdbcTemplate.update("""
-                INSERT INTO interview_answers (
-                    id, session_question_id, answer_text, input_type, interviewer_emotion,
-                    score_accuracy, score_logic, score_depth, score_delivery, score_total,
-                    followup_required, followup_reason, coaching_message, created_at
-                ) VALUES (
-                    6102, 4102, '답변3', 'text', 'pressure',
-                    3.6, 3.7, 3.5, 3.3, 3.5,
-                    true, 'weak_reasoning', '추가 연습 필요', CURRENT_TIMESTAMP
-                )
-                """);
-
-        when(generateSessionQuestionPlanUseCase.execute(eq("backend"), eq("Spring Boot"), eq("jobseeker"), eq(5)))
-                .thenReturn(buildQuestionPlan(5));
-
-        InterviewSessionStartRequest request = new InterviewSessionStartRequest();
-        request.setJobRole("backend");
-        request.setStack("Spring Boot");
-        request.setDifficulty("jobseeker");
-        request.setRetryMode("weak_first");
-        request.setSourceSessionId(40L);
-
-        InterviewSessionStartResponse response = interviewSessionService.startSession(request, 1L);
-
-        assertThat(response.getTotalQuestions()).isEqualTo(7);
-
-        Long newSessionId = Long.valueOf(response.getSessionId());
-        List<String> contents = jdbcTemplate.queryForList("""
-                SELECT q.content
-                FROM interview_session_questions sq
-                JOIN interview_questions q ON q.id = sq.question_id
-                WHERE sq.session_id = ?
-                ORDER BY sq.question_order ASC
-                """, String.class, newSessionId);
-
-        assertThat(contents).hasSize(7);
-        assertThat(contents.get(0)).isEqualTo("약점 질문 낮은 점수");
-        assertThat(contents.get(1)).isEqualTo("약점 질문 꼬리질문");
-        assertThat(contents.get(2)).contains("백엔드 핵심 질문");
-        verify(generateSessionQuestionPlanUseCase).execute("backend", "Spring Boot", "jobseeker", 5);
-    }
-
-    @Test
-    void testStartSessionWeakFirstThrowsWhenSourceSessionIdMissing() {
-        InterviewSessionStartRequest request = new InterviewSessionStartRequest();
-        request.setJobRole("backend");
-        request.setStack("Spring Boot");
-        request.setDifficulty("jobseeker");
-        request.setRetryMode("weak_first");
-
-        assertThatThrownBy(() -> interviewSessionService.startSession(request, 1L))
-                .isInstanceOf(AppException.class)
-                .extracting(error -> ((AppException) error).getErrorCode())
-                .isEqualTo(ErrorCode.INVALID_INPUT);
-
-        verifyNoInteractions(generateSessionQuestionPlanUseCase);
-    }
-
-    @Test
-    void testStartSessionWeakFirstThrowsWhenSourceSessionNotCompleted() {
-        jdbcTemplate.update("""
-                INSERT INTO interview_sessions (id, user_id, job_role, stack, difficulty, interviewer_character, total_questions, status, started_at, created_at, updated_at)
-                VALUES (41, 1, 'backend', 'Spring Boot', 'jobseeker', 'jet', 3, 'in_progress', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                """);
-
-        InterviewSessionStartRequest request = new InterviewSessionStartRequest();
-        request.setJobRole("backend");
-        request.setStack("Spring Boot");
-        request.setDifficulty("jobseeker");
-        request.setRetryMode("weak_first");
-        request.setSourceSessionId(41L);
-
-        assertThatThrownBy(() -> interviewSessionService.startSession(request, 1L))
-                .isInstanceOf(AppException.class)
-                .extracting(error -> ((AppException) error).getErrorCode())
-                .isEqualTo(ErrorCode.INVALID_INPUT);
-
-        verifyNoInteractions(generateSessionQuestionPlanUseCase);
-    }
-
-    @Test
-    void testStartSessionWeakFirstThrowsWhenSourceSessionOwnedByAnotherUser() {
-        jdbcTemplate.update("INSERT INTO users (id, api_key, created_at, updated_at) VALUES (3, 'user3-key', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
-        jdbcTemplate.update("""
-                INSERT INTO interview_sessions (id, user_id, job_role, stack, difficulty, interviewer_character, total_questions, status, started_at, created_at, updated_at)
-                VALUES (42, 3, 'backend', 'Spring Boot', 'jobseeker', 'jet', 3, 'completed', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                """);
-
-        InterviewSessionStartRequest request = new InterviewSessionStartRequest();
-        request.setJobRole("backend");
-        request.setStack("Spring Boot");
-        request.setDifficulty("jobseeker");
-        request.setRetryMode("weak_first");
-        request.setSourceSessionId(42L);
-
-        assertThatThrownBy(() -> interviewSessionService.startSession(request, 1L))
-                .isInstanceOf(AppException.class)
-                .extracting(error -> ((AppException) error).getErrorCode())
-                .isEqualTo(ErrorCode.INVALID_INPUT);
-
-        verifyNoInteractions(generateSessionQuestionPlanUseCase);
     }
 
     private List<GenerateSessionQuestionPlanUseCase.GeneratedQuestion> buildQuestionPlan(int count) {

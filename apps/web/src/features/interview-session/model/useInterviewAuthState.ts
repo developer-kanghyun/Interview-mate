@@ -33,24 +33,7 @@ type UseInterviewAuthStateResult = {
   setAuthPromptReason: (next: AuthPromptReason) => void;
   handleGoogleLogin: (redirectTo?: string) => Promise<void>;
   handleGoogleLogout: () => Promise<void>;
-  retryAuthBootstrap: () => Promise<boolean>;
 };
-
-const AUTH_BOOTSTRAP_MAX_ATTEMPTS = 2;
-const AUTH_BOOTSTRAP_RETRY_DELAY_MS = 1_000;
-
-function sleep(ms: number) {
-  return new Promise<void>((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-function resolveAuthBootstrapErrorMessage(profileMessage: string | null, guestMessage: string) {
-  if (profileMessage === getAuthRequiredMessage()) {
-    return guestMessage;
-  }
-  return guestMessage || profileMessage || "인증 상태 확인에 실패했습니다.";
-}
 
 export function useInterviewAuthState({
   step,
@@ -127,112 +110,69 @@ export function useInterviewAuthState({
     }
   }, [isAuthLoading, onResetResumeState, showToastError]);
 
-  const bootstrapAuth = useCallback(
-    async (isActive: () => boolean, showErrorToast: boolean) => {
-      setAuthStatus("loading");
+  useEffect(() => {
+    let active = true;
+    setAuthStatus("loading");
 
-      for (let attempt = 0; attempt < AUTH_BOOTSTRAP_MAX_ATTEMPTS; attempt += 1) {
-        if (!isActive()) {
-          return false;
+    void (async () => {
+      try {
+        const profile = await getMyProfile();
+        if (!active) {
+          return;
+        }
+        const guest = !profile.data.email;
+        setAuthStatus(guest ? "guest" : "member");
+        setIsGuestUser(guest);
+        setAuthPromptReason(null);
+        await onSyncResumeCandidate(guest);
+      } catch (error) {
+        if (!active) {
+          return;
         }
 
-        let profileMessage: string | null = null;
+        const message = error instanceof Error ? error.message : "로그인 상태 확인에 실패했습니다.";
+        if (message !== getAuthRequiredMessage()) {
+          setAuthStatus("error");
+          setIsGuestUser(false);
+          setAuthPromptReason(null);
+          showToastError(message, "auth:profile");
+          return;
+        }
 
         try {
-          const profile = await getMyProfile();
-          if (!isActive()) {
-            return false;
+          await getGuestAccess();
+          if (!active) {
+            return;
           }
-          const guest = !profile.data.email;
-          setAuthStatus(guest ? "guest" : "member");
-          setIsGuestUser(guest);
+          setAuthStatus("guest");
+          setIsGuestUser(true);
           setAuthPromptReason(null);
-          await onSyncResumeCandidate(guest);
-          return true;
-        } catch (error) {
-          if (!isActive()) {
-            return false;
+          await onSyncResumeCandidate(true);
+        } catch (guestError) {
+          if (!active) {
+            return;
           }
-
-          profileMessage = error instanceof Error ? error.message : "로그인 상태 확인에 실패했습니다.";
-          const isAuthRequired = profileMessage === getAuthRequiredMessage();
-
-          if (!isAuthRequired) {
-            const isLastAttempt = attempt >= AUTH_BOOTSTRAP_MAX_ATTEMPTS - 1;
-            if (!isLastAttempt) {
-              await sleep(AUTH_BOOTSTRAP_RETRY_DELAY_MS);
-              continue;
-            }
-
-            if (showErrorToast) {
-              showToastError(profileMessage, "auth:profile");
-            }
+          const guestMessage =
+            guestError instanceof Error ? guestError.message : "게스트 인증 발급에 실패했습니다.";
+          if (guestMessage === getAuthRequiredMessage()) {
+            setUiError(guestMessage);
+            setAuthStatus("anonymous");
+            setAuthPromptReason("auth_required");
+            setIsGuestUser(false);
+          } else {
+            showToastError(guestMessage, "auth:guest-access");
             setAuthStatus("error");
             setAuthPromptReason(null);
             setIsGuestUser(false);
-            return false;
-          }
-
-          try {
-            await getGuestAccess();
-            if (!isActive()) {
-              return false;
-            }
-            setAuthStatus("guest");
-            setIsGuestUser(true);
-            setAuthPromptReason(null);
-            await onSyncResumeCandidate(true);
-            return true;
-          } catch (guestError) {
-            if (!isActive()) {
-              return false;
-            }
-            const guestMessage =
-              guestError instanceof Error ? guestError.message : "게스트 인증 발급에 실패했습니다.";
-            if (guestMessage === getAuthRequiredMessage()) {
-              setUiError(guestMessage);
-              setAuthStatus("anonymous");
-              setAuthPromptReason("auth_required");
-              setIsGuestUser(false);
-              return false;
-            }
-
-            const isLastAttempt = attempt >= AUTH_BOOTSTRAP_MAX_ATTEMPTS - 1;
-            if (!isLastAttempt) {
-              await sleep(AUTH_BOOTSTRAP_RETRY_DELAY_MS);
-              continue;
-            }
-
-            if (showErrorToast) {
-              showToastError(resolveAuthBootstrapErrorMessage(profileMessage, guestMessage), "auth:guest-access");
-            }
-            setAuthStatus("error");
-            setAuthPromptReason(null);
-            setIsGuestUser(false);
-            return false;
           }
         }
       }
-
-      return false;
-    },
-    [onSyncResumeCandidate, setUiError, showToastError]
-  );
-
-  useEffect(() => {
-    let active = true;
-
-    // 초기 진입 자동 부트스트랩은 조용히 수행하고, 실패 메시지는 사용자 액션 시에만 노출한다.
-    void bootstrapAuth(() => active, false);
+    })();
 
     return () => {
       active = false;
     };
-  }, [bootstrapAuth]);
-
-  const retryAuthBootstrap = useCallback(async () => {
-    return bootstrapAuth(() => true, true);
-  }, [bootstrapAuth]);
+  }, [onSyncResumeCandidate, setUiError, showToastError]);
 
   return {
     authStatus,
@@ -244,7 +184,6 @@ export function useInterviewAuthState({
     authRedirectTarget,
     setAuthPromptReason,
     handleGoogleLogin,
-    handleGoogleLogout,
-    retryAuthBootstrap
+    handleGoogleLogout
   };
 }

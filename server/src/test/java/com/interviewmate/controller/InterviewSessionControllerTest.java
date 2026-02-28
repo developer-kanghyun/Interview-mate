@@ -234,23 +234,6 @@ class InterviewSessionControllerTest {
     }
 
     @Test
-    void testStartInterviewSessionWithInvalidRetryModeReturns400() throws Exception {
-        InterviewSessionStartRequest request = new InterviewSessionStartRequest();
-        request.setJobRole("backend");
-        request.setStack("Spring Boot");
-        request.setDifficulty("jobseeker");
-        request.setRetryMode("wrong_mode");
-
-        mockMvc.perform(post("/api/interview/sessions/start")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("X-API-Key", "test-key")
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
-    }
-
-    @Test
     void testGetSessionReportReturns200() throws Exception {
         InterviewSessionReportResponse mockResponse = InterviewSessionReportResponse.builder()
                 .sessionId("10")

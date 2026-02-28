@@ -56,10 +56,7 @@ function buildHeaders(hasJsonBody: boolean, headers?: HeadersInit): Headers {
 }
 
 function isAbortError(error: unknown) {
-  return (
-    (error instanceof DOMException && error.name === "AbortError") ||
-    (error instanceof Error && (error.name === "AbortError" || error.message === "timeout"))
-  );
+  return error instanceof DOMException && error.name === "AbortError";
 }
 
 function isAuthenticationFailure(status: number) {
@@ -77,11 +74,7 @@ function buildProxyPath(path: string) {
 
 function createRequestSignal(signal: AbortSignal | undefined, timeoutMs: number) {
   const controller = new AbortController();
-  let timedOut = false;
-  const timer = setTimeout(() => {
-    timedOut = true;
-    controller.abort();
-  }, timeoutMs);
+  const timer = setTimeout(() => controller.abort(new Error("timeout")), timeoutMs);
 
   const onAbort = () => controller.abort(signal?.reason);
   if (signal) {
@@ -94,7 +87,6 @@ function createRequestSignal(signal: AbortSignal | undefined, timeoutMs: number)
 
   return {
     signal: controller.signal,
-    didTimeout: () => timedOut,
     cleanup: () => {
       clearTimeout(timer);
       signal?.removeEventListener("abort", onAbort);
@@ -114,7 +106,7 @@ async function request(path: string, options: RequestOptions = {}) {
   } = options;
 
   const hasJsonBody = body !== undefined && body !== null && !(body instanceof FormData);
-  const { signal: requestSignal, didTimeout, cleanup } = createRequestSignal(signal, timeoutMs);
+  const { signal: requestSignal, cleanup } = createRequestSignal(signal, timeoutMs);
 
   try {
     const response = await fetch(buildProxyPath(path), {
@@ -152,10 +144,7 @@ async function request(path: string, options: RequestOptions = {}) {
       throw error;
     }
     if (isAbortError(error)) {
-      if (didTimeout()) {
-        throw new Error("요청 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.");
-      }
-      throw new Error("요청이 취소되었습니다.");
+      throw new Error("요청 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.");
     }
     throw new Error(fallbackMessage);
   } finally {

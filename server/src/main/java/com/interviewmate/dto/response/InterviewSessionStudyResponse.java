@@ -28,7 +28,5 @@ public class InterviewSessionStudyResponse {
         private List<String> weakConceptKeywords;
         private String modelAnswerPreview;
         private String actionTip;
-        private String howToAnswer;
-        private String exampleAnswer;
     }
 }

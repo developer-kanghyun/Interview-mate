@@ -34,11 +34,4 @@ public class InterviewSessionStartRequest {
     @Pattern(regexp = "luna|jet|iron", message = "interviewer_character는 luna, jet, iron 중 하나여야 합니다.")
     @JsonProperty("interviewer_character")
     private String interviewerCharacter;
-
-    @Pattern(regexp = "none|weak_first", message = "retry_mode는 none 또는 weak_first여야 합니다.")
-    @JsonProperty("retry_mode")
-    private String retryMode;
-
-    @JsonProperty("source_session_id")
-    private Long sourceSessionId;
 }
