@@ -16,6 +16,7 @@ server/bin/
 
 # local env (never commit real local secrets)
 apps/web/.env.local
+server/.env
 **/.vercel/
 
 # system
