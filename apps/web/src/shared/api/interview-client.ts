@@ -9,104 +9,52 @@ import {
   type SessionReportResponse
 } from "@/shared/api/interview";
 import { getAuthRequiredMessage } from "@/shared/auth/session";
+import type {
+  InterviewCharacter,
+  InterviewDifficulty,
+  InterviewEmotion,
+  InterviewReport,
+  InterviewRole,
+  ReportQuestionFeedback,
+  ReportQuestionGuide,
+  SessionHistoryItem,
+  StartInterviewPayload,
+  StartInterviewResponse,
+  StreamQuestionEvent,
+  SubmitAnswerResponse
+} from "@/shared/api/interview-client.types";
+import {
+  buildAxisScoresFromApi,
+  dedupeAndLimitGuide,
+  defaultStackByRole,
+  mapCharacterFromApi,
+  mapCharacterToApi,
+  mapEmotion,
+  mapRole,
+  mapStatus,
+  pickLatestDate,
+  readReportData,
+  readResponseData,
+  toIsoDate,
+  toPercentScore
+} from "@/shared/api/interview-client.utils";
 
-export type InterviewRole = "backend" | "frontend" | "app" | "cloud" | "data" | "design" | "pm";
-export type InterviewDifficulty = "jobseeker" | "junior";
-export type InterviewCharacter = "zet" | "luna" | "iron";
-export type InterviewEmotion = "neutral" | "encourage" | "pressure";
-
-export type StartInterviewPayload = {
-  jobRole: InterviewRole;
-  stack: string;
-  difficulty: InterviewDifficulty;
-  questionCount: number;
-  timerSeconds: number;
-  character: InterviewCharacter;
-  reactionEnabled: boolean;
-  retryMode?: "none" | "weak_first";
-  sourceSessionId?: string;
-};
-
-export type StartInterviewResponse = {
-  sessionId: string;
-  startedAt: string;
-};
-
-export type StreamQuestionEvent =
-  | {
-      type: "chunk";
-      text: string;
-    }
-  | {
-      type: "done";
-      questionId: string;
-      order: number;
-      followupCount: number;
-      content: string;
-    };
-
-export type AxisKey = "technical" | "problemSolving" | "communication" | "delivery";
-
-export type AxisScores = Record<AxisKey, number>;
-
-export type SubmitAnswerResponse = {
-  feedbackSummary: string | null;
-  coaching: string | null;
-  coachingAvailable: boolean;
-  axisScores: AxisScores;
-  totalScore: number;
-  suggestedEmotion: InterviewEmotion;
-  shouldAskFollowup: boolean;
-  followupCount: number;
-  isSessionComplete: boolean;
-  progress: {
-    completedQuestions: number;
-    totalQuestions: number;
-  };
-};
-
-export type ReportQuestionFeedback = {
-  questionId: string;
-  order: number;
-  question: string;
-  feedback: string;
-  totalScore: number;
-  whyWeak: string;
-  howToAnswer: string;
-  exampleAnswer: string;
-};
-
-export type ReportQuestionGuide = {
-  questionId: string;
-  order: number;
-  question: string;
-  interviewerEmotion: InterviewEmotion;
-  weakConceptKeywords: string[];
-  actionTip: string;
-  howToAnswer: string;
-  exampleAnswer: string;
-};
-
-export type InterviewReport = {
-  sessionId: string;
-  summary: string;
-  totalScore: number;
-  axisScores: AxisScores;
-  weakKeywords: string[];
-  questionFeedback: ReportQuestionFeedback[];
-  studyGuide: string[];
-  questionGuides: ReportQuestionGuide[];
-};
-
-export type SessionHistoryItem = {
-  sessionId: string;
-  startedAt: string;
-  role: InterviewRole;
-  stack: string;
-  totalScore: number;
-  questionCount: number;
-  status: "in_progress" | "completed";
-};
+export type {
+  AxisKey,
+  AxisScores,
+  InterviewCharacter,
+  InterviewDifficulty,
+  InterviewEmotion,
+  InterviewReport,
+  InterviewRole,
+  ReportQuestionFeedback,
+  ReportQuestionGuide,
+  SessionHistoryItem,
+  StartInterviewPayload,
+  StartInterviewResponse,
+  StreamQuestionEvent,
+  SubmitAnswerResponse
+} from "@/shared/api/interview-client.types";
 
 type RuntimeQuestion = {
   questionId: string;
@@ -128,100 +76,6 @@ const streamStateBySessionId = new Map<string, SessionRuntimeState>();
 const CHAT_STREAM_ENDPOINT = "/api/chat";
 const STREAM_IDLE_TIMEOUT_MS = 12_000;
 const ENABLE_REMOTE_QUESTION_STREAM = process.env.NEXT_PUBLIC_ENABLE_REMOTE_QUESTION_STREAM === "true";
-
-function clamp(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function toPercentScore(score: number | null | undefined) {
-  if (!Number.isFinite(score)) {
-    return 0;
-  }
-
-  const numericScore = Number(score);
-  if (numericScore <= 5.0) {
-    return clamp(Math.round(numericScore * 20), 0, 100);
-  }
-
-  return clamp(Math.round(numericScore), 0, 100);
-}
-
-function mapCharacterToApi(character: InterviewCharacter): "luna" | "jet" | "iron" {
-  if (character === "zet") {
-    return "jet";
-  }
-  return character;
-}
-
-function mapCharacterFromApi(character: "luna" | "jet" | "iron" | null | undefined): InterviewCharacter {
-  if (character === "jet") {
-    return "zet";
-  }
-  if (character === "luna") {
-    return "luna";
-  }
-  return "iron";
-}
-
-function mapEmotion(value: string | null | undefined): InterviewEmotion {
-  if (value === "encourage") {
-    return "encourage";
-  }
-  if (value === "pressure") {
-    return "pressure";
-  }
-  return "neutral";
-}
-
-function mapRole(value: string | null | undefined): InterviewRole {
-  switch (value) {
-    case "frontend":
-      return "frontend";
-    case "backend":
-      return "backend";
-    case "app":
-      return "app";
-    case "cloud":
-      return "cloud";
-    case "data":
-      return "data";
-    case "design":
-      return "design";
-    case "pm":
-      return "pm";
-    default:
-      return "backend";
-  }
-}
-
-function mapStatus(value: string | null | undefined): "in_progress" | "completed" {
-  return value === "completed" ? "completed" : "in_progress";
-}
-
-function toIsoDate(value: string | null | undefined) {
-  if (!value) {
-    return new Date().toISOString();
-  }
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return new Date().toISOString();
-  }
-  return parsed.toISOString();
-}
-
-function buildAxisScoresFromApi(data: {
-  accuracy: number;
-  logic: number;
-  depth: number;
-  delivery: number;
-}): AxisScores {
-  return {
-    technical: toPercentScore(data.accuracy),
-    problemSolving: toPercentScore(data.logic),
-    communication: toPercentScore(data.depth),
-    delivery: toPercentScore(data.delivery)
-  };
-}
 
 async function refreshCurrentQuestionFromState(sessionId: string) {
   const stateResponse = await getInterviewSessionState(sessionId);
@@ -262,36 +116,6 @@ async function ensureRuntimeState(sessionId: string) {
   }
 
   throw new Error("세션 상태를 찾을 수 없습니다. 면접을 다시 시작해 주세요.");
-}
-
-function readResponseData<T>(response: { success: boolean; data: T }, fallbackMessage: string): T {
-  if (!response.success) {
-    throw new Error(fallbackMessage);
-  }
-  return response.data;
-}
-
-function isUnwrappedReportPayload(value: unknown): value is SessionReportResponse["data"] {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-
-  const candidate = value as Partial<SessionReportResponse["data"]>;
-  return (
-    typeof candidate.session_id === "string" &&
-    typeof candidate.total_questions === "number" &&
-    typeof candidate.answered_questions === "number" &&
-    typeof candidate.score_summary === "object" &&
-    candidate.score_summary !== null &&
-    Array.isArray(candidate.questions)
-  );
-}
-
-function readReportData(response: SessionReportResponse | SessionReportResponse["data"]) {
-  if (isUnwrappedReportPayload(response)) {
-    return response;
-  }
-  return readResponseData(response, "리포트 조회 실패");
 }
 
 export async function startInterview(payload: StartInterviewPayload): Promise<StartInterviewResponse> {
@@ -790,28 +614,6 @@ function mapReportToInterviewReport(reportResponse: SessionReportResponse): Inte
   };
 }
 
-function dedupeAndLimitGuide(items: Array<string | null | undefined>) {
-  const deduped: string[] = [];
-  const seen = new Set<string>();
-
-  for (const rawItem of items) {
-    const item = rawItem?.trim();
-    if (!item) {
-      continue;
-    }
-    if (seen.has(item)) {
-      continue;
-    }
-    seen.add(item);
-    deduped.push(item);
-    if (deduped.length >= 3) {
-      break;
-    }
-  }
-
-  return deduped;
-}
-
 export async function getReport(sessionId: string): Promise<InterviewReport> {
   try {
     const reportResponse = await getInterviewSessionReport(sessionId);
@@ -833,41 +635,6 @@ export async function getReport(sessionId: string): Promise<InterviewReport> {
     streamStateBySessionId.delete(sessionId);
     return report;
   }
-}
-
-function defaultStackByRole(role: InterviewRole) {
-  switch (role) {
-    case "frontend":
-      return "Next.js";
-    case "backend":
-      return "Spring Boot";
-    case "app":
-      return "React Native";
-    case "cloud":
-      return "AWS";
-    case "data":
-      return "Python";
-    case "design":
-      return "Figma";
-    case "pm":
-      return "PRD";
-    default:
-      return "Spring Boot";
-  }
-}
-
-function pickLatestDate(values: string[]) {
-  if (values.length === 0) {
-    return new Date().toISOString();
-  }
-
-  return (
-    values
-      .map((value) => new Date(value).getTime())
-      .filter((value) => Number.isFinite(value))
-      .sort((a, b) => b - a)
-      .map((value) => new Date(value).toISOString())[0] ?? new Date().toISOString()
-  );
 }
 
 export async function listSessions(days = 30): Promise<SessionHistoryItem[]> {
