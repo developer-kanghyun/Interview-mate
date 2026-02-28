@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   listSessions,
   type InterviewReport,
+  type ReportQuestionGuide,
   type SessionHistoryItem,
   type StartInterviewPayload
 } from "@/shared/api/interview-client";
@@ -39,6 +40,7 @@ type UseInterviewReportInsightsResult = {
   sessions: SessionHistoryItem[];
   weakKeywords: string[];
   studyGuide: string[];
+  questionGuides: ReportQuestionGuide[];
   isInsightsLoading: boolean;
   insightsErrorMessage: string | null;
   isRetryingWeakness: boolean;
@@ -178,26 +180,38 @@ export function useInterviewReportInsights({
       ],
     [report]
   );
+  const questionGuides = useMemo(() => report?.questionGuides ?? [], [report]);
 
   const handleRetryWeakness = useCallback(async () => {
     if (isRetryingWeakness || isStarting) {
       return;
     }
+    if (!report?.sessionId) {
+      showToastError("현재 리포트 세션 정보를 찾을 수 없습니다. 다시 시도해 주세요.", "retry:missing-source-session");
+      return;
+    }
 
     const retryPreset = buildRetryPreset(weakKeywords, setupPayload);
-    const retryPayload: StartInterviewPayload = {
+    const retryPayloadForSetup: StartInterviewPayload = {
       ...setupPayload,
       ...retryPreset,
       difficulty: report && report.totalScore >= 70 ? "junior" : "jobseeker",
-      questionCount: Math.min(setupPayload.questionCount, 5)
+      questionCount: Math.min(setupPayload.questionCount, 5),
+      retryMode: undefined,
+      sourceSessionId: undefined
+    };
+    const retryPayloadForStart: StartInterviewPayload = {
+      ...retryPayloadForSetup,
+      retryMode: "weak_first",
+      sourceSessionId: report.sessionId
     };
 
     setIsRetryingWeakness(true);
     try {
       syncPathname("/setup");
       setStep("setup");
-      setSetupPayload(retryPayload);
-      await onRetryInterview(retryPayload);
+      setSetupPayload(retryPayloadForSetup);
+      await onRetryInterview(retryPayloadForStart);
     } finally {
       setIsRetryingWeakness(false);
     }
@@ -211,7 +225,8 @@ export function useInterviewReportInsights({
     setStep,
     setupPayload,
     syncPathname,
-    weakKeywords
+    weakKeywords,
+    showToastError
   ]);
 
   return {
@@ -219,6 +234,7 @@ export function useInterviewReportInsights({
     sessions,
     weakKeywords,
     studyGuide,
+    questionGuides,
     isInsightsLoading,
     insightsErrorMessage,
     isRetryingWeakness,

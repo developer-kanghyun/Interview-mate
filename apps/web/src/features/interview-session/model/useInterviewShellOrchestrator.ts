@@ -12,6 +12,7 @@ import { usePathname } from "next/navigation";
 import {
   hasInterviewRuntimeState,
   pingBackendHealth,
+  type ReportQuestionGuide,
   restoreInterviewSession,
   type InterviewCharacter,
   type InterviewEmotion,
@@ -106,6 +107,7 @@ export type UseInterviewShellStateResult = {
   sessions: SessionHistoryItem[];
   weakKeywords: string[];
   studyGuide: string[];
+  questionGuides: ReportQuestionGuide[];
   isRetryingWeakness: boolean;
   handleRetryWeakness: () => Promise<void>;
   resumeCandidateSessionId: string | null;
@@ -403,7 +405,8 @@ export function useInterviewShellOrchestrator(
     authRedirectTarget,
     setAuthPromptReason,
     handleGoogleLogin,
-    handleGoogleLogout
+    handleGoogleLogout,
+    retryAuthBootstrap
   } = useInterviewAuthState({
     step,
     sessionId,
@@ -664,8 +667,18 @@ export function useInterviewShellOrchestrator(
   beginInterviewRef.current = beginInterview;
 
   const handleStartInterview = useCallback(async () => {
+    if (authStatus === "loading") {
+      showToastError("인증 상태 확인 중입니다. 잠시 후 다시 시도해 주세요.", "auth:loading-start");
+      return;
+    }
+    if (authStatus !== "member" && authStatus !== "guest") {
+      const recovered = await retryAuthBootstrap();
+      if (!recovered) {
+        return;
+      }
+    }
     await beginInterview(setupPayload);
-  }, [beginInterview, setupPayload]);
+  }, [authStatus, beginInterview, retryAuthBootstrap, setupPayload, showToastError]);
   useEffect(() => {
     if (!pendingCompletedSessionId || isExiting) {
       return;
@@ -712,6 +725,7 @@ export function useInterviewShellOrchestrator(
   );
   const weakKeywords = reportFlow.weakKeywords;
   const studyGuide = reportFlow.studyGuide;
+  const questionGuides = reportFlow.questionGuides;
 
   return {
     step,
@@ -774,6 +788,7 @@ export function useInterviewShellOrchestrator(
     sessions: reportFlow.sessions,
     weakKeywords,
     studyGuide,
+    questionGuides,
     isRetryingWeakness: reportFlow.isRetryingWeakness,
     handleRetryWeakness: reportFlow.handleRetryWeakness,
     resumeCandidateSessionId,
