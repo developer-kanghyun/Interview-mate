@@ -1,5 +1,11 @@
 import { requestJson } from "@/shared/api/http";
 
+const REPORT_REQUEST_TIMEOUT_MS = 60_000;
+const AUTH_REQUEST_TIMEOUT_MS = 25_000;
+const HEALTH_REQUEST_TIMEOUT_MS = 25_000;
+const START_SESSION_TIMEOUT_MS = 60_000;
+const SUBMIT_ANSWER_TIMEOUT_MS = 60_000;
+
 export type SessionStartResponse = {
   success: boolean;
   data: {
@@ -92,6 +98,9 @@ export type SessionReportResponse = {
       weak_points: string[];
       weak_concept_keywords: string[];
       improvement_tip: string;
+      why_weak?: string | null;
+      how_to_answer?: string | null;
+      example_answer?: string | null;
     }>;
   };
 };
@@ -111,6 +120,8 @@ export type SessionStudyResponse = {
       weak_concept_keywords: string[];
       model_answer_preview: string;
       action_tip: string;
+      how_to_answer?: string | null;
+      example_answer?: string | null;
     }>;
   };
 };
@@ -254,14 +265,19 @@ export async function startInterviewSession(payload: {
   stack: string;
   difficulty: "jobseeker" | "junior";
   interviewerCharacter: "luna" | "jet" | "iron";
+  retryMode?: "none" | "weak_first";
+  sourceSessionId?: number;
 }) {
   return requestJson<SessionStartResponse>("/api/interview/sessions/start", {
     method: "POST",
+    timeoutMs: START_SESSION_TIMEOUT_MS,
     body: {
       job_role: payload.jobRole,
       stack: payload.stack,
       difficulty: payload.difficulty,
-      interviewer_character: payload.interviewerCharacter
+      interviewer_character: payload.interviewerCharacter,
+      retry_mode: payload.retryMode,
+      source_session_id: payload.sourceSessionId
     },
     fallbackMessage: "세션 시작 실패"
   });
@@ -275,6 +291,7 @@ export async function submitInterviewAnswer(payload: {
 }) {
   return requestJson<AnswerSubmitResponse>(`/api/interview/sessions/${payload.sessionId}/answers`, {
     method: "POST",
+    timeoutMs: SUBMIT_ANSWER_TIMEOUT_MS,
     body: {
       question_id: Number(payload.questionId),
       answer_text: payload.answerText,
@@ -287,6 +304,7 @@ export async function submitInterviewAnswer(payload: {
 export async function getInterviewSessionReport(sessionId: string) {
   return requestJson<SessionReportResponse>(`/api/interview/sessions/${sessionId}/report`, {
     method: "GET",
+    timeoutMs: REPORT_REQUEST_TIMEOUT_MS,
     fallbackMessage: "리포트 조회 실패"
   });
 }
@@ -340,6 +358,7 @@ export async function getGoogleAuthUrl() {
   return requestJson<GoogleAuthUrlApiResponse>("/api/auth/google/url", {
     method: "GET",
     requireAuth: false,
+    timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
     fallbackMessage: "Google 로그인 URL 조회 실패"
   });
 }
@@ -353,6 +372,7 @@ export async function completeGoogleAuth(code: string, state?: string | null) {
   return requestJson<GoogleAuthCallbackApiResponse>(`/api/auth/google/callback?${query.toString()}`, {
     method: "GET",
     requireAuth: false,
+    timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
     fallbackMessage: "Google 로그인 처리 실패"
   });
 }
@@ -361,6 +381,7 @@ export async function getGuestAccess() {
   return requestJson<GuestAuthApiResponse>("/api/auth/guest", {
     method: "GET",
     requireAuth: false,
+    timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
     fallbackMessage: "게스트 인증 발급 실패"
   });
 }
@@ -368,6 +389,7 @@ export async function getGuestAccess() {
 export async function getMyProfile() {
   return requestJson<AuthMeApiResponse>("/api/auth/me", {
     method: "GET",
+    timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
     fallbackMessage: "로그인 사용자 조회 실패"
   });
 }
@@ -376,6 +398,7 @@ export async function getHealthStatus() {
   return requestJson<HealthApiResponse>("/health", {
     method: "GET",
     requireAuth: false,
+    timeoutMs: HEALTH_REQUEST_TIMEOUT_MS,
     fallbackMessage: "백엔드 연결 확인 실패"
   });
 }
