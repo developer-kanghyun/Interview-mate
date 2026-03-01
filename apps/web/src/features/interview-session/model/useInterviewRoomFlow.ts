@@ -11,7 +11,6 @@ import {
   type SetStateAction
 } from "react";
 import {
-  submitAnswer,
   type InterviewEmotion,
   type StartInterviewPayload
 } from "@/shared/api/interview-client";
@@ -19,18 +18,16 @@ import type { ChatMessage } from "@/shared/chat/ChatBoard";
 import type { InterviewStep } from "@/features/interview-session/model/interviewSession.constants";
 import { useInterviewerSpeech } from "@/features/interview-session/model/useInterviewerSpeech";
 import { useQuestionStreaming } from "@/features/interview-session/model/useQuestionStreaming";
+import {
+  useInterviewSubmitAnswer,
+  type SubmitAnswerOptions
+} from "@/features/interview-session/model/useInterviewSubmitAnswer";
 import { useSpeechToText } from "@/shared/lib/useSpeechToText";
 import {
-  buildCoachContent,
-  createAnswerErrorMessage,
-  createCoachFeedbackMessage,
-  createPauseMessage,
-  createUserAnswerMessage,
-  isCoachWarning
+  createPauseMessage
 } from "@/features/interview-session/model/interviewRoom.utils";
 import {
   getAvatarTransientDurationMs,
-  resolveAvatarTransientStateFromAnswer,
   type AvatarState,
   type AvatarTransientState
 } from "@/entities/avatar/model/avatarBehaviorMachine";
@@ -57,11 +54,6 @@ type UseInterviewRoomFlowOptions = {
   onSessionComplete: (targetSessionId: string, isGuestUser: boolean) => Promise<void> | void;
   setUiError: Dispatch<SetStateAction<string | null>>;
   setAuthPromptReason: (next: "auth_required" | null) => void;
-};
-
-type SubmitAnswerOptions = {
-  answerOverride?: string;
-  inputType?: "text" | "voice";
 };
 
 type UseInterviewRoomFlowResult = {
@@ -251,101 +243,30 @@ export function useInterviewRoomFlow({
     clearSpeechError();
   }, [clearSpeechError, isSttSupported, showToast, speechError]);
 
-  const handleSubmitAnswer = useCallback(
-    async (options?: SubmitAnswerOptions) => {
-      const inputType = options?.inputType ?? "text";
-      const sourceAnswer = options?.answerOverride ?? answerText;
-      if (!sessionId || !sourceAnswer.trim() || isSubmitting || isResumeResolving) {
-        return;
-      }
-
-      const submittedAnswer = sourceAnswer.trim();
-      appendMessage(createUserAnswerMessage(submittedAnswer));
-
-      setAnswerText("");
-      setIsSubmitting(true);
-      setAvatarState("thinking");
-      setUiError(null);
-
-      try {
-        const response = await submitAnswer(sessionId, submittedAnswer, inputType);
-        const previousFollowupCount = lastFollowupCountRef.current;
-        setEmotion(response.suggestedEmotion);
-        setFollowupCount(response.followupCount);
-        lastFollowupCountRef.current = response.followupCount;
-
-        const nextCue = resolveAvatarTransientStateFromAnswer({
-          previousFollowupCount,
-          nextFollowupCount: response.followupCount,
-          totalScore: response.totalScore,
-          suggestedEmotion: response.suggestedEmotion
-        });
-
-        if (nextCue) {
-          triggerAvatarCue(nextCue);
-        } else {
-          clearAvatarCue();
-        }
-
-        const needsCoachWarning = isCoachWarning(response.totalScore);
-        const coachContent = buildCoachContent(response.feedbackSummary, response.coaching);
-
-        if (coachContent) {
-          appendMessage(createCoachFeedbackMessage(coachContent, needsCoachWarning));
-        } else if (!response.coachingAvailable) {
-          showToast({
-            message: "코칭 생성이 지연되었습니다. 다음 답변으로 진행해 주세요.",
-            variant: "info",
-            dedupeKey: "coach:unavailable"
-          });
-        }
-
-        if (response.isSessionComplete) {
-          if (isGuestUser) {
-            stopQuestionStream();
-            stopTtsPlayback();
-          }
-          await onSessionComplete(sessionId, isGuestUser);
-          return;
-        }
-
-        startQuestionStream(sessionId);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "답변 제출에 실패했습니다.";
-        if (message === getAuthRequiredMessage()) {
-          setAuthPromptReason("auth_required");
-          setUiError(message);
-        } else {
-          setAuthPromptReason(null);
-          showToastError(message, "answer:submit");
-        }
-        setAnswerText(submittedAnswer);
-        setAvatarState("listening");
-
-        appendMessage(createAnswerErrorMessage(message));
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
-    [
-      appendMessage,
-      answerText,
-      clearAvatarCue,
-      isGuestUser,
-      isResumeResolving,
-      isSubmitting,
-      onSessionComplete,
-      sessionId,
-      setAuthPromptReason,
-      setUiError,
-      showToast,
-      showToastError,
-      startQuestionStream,
-      stopQuestionStream,
-      stopTtsPlayback,
-      triggerAvatarCue
-    ]
-  );
+  const handleSubmitAnswer = useInterviewSubmitAnswer({
+    sessionId,
+    answerText,
+    isSubmitting,
+    isResumeResolving,
+    isGuestUser,
+    setAnswerText,
+    setIsSubmitting,
+    setAvatarState,
+    setEmotion,
+    setFollowupCount,
+    setUiError,
+    setAuthPromptReason,
+    lastFollowupCountRef,
+    appendMessage,
+    clearAvatarCue,
+    triggerAvatarCue,
+    showToast,
+    showToastError,
+    startQuestionStream,
+    stopQuestionStream,
+    stopTtsPlayback,
+    onSessionComplete
+  });
 
   const handleToggleRecording = useCallback(() => {
     if (isSubmitting || isQuestionStreaming || isExiting) {
