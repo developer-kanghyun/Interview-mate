@@ -4,7 +4,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState
 } from "react";
 import { usePathname } from "next/navigation";
@@ -14,11 +13,9 @@ import {
   type StartInterviewPayload
 } from "@/shared/api/interview-client";
 import {
-  defaultSetupPayload,
   interviewerNameMap,
   mapDifficultyLabel,
-  mapRoleLabel,
-  type InterviewStep
+  mapRoleLabel
 } from "@/features/interview-session/model/interviewSession.constants";
 import { getInterviewPreferences } from "@/shared/config/interview-preferences";
 import { useInterviewAuthState } from "@/features/interview-session/model/useInterviewAuthState";
@@ -31,13 +28,10 @@ import { useInterviewShellNavigation } from "@/features/interview-session/model/
 import { useInterviewShellToast } from "@/features/interview-session/model/useInterviewShellToast";
 import { useInterviewUiRecovery } from "@/features/interview-session/model/useInterviewUiRecovery";
 import {
-  buildRetryPreset,
-  resolveSessionIdFromPath,
-  resolveStepFromPath
+  buildRetryPreset
 } from "@/features/interview-session/model/interviewShell.utils";
 import {
-  resolveAvatarReportState,
-  type AvatarState
+  resolveAvatarReportState
 } from "@/entities/avatar/model/avatarBehaviorMachine";
 import {
   clearLegacyApiKeyStorage,
@@ -49,6 +43,7 @@ import type {
   UseInterviewShellStateOptions,
   UseInterviewShellStateResult
 } from "@/features/interview-session/model/interviewShell.types";
+import { useInterviewShellCoreState } from "@/features/interview-session/model/useInterviewShellCoreState";
 
 export type { UseInterviewShellStateOptions, UseInterviewShellStateResult };
 
@@ -57,51 +52,32 @@ export function useInterviewShellOrchestrator(
 ): UseInterviewShellStateResult {
   const pathname = usePathname();
   const { pushToast } = useToast();
-  const [step, setStep] = useState<InterviewStep>("setup");
-  const [setupPayload, setSetupPayload] = useState<StartInterviewPayload>(defaultSetupPayload);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [isExiting, setIsExiting] = useState(false);
-  const [uiError, setUiError] = useState<string | null>(null);
-  const [backendStatus, setBackendStatus] = useState<"checking" | "ok" | "error">("checking");
-  const [backendStatusMessage, setBackendStatusMessage] = useState<string | null>(null);
-  const autoRestoreAttemptedSessionRef = useRef<string | null>(null);
-  const startQuestionStreamRef = useRef<((sessionId: string) => void) | null>(null);
-  const beginInterviewRef = useRef<(payload: StartInterviewPayload) => Promise<void>>(async () => {});
-
-  const routeStep = useMemo(
-    () => options.initialStep ?? resolveStepFromPath(pathname),
-    [options.initialStep, pathname]
-  );
-  const routeSessionId = useMemo(
-    () => options.initialSessionId ?? resolveSessionIdFromPath(pathname),
-    [options.initialSessionId, pathname]
-  );
-
-  useEffect(() => {
-    if (!routeStep) {
-      return;
-    }
-    setStep((current) => (current === routeStep ? current : routeStep));
-  }, [routeStep]);
-
-  useEffect(() => {
-    if (!routeSessionId) {
-      return;
-    }
-    setSessionId((current) => (current === routeSessionId ? current : routeSessionId));
-  }, [routeSessionId]);
-
-  useEffect(() => {
-    if (step === "room") {
-      return;
-    }
-    autoRestoreAttemptedSessionRef.current = null;
-  }, [step]);
+  const {
+    step,
+    setStep,
+    setupPayload,
+    setSetupPayload,
+    sessionId,
+    setSessionId,
+    isExiting,
+    setIsExiting,
+    uiError,
+    setUiError,
+    backendStatus,
+    setBackendStatus,
+    backendStatusMessage,
+    setBackendStatusMessage,
+    autoRestoreAttemptedSessionRef,
+    startQuestionStreamRef,
+    beginInterviewRef,
+    routeStep,
+    routeSessionId
+  } = useInterviewShellCoreState({ pathname, options });
   const { syncPathname, updateStep } = useInterviewShellNavigation(sessionId, setStep);
 
   const updateSetupPayload = useCallback((next: StartInterviewPayload) => {
     setSetupPayload(next);
-  }, []);
+  }, [setSetupPayload]);
   const { showToast, showToastError } = useInterviewShellToast(pushToast);
 
   const {
@@ -153,7 +129,7 @@ export function useInterviewShellOrchestrator(
       setBackendStatus("error");
       setBackendStatusMessage(message);
     }
-  }, []);
+  }, [setBackendStatus, setBackendStatusMessage]);
 
   const { isStarting, startSession, startError, clearStartError } = useStartSession();
   const [pendingCompletedSessionId, setPendingCompletedSessionId] = useState<string | null>(null);
@@ -263,7 +239,7 @@ export function useInterviewShellOrchestrator(
       ...previous,
       ...savedPreferences
     }));
-  }, []);
+  }, [setSetupPayload]);
 
   useEffect(() => {
     if (step !== "room" || !sessionId || isResumeResolving) {
@@ -277,7 +253,7 @@ export function useInterviewShellOrchestrator(
     }
     autoRestoreAttemptedSessionRef.current = sessionId;
     void restoreSessionIntoRoom(sessionId);
-  }, [isResumeResolving, restoreSessionIntoRoom, sessionId, step]);
+  }, [autoRestoreAttemptedSessionRef, isResumeResolving, restoreSessionIntoRoom, sessionId, step]);
 
   const beginInterview = useCallback(
     async (payload: StartInterviewPayload) => {
@@ -311,12 +287,17 @@ export function useInterviewShellOrchestrator(
       }
     },
     [
+      autoRestoreAttemptedSessionRef,
       clearStartError,
       clearReportFetchError,
       resetResumeState,
       resetRoomState,
       resetReportState,
+      setIsExiting,
+      setSessionId,
+      setStep,
       setAuthPromptReason,
+      setUiError,
       showToastError,
       startRoomQuestionStream,
       startSession,
@@ -363,7 +344,7 @@ export function useInterviewShellOrchestrator(
       return;
     }
     await moveToReport(sessionId);
-  }, [isExiting, isResumeResolving, moveToReport, sessionId, syncPathname]);
+  }, [isExiting, isResumeResolving, moveToReport, sessionId, setStep, syncPathname]);
   const { clearUiError, handleRetryUiError } = useInterviewUiRecovery({
     step,
     sessionId,
