@@ -13,6 +13,14 @@ import {
   parseApiErrorMessage
 } from "@/shared/api/interview-client.stream";
 import {
+  deleteRuntimeState,
+  getRuntimeState,
+  hasRuntimeState,
+  runtimeStateEntries,
+  setRuntimeState,
+  type RuntimeQuestion
+} from "@/shared/api/interview-client.runtime";
+import {
   mapPersistedSessionHistoryItem,
   mapReportToInterviewReport
 } from "@/shared/api/interview-client.mappers";
@@ -58,23 +66,6 @@ export type {
   SubmitAnswerResponse
 } from "@/shared/api/interview-client.types";
 
-type RuntimeQuestion = {
-  questionId: string;
-  order: number;
-  content: string;
-  followupCount: number;
-};
-
-type SessionRuntimeState = {
-  payload: StartInterviewPayload;
-  startedAt: string;
-  totalQuestions: number;
-  status: "in_progress" | "completed";
-  answeredQuestions: number;
-  currentQuestion: RuntimeQuestion | null;
-};
-
-const streamStateBySessionId = new Map<string, SessionRuntimeState>();
 const CHAT_STREAM_ENDPOINT = "/api/chat";
 const STREAM_IDLE_TIMEOUT_MS = 12_000;
 const ENABLE_REMOTE_QUESTION_STREAM = process.env.NEXT_PUBLIC_ENABLE_REMOTE_QUESTION_STREAM === "true";
@@ -83,7 +74,7 @@ async function refreshCurrentQuestionFromState(sessionId: string) {
   const stateResponse = await getInterviewSessionState(sessionId);
   const state = stateResponse.data;
 
-  const existing = streamStateBySessionId.get(sessionId);
+  const existing = getRuntimeState(sessionId);
   if (!existing) {
     return state;
   }
@@ -107,7 +98,7 @@ async function refreshCurrentQuestionFromState(sessionId: string) {
 }
 
 async function ensureRuntimeState(sessionId: string) {
-  const runtimeState = streamStateBySessionId.get(sessionId);
+  const runtimeState = getRuntimeState(sessionId);
   if (runtimeState?.currentQuestion) {
     return runtimeState;
   }
@@ -133,7 +124,7 @@ export async function startInterview(payload: StartInterviewPayload): Promise<St
 
   const data = readResponseData(startResponse, "세션 시작 실패");
 
-  streamStateBySessionId.set(data.session_id, {
+  setRuntimeState(data.session_id, {
     payload,
     startedAt: toIsoDate(data.started_at),
     totalQuestions: data.total_questions,
@@ -154,7 +145,7 @@ export async function startInterview(payload: StartInterviewPayload): Promise<St
 }
 
 export function hasInterviewRuntimeState(sessionId: string) {
-  return streamStateBySessionId.has(sessionId);
+  return hasRuntimeState(sessionId);
 }
 
 export async function restoreInterviewSession(sessionId: string): Promise<void> {
@@ -166,7 +157,7 @@ export async function restoreInterviewSession(sessionId: string): Promise<void> 
   }
 
   const role = mapRole(state.job_role);
-  streamStateBySessionId.set(sessionId, {
+  setRuntimeState(sessionId, {
     payload: {
       jobRole: role,
       stack: defaultStackByRole(role),
@@ -233,7 +224,7 @@ export function streamQuestion(
   onEvent: (event: StreamQuestionEvent) => void,
   onError?: (message: string) => void
 ) {
-  const runtimeState = streamStateBySessionId.get(sessionId);
+  const runtimeState = getRuntimeState(sessionId);
   if (!runtimeState?.currentQuestion) {
     throw new Error("현재 질문 상태가 없습니다. 세션을 복구하거나 다시 시작해 주세요.");
   }
@@ -419,7 +410,7 @@ export async function getReport(sessionId: string): Promise<InterviewReport> {
   try {
     const reportResponse = await getInterviewSessionReport(sessionId);
     const report = mapReportToInterviewReport(reportResponse);
-    streamStateBySessionId.delete(sessionId);
+    deleteRuntimeState(sessionId);
     return report;
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
@@ -433,7 +424,7 @@ export async function getReport(sessionId: string): Promise<InterviewReport> {
 
     const fallbackReportResponse = await getInterviewSessionReport(sessionId);
     const report = mapReportToInterviewReport(fallbackReportResponse);
-    streamStateBySessionId.delete(sessionId);
+    deleteRuntimeState(sessionId);
     return report;
   }
 }
@@ -473,7 +464,7 @@ export async function listSessions(days = 30): Promise<SessionHistoryItem[]> {
   );
 
   const runtimeOnlyItems: SessionHistoryItem[] = [];
-  for (const [sessionId, runtimeState] of streamStateBySessionId.entries()) {
+  for (const [sessionId, runtimeState] of runtimeStateEntries()) {
     if (groupedBySession.has(sessionId)) {
       continue;
     }
