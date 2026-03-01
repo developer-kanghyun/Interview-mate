@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useRef, useState, type MutableRefObject } from "react";
+import {
+  playBlobWithAudioElement,
+  resetTtsAudioElement
+} from "@/features/interview-session/model/interviewerSpeech.audio";
 import { speakWithWebSpeech } from "@/features/interview-session/model/interviewerSpeech.web-speech";
 import {
   type SetAvatarState,
@@ -46,12 +50,7 @@ export function useInterviewerSpeech(
     }
 
     const audioElement = ttsAudioRef.current;
-    if (audioElement) {
-      audioElement.pause();
-      audioElement.currentTime = 0;
-      audioElement.removeAttribute("src");
-      audioElement.load();
-    }
+    resetTtsAudioElement(audioElement);
 
     if (ttsObjectUrlRef.current) {
       URL.revokeObjectURL(ttsObjectUrlRef.current);
@@ -66,59 +65,6 @@ export function useInterviewerSpeech(
       audioElement.play().catch(console.error);
     }
   }, []);
-
-  const playBlobWithAudioElement = useCallback(async (blob: Blob, signal: AbortSignal) => {
-    const audioElement = ttsAudioRef.current;
-    if (!audioElement) {
-      throw new Error("TTS audio element가 없습니다.");
-    }
-
-    if (ttsObjectUrlRef.current) {
-      URL.revokeObjectURL(ttsObjectUrlRef.current);
-    }
-
-    const objectUrl = URL.createObjectURL(blob);
-    ttsObjectUrlRef.current = objectUrl;
-    audioElement.src = objectUrl;
-
-    try {
-      await audioElement.play();
-      setIsAutoplayBlocked(false);
-    } catch (err: any) {
-      if (err.name === "NotAllowedError") {
-        setIsAutoplayBlocked(true);
-        pushNotice("브라우저 자동재생이 차단되었습니다. 우측의 '🔊 질문 듣기' 버튼을 눌러주세요.", autoplayNoticeShownRef);
-      }
-      throw err;
-    }
-
-    await new Promise<void>((resolve, reject) => {
-      const handleEnded = () => {
-        cleanup();
-        resolve();
-      };
-
-      const handleError = () => {
-        cleanup();
-        reject(new Error("TTS 오디오 재생에 실패했습니다."));
-      };
-
-      const handleAbort = () => {
-        cleanup();
-        resolve();
-      };
-
-      const cleanup = () => {
-        audioElement.removeEventListener("ended", handleEnded);
-        audioElement.removeEventListener("error", handleError);
-        signal.removeEventListener("abort", handleAbort);
-      };
-
-      audioElement.addEventListener("ended", handleEnded, { once: true });
-      audioElement.addEventListener("error", handleError, { once: true });
-      signal.addEventListener("abort", handleAbort, { once: true });
-    });
-  }, [pushNotice]);
 
   const speakInterviewer = useCallback(
     async (text: string, character = "zet") => {
@@ -156,7 +102,26 @@ export function useInterviewerSpeech(
         if (response.ok) {
           const audioBlob = await response.blob();
           if (!abortController.signal.aborted) {
-            await playBlobWithAudioElement(audioBlob, abortController.signal);
+            const audioElement = ttsAudioRef.current;
+            if (!audioElement) {
+              throw new Error("TTS audio element가 없습니다.");
+            }
+            if (ttsObjectUrlRef.current) {
+              URL.revokeObjectURL(ttsObjectUrlRef.current);
+            }
+            ttsObjectUrlRef.current = await playBlobWithAudioElement({
+              audioElement,
+              blob: audioBlob,
+              signal: abortController.signal,
+              onPlayed: () => setIsAutoplayBlocked(false),
+              onAutoplayBlocked: () => {
+                setIsAutoplayBlocked(true);
+                pushNotice(
+                  "브라우저 자동재생이 차단되었습니다. 우측의 '🔊 질문 듣기' 버튼을 눌러주세요.",
+                  autoplayNoticeShownRef
+                );
+              }
+            });
             playedFromBackend = true;
           }
         } else {
@@ -181,7 +146,7 @@ export function useInterviewerSpeech(
         setAvatarState("listening");
       }
     },
-    [isAutoplayBlocked, playBlobWithAudioElement, pushNotice, setAvatarState, stopTtsPlayback]
+    [isAutoplayBlocked, pushNotice, setAvatarState, stopTtsPlayback]
   );
 
   return {
