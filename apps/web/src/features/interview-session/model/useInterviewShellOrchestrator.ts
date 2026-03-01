@@ -8,7 +8,6 @@ import {
 } from "react";
 import { usePathname } from "next/navigation";
 import {
-  hasInterviewRuntimeState,
   pingBackendHealth,
   type StartInterviewPayload
 } from "@/shared/api/interview-client";
@@ -17,8 +16,8 @@ import {
   mapDifficultyLabel,
   mapRoleLabel
 } from "@/features/interview-session/model/interviewSession.constants";
-import { getInterviewPreferences } from "@/shared/config/interview-preferences";
 import { useInterviewAuthState } from "@/features/interview-session/model/useInterviewAuthState";
+import { useInterviewShellBootstrapEffects } from "@/features/interview-session/model/useInterviewShellBootstrapEffects";
 import { useInterviewResumeState } from "@/features/interview-session/model/useInterviewResumeState";
 import { useInterviewRoomFlow } from "@/features/interview-session/model/useInterviewRoomFlow";
 import { useInterviewReportInsights } from "@/features/interview-session/model/useInterviewReportInsights";
@@ -34,7 +33,6 @@ import {
   resolveAvatarReportState
 } from "@/entities/avatar/model/avatarBehaviorMachine";
 import {
-  clearLegacyApiKeyStorage,
   clearStoredSessionId,
   setStoredSessionId
 } from "@/shared/auth/session";
@@ -214,46 +212,17 @@ export function useInterviewShellOrchestrator(
     syncPathname,
     startQuestionStreamRef
   });
-
-  useEffect(() => {
-    void runBackendHealthCheck();
-  }, [runBackendHealthCheck]);
-
-  useEffect(() => {
-    if (!startError) {
-      return;
-    }
-    showToastError(startError, `start:${startError}`);
-  }, [showToastError, startError]);
-
-  useEffect(() => {
-    clearLegacyApiKeyStorage();
-  }, []);
-
-  useEffect(() => {
-    const savedPreferences = getInterviewPreferences();
-    if (!savedPreferences) {
-      return;
-    }
-    setSetupPayload((previous) => ({
-      ...previous,
-      ...savedPreferences
-    }));
-  }, [setSetupPayload]);
-
-  useEffect(() => {
-    if (step !== "room" || !sessionId || isResumeResolving) {
-      return;
-    }
-    if (hasInterviewRuntimeState(sessionId)) {
-      return;
-    }
-    if (autoRestoreAttemptedSessionRef.current === sessionId) {
-      return;
-    }
-    autoRestoreAttemptedSessionRef.current = sessionId;
-    void restoreSessionIntoRoom(sessionId);
-  }, [autoRestoreAttemptedSessionRef, isResumeResolving, restoreSessionIntoRoom, sessionId, step]);
+  useInterviewShellBootstrapEffects({
+    runBackendHealthCheck,
+    startError,
+    showToastError,
+    setSetupPayload,
+    step,
+    sessionId,
+    isResumeResolving,
+    restoreSessionIntoRoom,
+    autoRestoreAttemptedSessionRef
+  });
 
   const beginInterview = useCallback(
     async (payload: StartInterviewPayload) => {
