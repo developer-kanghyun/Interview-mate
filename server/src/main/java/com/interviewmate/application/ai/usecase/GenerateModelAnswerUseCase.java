@@ -1,6 +1,6 @@
 package com.interviewmate.application.ai.usecase;
 
-import com.interviewmate.application.ai.port.AiChatPort;
+import com.interviewmate.application.ai.port.AiChatCompletionPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class GenerateModelAnswerUseCase {
 
-    private final AiChatPort aiChatPort;
+    private final AiChatCompletionPort aiChatPort;
 
     public String execute(String jobRole, String question) {
         String systemPrompt = "당신은 시니어 기술 면접관입니다. 질문에 대한 모범답안을 3~5문장으로 간결하게 작성하세요.";

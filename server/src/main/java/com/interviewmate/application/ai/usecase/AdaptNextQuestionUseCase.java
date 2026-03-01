@@ -1,7 +1,7 @@
 package com.interviewmate.application.ai.usecase;
 
 import com.interviewmate.application.ai.prompt.InterviewerToneGuide;
-import com.interviewmate.application.ai.port.AiChatPort;
+import com.interviewmate.application.ai.port.AiChatCompletionPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AdaptNextQuestionUseCase {
 
-    private final AiChatPort aiChatPort;
+    private final AiChatCompletionPort aiChatPort;
 
     public String execute(
             String jobRole,

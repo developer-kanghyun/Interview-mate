@@ -1,5 +1,5 @@
 package com.interviewmate.application.ai.port;
 
-public interface AiChatPort {
-    String requestSingleResponse(String systemPrompt, String userPrompt);
+@Deprecated(forRemoval = false)
+public interface AiChatPort extends AiChatCompletionPort {
 }

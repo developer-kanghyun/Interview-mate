@@ -2,7 +2,7 @@ package com.interviewmate.application.ai.usecase;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.interviewmate.application.ai.port.AiChatPort;
+import com.interviewmate.application.ai.port.AiChatCompletionPort;
 import com.interviewmate.global.error.AppException;
 import com.interviewmate.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,7 @@ public class GenerateSessionQuestionPlanUseCase {
     private static final int DEFAULT_QUESTION_COUNT = 7;
     private static final int MAX_GENERATION_ATTEMPTS = 3;
 
-    private final AiChatPort aiChatPort;
+    private final AiChatCompletionPort aiChatPort;
     private final ObjectMapper objectMapper;
 
     public List<GeneratedQuestion> execute(String jobRole, String stack, String difficulty, int questionCount) {
