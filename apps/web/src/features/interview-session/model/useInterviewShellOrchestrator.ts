@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { type StartInterviewPayload } from "@/shared/api/interview-client";
 import { buildInterviewShellState } from "@/features/interview-session/model/interviewShell.presenter";
 import { useInterviewShellBootstrapEffects } from "@/features/interview-session/model/useInterviewShellBootstrapEffects";
 import { useStartSession } from "@/features/interview/start-session/model/useStartSession";
@@ -17,6 +16,7 @@ import { useInterviewShellSessionFlow } from "@/features/interview-session/model
 import { useInterviewShellBackendHealth } from "@/features/interview-session/model/useInterviewShellBackendHealth";
 import { useInterviewShellAccessState } from "@/features/interview-session/model/useInterviewShellAccessState";
 import { useInterviewShellRoomReportFlows } from "@/features/interview-session/model/useInterviewShellRoomReportFlows";
+import { buildInterviewShellPresenterArgs } from "@/features/interview-session/model/interviewShell.presenter-args";
 
 export type { UseInterviewShellStateOptions, UseInterviewShellStateResult };
 
@@ -48,7 +48,6 @@ export function useInterviewShellOrchestrator(
   } = useInterviewShellCoreState({ pathname, options });
   const { syncPathname, updateStep } = useInterviewShellNavigation(sessionId, setStep);
 
-  const updateSetupPayload = useCallback((next: StartInterviewPayload) => setSetupPayload(next), [setSetupPayload]);
   const { showToast, showToastError } = useInterviewShellToast(pushToast);
 
   const {
@@ -61,7 +60,6 @@ export function useInterviewShellOrchestrator(
     handleDismissResumeCandidate,
     resetResumeState,
     authStatus,
-    authPromptReason,
     isAuthLoading,
     isGuestUser,
     isMemberAuthenticated: isMemberAuthenticatedBase,
@@ -173,73 +171,39 @@ export function useInterviewShellOrchestrator(
     handleGoInsights: reportFlow.handleGoInsights,
     runBackendHealthCheck
   });
-  const isMemberAuthenticated = useMemo(
-    () => isMemberAuthenticatedBase && reportFlow.reportErrorCode !== "auth_required",
-    [isMemberAuthenticatedBase, reportFlow.reportErrorCode]
-  );
 
-  return buildInterviewShellState({
-    step,
-    updateStep,
-    uiError,
-    clearUiError,
-    handleRetryUiError,
-    authStatus,
-    isMemberAuthenticated,
-    isAuthRequired,
-    reportErrorCode: reportFlow.reportErrorCode,
-    authRedirectTarget,
-    handleGoogleLogin,
-    handleGoogleLogout,
-    isAuthLoading,
-    backendStatus,
-    backendStatusMessage,
-    runBackendHealthCheck,
-    setupPayload,
-    setSetupPayload: updateSetupPayload,
-    isStarting,
-    sessionId,
-    avatarState: roomFlow.avatarState,
-    avatarCueToken: roomFlow.avatarCueToken,
-    emotion: roomFlow.emotion,
-    ttsAudioRef: roomFlow.ttsAudioRef,
-    isAutoplayBlocked: roomFlow.isAutoplayBlocked,
-    playTtsAudio: roomFlow.playTtsAudio,
-    isRecording: roomFlow.isRecording,
-    isSttSupported: roomFlow.isSttSupported,
-    isSttBusy: roomFlow.isSttBusy,
-    handleToggleRecording: roomFlow.handleToggleRecording,
-    questionOrder: roomFlow.questionOrder,
-    followupCount: roomFlow.followupCount,
-    streamingQuestionText: roomFlow.streamingQuestionText,
-    isQuestionStreaming: roomFlow.isQuestionStreaming,
-    messages: roomFlow.messages,
-    answerText: roomFlow.answerText,
-    setAnswerText: roomFlow.setAnswerText,
-    isSubmitting: roomFlow.isSubmitting,
-    handleStartInterview,
-    handleSubmitAnswer: roomFlow.handleSubmitAnswer,
-    handlePause: roomFlow.handlePause,
-    handleExit,
-    isExiting,
-    report: reportFlow.report,
-    isReportLoading: reportFlow.isReportLoading,
-    reportErrorMessage: reportFlow.reportErrorMessage,
-    handleRetryReport: reportFlow.handleRetryReport,
-    handleGoInsights: reportFlow.handleGoInsights,
-    isInsightsLoading: reportFlow.isInsightsLoading,
-    insightsErrorMessage: reportFlow.insightsErrorMessage,
-    sessions: reportFlow.sessions,
-    weakKeywords: reportFlow.weakKeywords,
-    studyGuide: reportFlow.studyGuide,
-    questionGuides: reportFlow.questionGuides,
-    isRetryingWeakness: reportFlow.isRetryingWeakness,
-    handleRetryWeakness: reportFlow.handleRetryWeakness,
-    resumeCandidateSessionId,
-    isResumePromptOpen,
-    isResumeCandidateGuest,
-    isResumeResolving,
-    handleContinueResumeCandidate,
-    handleDismissResumeCandidate
-  });
+  return buildInterviewShellState(
+    buildInterviewShellPresenterArgs({
+      step,
+      updateStep,
+      uiError,
+      clearUiError,
+      handleRetryUiError,
+      authStatus,
+      isMemberAuthenticatedBase,
+      isAuthRequired,
+      authRedirectTarget,
+      handleGoogleLogin,
+      handleGoogleLogout,
+      isAuthLoading,
+      backendStatus,
+      backendStatusMessage,
+      runBackendHealthCheck,
+      setupPayload,
+      setSetupPayload,
+      isStarting,
+      sessionId,
+      roomFlow,
+      reportFlow,
+      handleStartInterview,
+      handleExit,
+      isExiting,
+      resumeCandidateSessionId,
+      isResumePromptOpen,
+      isResumeCandidateGuest,
+      isResumeResolving,
+      handleContinueResumeCandidate,
+      handleDismissResumeCandidate
+    })
+  );
 }

@@ -16,7 +16,7 @@ import type { ChatMessage } from "@/shared/chat/ChatBoard";
 import type { AvatarState } from "@/entities/avatar/model/avatarBehaviorMachine";
 import type { UseInterviewShellStateResult } from "@/features/interview-session/model/interviewShell.types";
 
-type BuildInterviewShellStateArgs = {
+export type BuildInterviewShellStateArgs = {
   step: InterviewStep;
   updateStep: (next: InterviewStep) => void;
   uiError: string | null;
