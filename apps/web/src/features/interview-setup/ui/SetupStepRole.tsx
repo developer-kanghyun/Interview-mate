@@ -1,4 +1,4 @@
-import type { StartInterviewPayload } from "@/shared/api/interview-client";
+import type { StartInterviewPayload } from "@/features/interview/start-session/model/application/startInterviewSessionUseCase";
 import type { Dispatch, SetStateAction } from "react";
 import { jobOptions, stepBodyClass, type VisualJobId } from "@/features/interview-setup/ui/setupView.constants";
 

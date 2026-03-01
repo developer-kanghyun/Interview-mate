@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
-import { hasInterviewRuntimeState, type StartInterviewPayload } from "@/shared/api/interview-client";
+import {
+  hasInterviewRuntimeStateUseCase,
+  type StartInterviewPayload
+} from "@/features/interview-session/model/application/interviewSessionUseCases";
 import { getInterviewPreferences } from "@/shared/config/interview-preferences";
 import { clearLegacyApiKeyStorage } from "@/shared/auth/session";
 import type { InterviewStep } from "@/features/interview-session/model/interviewSession.constants";
@@ -59,7 +62,7 @@ export function useInterviewShellBootstrapEffects({
     if (step !== "room" || !sessionId || isResumeResolving) {
       return;
     }
-    if (hasInterviewRuntimeState(sessionId)) {
+    if (hasInterviewRuntimeStateUseCase(sessionId)) {
       return;
     }
     if (autoRestoreAttemptedSessionRef.current === sessionId) {

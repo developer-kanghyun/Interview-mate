@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getGoogleAuthUrl, getMyProfile } from "@/shared/api/interview";
+import {
+  fetchLandingGoogleAuthUrlUseCase,
+  fetchLandingProfileUseCase
+} from "@/features/landing/model/application/landingAuthUseCases";
 import { clearStoredSessionId } from "@/shared/auth/session";
 
 export function useLandingAuth() {
@@ -9,7 +12,7 @@ export function useLandingAuth() {
   const [isLoginLoading, setIsLoginLoading] = useState(false);
 
   useEffect(() => {
-    getMyProfile()
+    fetchLandingProfileUseCase()
       .then((res) => {
         if (res.data.email) {
           setIsLoggedIn(true);
@@ -21,7 +24,7 @@ export function useLandingAuth() {
   const handleLogin = useCallback(async () => {
     setIsLoginLoading(true);
     try {
-      const res = await getGoogleAuthUrl();
+      const res = await fetchLandingGoogleAuthUrlUseCase();
       window.location.href = res.data.auth_url;
     } catch (error) {
       console.error(error);

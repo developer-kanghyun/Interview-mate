@@ -1,6 +1,9 @@
 "use client";
 
-import { getGuestAccess, getMyProfile } from "@/shared/api/interview";
+import {
+  fetchInterviewMyProfileUseCase,
+  issueInterviewGuestAccessUseCase
+} from "@/features/interview-session/model/application/interviewSessionUseCases";
 import { getAuthRequiredMessage } from "@/shared/auth/session";
 import type { InterviewStep } from "@/features/interview-session/model/interviewSession.constants";
 
@@ -54,7 +57,7 @@ export async function bootstrapInterviewAuth({
     let profileMessage: string | null = null;
 
     try {
-      const profile = await getMyProfile();
+      const profile = await fetchInterviewMyProfileUseCase();
       if (!isActive()) {
         return false;
       }
@@ -89,7 +92,7 @@ export async function bootstrapInterviewAuth({
       }
 
       try {
-        await getGuestAccess();
+        await issueInterviewGuestAccessUseCase();
         if (!isActive()) {
           return false;
         }

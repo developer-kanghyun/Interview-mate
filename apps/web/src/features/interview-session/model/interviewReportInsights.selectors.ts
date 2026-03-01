@@ -1,4 +1,7 @@
-import type { InterviewReport, ReportQuestionGuide } from "@/shared/api/interview-client";
+import type {
+  InterviewReport,
+  ReportQuestionGuide
+} from "@/features/interview-session/model/application/interviewSessionUseCases";
 
 const DEFAULT_STUDY_GUIDE = [
   "답변을 결론-근거-예시 순서로 구조화하세요.",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getLatestActiveInterviewSession } from "@/shared/api/interview";
+import { fetchLatestActiveInterviewSessionUseCase } from "@/features/interview-session/model/application/interviewSessionUseCases";
 import type { InterviewStep } from "@/features/interview-session/model/interviewSession.constants";
 
 type UseInterviewResumeStateOptions = {
@@ -49,7 +49,7 @@ export function useInterviewResumeState({
       }
 
       try {
-        const latestActiveResponse = await getLatestActiveInterviewSession();
+        const latestActiveResponse = await fetchLatestActiveInterviewSessionUseCase();
         const latestActive = latestActiveResponse.data;
         const latestSession = latestActive.session;
         if (!latestActive.has_active_session) {

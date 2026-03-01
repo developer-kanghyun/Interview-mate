@@ -1,4 +1,4 @@
-import type { InterviewCharacter } from "@/shared/api/interview-client";
+import type { InterviewCharacter } from "@/features/interview-session/model/application/interviewSessionUseCases";
 
 export type VisualJobId = "frontend" | "backend" | "app" | "cloud" | "data" | "design" | "pm";
 

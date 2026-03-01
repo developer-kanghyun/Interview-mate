@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getGoogleAuthUrl } from "@/shared/api/interview";
+import { fetchInterviewGoogleAuthUrlUseCase } from "@/features/interview-session/model/application/interviewSessionUseCases";
 import {
   clearPostLoginRedirectTarget,
   clearStoredSessionId,
@@ -69,7 +69,7 @@ export function useInterviewAuthState({
       setIsAuthLoading(true);
 
       try {
-        const response = await getGoogleAuthUrl();
+        const response = await fetchInterviewGoogleAuthUrlUseCase();
         window.location.assign(response.data.auth_url);
       } catch (error) {
         const message = error instanceof Error ? error.message : "Google 로그인 URL 조회에 실패했습니다.";

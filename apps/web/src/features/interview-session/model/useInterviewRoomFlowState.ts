@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { type InterviewEmotion } from "@/shared/api/interview-client";
+import { type InterviewEmotion } from "@/features/interview-session/model/application/interviewSessionUseCases";
 import type { ChatMessage } from "@/shared/chat/ChatBoard";
 import { useSpeechToText } from "@/shared/lib/useSpeechToText";
 import { useRoomAvatarCue } from "@/features/interview-session/model/useRoomAvatarCue";

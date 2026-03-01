@@ -2,11 +2,11 @@
 
 import { useCallback, useMemo, useState } from "react";
 import {
-  listSessions,
+  listInterviewSessionsUseCase,
   type InterviewReport,
   type SessionHistoryItem,
   type StartInterviewPayload
-} from "@/shared/api/interview-client";
+} from "@/features/interview-session/model/application/interviewSessionUseCases";
 import { useFetchReport } from "@/features/interview-report/model/useFetchReport";
 import type {
   UseInterviewReportInsightsOptions,
@@ -82,7 +82,7 @@ export function useInterviewReportInsights({
     setIsInsightsLoading(true);
 
     try {
-      const sessionList = await listSessions(30);
+      const sessionList = await listInterviewSessionsUseCase(30);
       setSessions(sessionList);
     } catch (error) {
       const message = error instanceof Error ? error.message : "세션 목록 조회에 실패했습니다.";

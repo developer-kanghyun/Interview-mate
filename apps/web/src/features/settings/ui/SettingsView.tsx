@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { getMyProfile } from "@/shared/api/interview";
 import {
   getInterviewPreferences,
   setInterviewPreferences,
   type InterviewPreferences
 } from "@/shared/config/interview-preferences";
+import { loadSettingsAccountUseCase } from "@/features/settings/model/application/loadSettingsAccountUseCase";
 import { SettingsAccountCard, type AccountState } from "@/features/settings/ui/SettingsAccountCard";
 import { SettingsPreferencesCard } from "@/features/settings/ui/SettingsPreferencesCard";
 import { defaultPreferences, stackOptionsByRole } from "@/features/settings/ui/settings.constants";
@@ -28,7 +28,7 @@ export function SettingsView() {
     setIsLoadingAccount(true);
     setAccountError(null);
     try {
-      const profile = await getMyProfile();
+      const profile = await loadSettingsAccountUseCase();
       setAccountState({
         name: profile.data.name ?? "이름 미등록",
         email: profile.data.email

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, type Dispatch, type SetStateAction } from "react";
-import { streamQuestion } from "@/shared/api/interview-client";
+import { startQuestionStreamUseCase } from "@/features/interview-session/model/application/interviewSessionUseCases";
 import type { ChatMessage } from "@/shared/chat/ChatBoard";
 import type { AvatarState } from "@/entities/avatar/model/avatarBehaviorMachine";
 
@@ -52,7 +52,7 @@ export function useQuestionStreaming({
       setAvatarState("asking");
 
       try {
-        const unsubscribe = streamQuestion(
+        const unsubscribe = startQuestionStreamUseCase(
           sessionId,
           (event) => {
             if (event.type === "chunk") {

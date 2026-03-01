@@ -1,4 +1,4 @@
-import type { StartInterviewPayload } from "@/shared/api/interview-client";
+import type { StartInterviewPayload } from "@/features/interview-session/model/application/interviewSessionUseCases";
 import type { UseInterviewRoomFlowResult } from "@/features/interview-session/model/interviewRoom.types";
 import type { BuildInterviewShellStateArgs } from "@/features/interview-session/model/interviewShell.presenter";
 import type { InterviewStep } from "@/features/interview-session/model/interviewSession.constants";

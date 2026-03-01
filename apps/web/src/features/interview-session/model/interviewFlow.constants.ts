@@ -1,4 +1,7 @@
-import type { InterviewCharacter, StartInterviewPayload } from "@/shared/api/interview-client";
+import type {
+  InterviewCharacter,
+  StartInterviewPayload
+} from "@/features/interview-session/model/application/interviewSessionUseCases";
 
 export type InterviewStep = "setup" | "room" | "report" | "insights";
 

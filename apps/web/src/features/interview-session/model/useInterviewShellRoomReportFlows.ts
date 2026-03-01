@@ -6,7 +6,7 @@ import { useInterviewReportInsights } from "@/features/interview-session/model/u
 import { useInterviewRoomCompletion } from "@/features/interview-session/model/useInterviewRoomCompletion";
 import { buildRetryPreset } from "@/features/interview-session/model/interviewShell.utils";
 import { resolveAvatarReportState } from "@/entities/avatar/model/avatarBehaviorMachine";
-import type { StartInterviewPayload } from "@/shared/api/interview-client";
+import type { StartInterviewPayload } from "@/features/interview-session/model/application/interviewSessionUseCases";
 import type { InterviewStep } from "@/features/interview-session/model/interviewSession.constants";
 import type { ShowToast, UseInterviewRoomFlowResult } from "@/features/interview-session/model/interviewRoom.types";
 

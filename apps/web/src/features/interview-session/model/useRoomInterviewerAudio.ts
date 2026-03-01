@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import { useInterviewerSpeech } from "@/features/interview-session/model/useInterviewerSpeech";
 import type { SetAvatarState } from "@/features/interview-session/model/interviewerSpeech.types";
-import type { InterviewCharacter } from "@/shared/api/interview-client";
+import type { InterviewCharacter } from "@/features/interview-session/model/application/interviewSessionUseCases";
 import type { ShowToast } from "@/features/interview-session/model/interviewRoom.types";
 
 type UseRoomInterviewerAudioOptions = {
