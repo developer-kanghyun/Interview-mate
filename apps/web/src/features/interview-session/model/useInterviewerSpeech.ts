@@ -1,22 +1,15 @@
 "use client";
 
-import { useCallback, useRef, useState, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from "react";
-import type { AvatarState } from "@/entities/avatar/model/avatarBehaviorMachine";
-
-type UseInterviewerSpeechOptions = {
-  onNotice?: (message: string) => void;
-};
-
-type UseInterviewerSpeechResult = {
-  ttsAudioRef: RefObject<HTMLAudioElement>;
-  stopTtsPlayback: () => void;
-  speakInterviewer: (text: string, character?: string) => Promise<void>;
-  isAutoplayBlocked: boolean;
-  playTtsAudio: () => void;
-};
+import { useCallback, useRef, useState, type MutableRefObject } from "react";
+import { speakWithWebSpeech } from "@/features/interview-session/model/interviewerSpeech.web-speech";
+import {
+  type SetAvatarState,
+  type UseInterviewerSpeechOptions,
+  type UseInterviewerSpeechResult
+} from "@/features/interview-session/model/interviewerSpeech.types";
 
 export function useInterviewerSpeech(
-  setAvatarState: Dispatch<SetStateAction<AvatarState>>,
+  setAvatarState: SetAvatarState,
   options: UseInterviewerSpeechOptions = {}
 ): UseInterviewerSpeechResult {
   const onNotice = options.onNotice;
@@ -26,7 +19,7 @@ export function useInterviewerSpeech(
   const abortControllerRef = useRef<AbortController | null>(null);
   const autoplayNoticeShownRef = useRef(false);
   const fallbackNoticeShownRef = useRef(false);
-  
+
   const [isAutoplayBlocked, setIsAutoplayBlocked] = useState(false);
 
   const pushNotice = useCallback(
@@ -109,12 +102,12 @@ export function useInterviewerSpeech(
         cleanup();
         reject(new Error("TTS 오디오 재생에 실패했습니다."));
       };
-      
+
       const handleAbort = () => {
         cleanup();
         resolve();
       };
-      
+
       const cleanup = () => {
         audioElement.removeEventListener("ended", handleEnded);
         audioElement.removeEventListener("error", handleError);
@@ -127,22 +120,6 @@ export function useInterviewerSpeech(
     });
   }, [pushNotice]);
 
-  const speakWithWebSpeech = useCallback(async (text: string) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      return;
-    }
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "ko-KR";
-
-    await new Promise<void>((resolve, reject) => {
-      utterance.onend = () => resolve();
-      utterance.onerror = () => reject(new Error("speechSynthesis 재생 실패"));
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utterance);
-    });
-  }, []);
-
   const speakInterviewer = useCallback(
     async (text: string, character = "zet") => {
       const trimmedText = text.trim();
@@ -153,9 +130,9 @@ export function useInterviewerSpeech(
 
       const requestId = ttsRequestIdRef.current + 1;
       ttsRequestIdRef.current = requestId;
-      
+
       stopTtsPlayback();
-      
+
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
 
@@ -204,7 +181,7 @@ export function useInterviewerSpeech(
         setAvatarState("listening");
       }
     },
-    [isAutoplayBlocked, playBlobWithAudioElement, pushNotice, setAvatarState, speakWithWebSpeech, stopTtsPlayback]
+    [isAutoplayBlocked, playBlobWithAudioElement, pushNotice, setAvatarState, stopTtsPlayback]
   );
 
   return {
