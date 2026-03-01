@@ -2,7 +2,7 @@
 
 import { Button } from "@/shared/ui/Button";
 import { BrandIdentityLink } from "@/shared/ui/BrandIdentityLink";
-import type { UseInterviewShellStateResult } from "@/widgets/interview/model/useInterviewShellState";
+import type { UseInterviewShellStateResult } from "@/features/interview-session/model/application/useInterviewShellState";
 
 type InterviewShellHeaderProps = {
   shellState: UseInterviewShellStateResult;

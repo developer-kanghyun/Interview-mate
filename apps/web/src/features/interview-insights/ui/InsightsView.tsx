@@ -8,6 +8,7 @@ import { Chip } from "@/shared/ui/Chip";
 import { InlineNotice } from "@/shared/ui/InlineNotice";
 import { LoadingSpinner } from "@/shared/ui/LoadingSpinner";
 import { mapRoleLabel } from "@/features/interview-session/model/interviewSession.constants";
+import { formatInsightSessionStatus } from "@/features/interview-insights/model/domain/insightSessionStatus";
 
 type InsightsViewProps = {
   sessions: SessionHistoryItem[];
@@ -20,10 +21,6 @@ type InsightsViewProps = {
   onRefresh: () => void | Promise<void>;
   onRetryWeakness: () => void | Promise<void>;
 };
-
-function formatSessionStatus(status: SessionHistoryItem["status"]) {
-  return status === "completed" ? "완료" : "진행중";
-}
 
 export function InsightsView({
   sessions,
@@ -83,7 +80,7 @@ export function InsightsView({
                     {mapRoleLabel(session.role)} · {session.stack}
                   </p>
                   <Chip variant={session.status === "completed" ? "success" : "info"}>
-                    {formatSessionStatus(session.status)}
+                    {formatInsightSessionStatus(session.status)}
                   </Chip>
                 </div>
                 <p className="mt-1 text-xs text-im-text-muted">{new Date(session.startedAt).toLocaleString()}</p>

@@ -3,7 +3,7 @@
 import { RoomView } from "@/widgets/interview-room/ui/RoomView";
 import { LoginRequiredModal } from "@/features/auth/ui/LoginRequiredModal";
 import { ResumeSessionModal } from "@/features/interview-session/ui/ResumeSessionModal";
-import { useInterviewShellState } from "@/widgets/interview/model/useInterviewShellState";
+import { useInterviewShellState } from "@/features/interview-session/model/application/useInterviewShellState";
 import type { InterviewStep } from "@/features/interview-session/model/interviewSession.constants";
 import { getAuthRequiredMessage } from "@/shared/auth/session";
 import { InterviewShellHeader } from "@/widgets/interview/ui/InterviewShellHeader";

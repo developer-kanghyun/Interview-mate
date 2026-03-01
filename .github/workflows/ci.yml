@@ -48,7 +48,13 @@ jobs:
       - name: Ensure Gradle wrapper is executable
         run: chmod +x ./server/gradlew
 
-      - name: Run server tests
+      - name: Run server architecture tests
+        env:
+          OPENAI_API_KEY: test-openai-key
+          DB_PASSWORD: test-password
+        run: ./server/gradlew test --tests com.interviewmate.architecture.ArchitectureDependencyTest --no-daemon
+
+      - name: Run full server tests
         env:
           OPENAI_API_KEY: test-openai-key
           DB_PASSWORD: test-password
