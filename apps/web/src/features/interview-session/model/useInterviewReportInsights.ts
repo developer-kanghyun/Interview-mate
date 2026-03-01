@@ -12,6 +12,7 @@ import { useFetchReport } from "@/features/interview-report/model/useFetchReport
 import type { InterviewStep } from "@/features/interview-session/model/interviewSession.constants";
 import { useMoveToReport } from "@/features/interview-session/model/useMoveToReport";
 import { buildWeakRetryPayloads } from "@/features/interview-session/model/interviewReportInsights.utils";
+import { selectReportInsightsSummary } from "@/features/interview-session/model/interviewReportInsights.selectors";
 
 type UseInterviewReportInsightsOptions = {
   sessionId: string | null;
@@ -130,16 +131,10 @@ export function useInterviewReportInsights({
     }
   }, [isInsightsLoading, setAuthPromptReason, setStep, setUiError, syncPathname]);
 
-  const weakKeywords = useMemo(() => report?.weakKeywords ?? [], [report]);
-  const studyGuide = useMemo(
-    () =>
-      report?.studyGuide ?? [
-        "답변을 결론-근거-예시 순서로 구조화하세요.",
-        "약점 키워드 위주로 재연습 세션을 반복하세요."
-      ],
+  const { weakKeywords, studyGuide, questionGuides } = useMemo(
+    () => selectReportInsightsSummary(report),
     [report]
   );
-  const questionGuides = useMemo(() => report?.questionGuides ?? [], [report]);
 
   const handleRetryWeakness = useCallback(async () => {
     if (isRetryingWeakness || isStarting) {
