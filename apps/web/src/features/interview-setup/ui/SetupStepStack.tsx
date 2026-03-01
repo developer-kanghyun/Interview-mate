@@ -1,7 +1,10 @@
 import type { StartInterviewPayload } from "@/features/interview/start-session/model/application/startInterviewSessionUseCase";
 import type { Dispatch, SetStateAction } from "react";
 import { MAX_STACKS, stepBodyClass } from "@/features/interview-setup/ui/setupView.constants";
-import { toggleSelectedStack } from "@/features/interview-setup/model/domain/setupStackPolicy";
+import {
+  serializeSetupStacksUseCase,
+  toggleSetupStackUseCase
+} from "@/features/interview-setup/model/application/setupStackUseCases";
 
 type SetupStepStackProps = {
   value: StartInterviewPayload;
@@ -43,9 +46,9 @@ export function SetupStepStack({
                   type="button"
                   disabled={isDisabled}
                   onClick={() => {
-                    const next = toggleSelectedStack(selectedStacks, stack, MAX_STACKS);
+                    const next = toggleSetupStackUseCase(selectedStacks, stack, MAX_STACKS);
                     setSelectedStacks(next);
-                    onChange({ ...value, stack: next.join(",") });
+                    onChange({ ...value, stack: serializeSetupStacksUseCase(next) });
                   }}
                   className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition-[background-color,border-color,color,opacity] ${
                     isChosen

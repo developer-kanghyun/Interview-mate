@@ -8,7 +8,10 @@ import { Chip } from "@/shared/ui/Chip";
 import { InlineNotice } from "@/shared/ui/InlineNotice";
 import { LoadingSpinner } from "@/shared/ui/LoadingSpinner";
 import { mapRoleLabel } from "@/features/interview-session/model/interviewSession.constants";
-import { formatInsightSessionStatus } from "@/features/interview-insights/model/domain/insightSessionStatus";
+import {
+  formatInsightSessionStatusUseCase,
+  formatInsightStartedAtUseCase
+} from "@/features/interview-insights/model/application/insightPresentationUseCases";
 
 type InsightsViewProps = {
   sessions: SessionHistoryItem[];
@@ -80,10 +83,12 @@ export function InsightsView({
                     {mapRoleLabel(session.role)} · {session.stack}
                   </p>
                   <Chip variant={session.status === "completed" ? "success" : "info"}>
-                    {formatInsightSessionStatus(session.status)}
+                    {formatInsightSessionStatusUseCase(session.status)}
                   </Chip>
                 </div>
-                <p className="mt-1 text-xs text-im-text-muted">{new Date(session.startedAt).toLocaleString()}</p>
+                <p className="mt-1 text-xs text-im-text-muted">
+                  {formatInsightStartedAtUseCase(session.startedAt)}
+                </p>
                 <p className="mt-2 text-sm text-im-text-muted">
                   평균 점수 {session.totalScore}점 · 답변 {session.questionCount}개
                 </p>

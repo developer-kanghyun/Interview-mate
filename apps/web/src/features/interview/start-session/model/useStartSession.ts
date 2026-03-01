@@ -5,6 +5,7 @@ import {
   startInterviewSessionUseCase,
   type StartInterviewPayload
 } from "@/features/interview/start-session/model/application/startInterviewSessionUseCase";
+import { resolveStartSessionErrorMessage } from "@/features/interview/start-session/model/domain/startSessionError";
 
 export function useStartSession() {
   const [isStarting, setIsStarting] = useState(false);
@@ -22,7 +23,7 @@ export function useStartSession() {
     try {
       return await startInterviewSessionUseCase(payload);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "면접 시작에 실패했습니다.";
+      const message = resolveStartSessionErrorMessage(error);
       setStartError(message);
       throw error;
     } finally {

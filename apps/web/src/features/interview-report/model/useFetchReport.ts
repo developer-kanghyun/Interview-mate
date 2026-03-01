@@ -5,9 +5,10 @@ import {
   fetchInterviewReportUseCase,
   type InterviewReport
 } from "@/features/interview-report/model/application/fetchInterviewReportUseCase";
-import { getAuthRequiredMessage } from "@/shared/auth/session";
-
-type ReportFetchErrorCode = "auth_required" | "unknown";
+import {
+  classifyReportFetchError,
+  type ReportFetchErrorCode
+} from "@/features/interview-report/model/domain/reportError";
 
 type UseFetchReportResult = {
   isFetchingReport: boolean;
@@ -31,11 +32,7 @@ export function useFetchReport(): UseFetchReportResult {
     } catch (error) {
       const message = error instanceof Error ? error.message : "리포트 조회에 실패했습니다.";
       setReportFetchError(message);
-      if (message === getAuthRequiredMessage()) {
-        setReportFetchErrorCode("auth_required");
-      } else {
-        setReportFetchErrorCode("unknown");
-      }
+      setReportFetchErrorCode(classifyReportFetchError(message));
       return null;
     } finally {
       setIsFetchingReport(false);
