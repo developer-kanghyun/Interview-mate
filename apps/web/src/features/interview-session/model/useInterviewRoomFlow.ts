@@ -1,28 +1,19 @@
 "use client";
 
-import {
-  useCallback,
-  useRef,
-  useState
-} from "react";
-import { type InterviewEmotion } from "@/shared/api/interview-client";
+import { useCallback } from "react";
 import type { ChatMessage } from "@/shared/chat/ChatBoard";
 import { useQuestionStreaming } from "@/features/interview-session/model/useQuestionStreaming";
 import {
   useInterviewSubmitAnswer
 } from "@/features/interview-session/model/useInterviewSubmitAnswer";
-import { useSpeechToText } from "@/shared/lib/useSpeechToText";
-import { useRoomAvatarCue } from "@/features/interview-session/model/useRoomAvatarCue";
 import { useRoomInterviewerAudio } from "@/features/interview-session/model/useRoomInterviewerAudio";
 import { useRoomRecordingController } from "@/features/interview-session/model/useRoomRecordingController";
 import { useRoomLifecycleEffects } from "@/features/interview-session/model/useRoomLifecycleEffects";
 import { useRoomSpeechErrorNotice } from "@/features/interview-session/model/useRoomSpeechErrorNotice";
 import { useRoomUiErrorRouter } from "@/features/interview-session/model/useRoomUiErrorRouter";
 import { useRoomStateReset } from "@/features/interview-session/model/useRoomStateReset";
-import type {
-  UseInterviewRoomFlowOptions,
-  UseInterviewRoomFlowResult
-} from "@/features/interview-session/model/interviewRoom.types";
+import { useInterviewRoomFlowState } from "@/features/interview-session/model/useInterviewRoomFlowState";
+import type { UseInterviewRoomFlowOptions, UseInterviewRoomFlowResult } from "@/features/interview-session/model/interviewRoom.types";
 
 export function useInterviewRoomFlow({
   step,
@@ -38,36 +29,12 @@ export function useInterviewRoomFlow({
   setUiError,
   setAuthPromptReason
 }: UseInterviewRoomFlowOptions): UseInterviewRoomFlowResult {
-  const [streamingQuestionText, setStreamingQuestionText] = useState("");
-  const [isQuestionStreaming, setIsQuestionStreaming] = useState(false);
-  const [questionOrder, setQuestionOrder] = useState(1);
-  const [followupCount, setFollowupCount] = useState(0);
-  const [answerText, setAnswerText] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [emotion, setEmotion] = useState<InterviewEmotion>("neutral");
-  const {
-    avatarState,
-    setAvatarState,
-    effectiveAvatarState,
-    avatarCueToken,
-    triggerAvatarCue,
-    clearAvatarCue,
-    clearAvatarCueTimer
-  } = useRoomAvatarCue();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const lastFollowupCountRef = useRef(0);
-  const {
-    isRecording,
-    isSupported: isSttSupported,
-    speechError,
-    startRecording,
-    stopRecording,
-    clearSpeechError
-  } = useSpeechToText();
+  const { streamingQuestionText, setStreamingQuestionText, isQuestionStreaming, setIsQuestionStreaming, questionOrder, setQuestionOrder, followupCount, setFollowupCount, answerText, setAnswerText, messages, setMessages, emotion, setEmotion, avatarState, setAvatarState, effectiveAvatarState, avatarCueToken, triggerAvatarCue, clearAvatarCue, clearAvatarCueTimer, isSubmitting, setIsSubmitting, lastFollowupCountRef, isRecording, isSttSupported, speechError, startRecording, stopRecording, clearSpeechError } =
+    useInterviewRoomFlowState();
 
   const appendMessage = useCallback((nextMessage: ChatMessage) => {
     setMessages((previous) => [...previous, nextMessage]);
-  }, []);
+  }, [setMessages]);
 
   const { ttsAudioRef, stopTtsPlayback, isAutoplayBlocked, playTtsAudio, speakInterviewer } = useRoomInterviewerAudio({
     setAvatarState,
