@@ -36,6 +36,7 @@ import { useStartSession } from "@/features/interview/start-session/model/useSta
 import { useInterviewResumeActions } from "@/features/interview-session/model/useInterviewResumeActions";
 import { useInterviewShellNavigation } from "@/features/interview-session/model/useInterviewShellNavigation";
 import { useInterviewShellToast } from "@/features/interview-session/model/useInterviewShellToast";
+import { useInterviewUiRecovery } from "@/features/interview-session/model/useInterviewUiRecovery";
 import {
   buildRetryPreset,
   resolveSessionIdFromPath,
@@ -218,11 +219,6 @@ export function useInterviewShellOrchestrator(
     onSyncResumeCandidate: syncResumeCandidate,
     onResetResumeState: resetResumeState
   });
-
-  const clearUiError = useCallback(() => {
-    setUiError(null);
-    setAuthPromptReason(null);
-  }, [setAuthPromptReason]);
 
   const runBackendHealthCheck = useCallback(async () => {
     setBackendStatus("checking");
@@ -446,20 +442,15 @@ export function useInterviewShellOrchestrator(
     }
     await moveToReport(sessionId);
   }, [isExiting, isResumeResolving, moveToReport, sessionId, syncPathname]);
-
-  const handleRetryUiError = useCallback(async () => {
-    setUiError(null);
-    setAuthPromptReason(null);
-    if (step === "report" && sessionId) {
-      await moveToReport(sessionId);
-      return;
-    }
-    if (step === "insights") {
-      await handleGoInsights();
-      return;
-    }
-    await runBackendHealthCheck();
-  }, [handleGoInsights, moveToReport, runBackendHealthCheck, sessionId, setAuthPromptReason, step]);
+  const { clearUiError, handleRetryUiError } = useInterviewUiRecovery({
+    step,
+    sessionId,
+    setUiError,
+    setAuthPromptReason,
+    moveToReport,
+    handleGoInsights,
+    runBackendHealthCheck
+  });
   const isMemberAuthenticated = useMemo(
     () => isMemberAuthenticatedBase && reportFlow.reportErrorCode !== "auth_required",
     [isMemberAuthenticatedBase, reportFlow.reportErrorCode]
