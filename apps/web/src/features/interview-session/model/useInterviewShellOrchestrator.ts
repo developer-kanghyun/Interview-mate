@@ -20,9 +20,7 @@ import { buildInterviewShellPresenterArgs } from "@/features/interview-session/m
 
 export type { UseInterviewShellStateOptions, UseInterviewShellStateResult };
 
-export function useInterviewShellOrchestrator(
-  options: UseInterviewShellStateOptions = {}
-): UseInterviewShellStateResult {
+export function useInterviewShellOrchestrator(options: UseInterviewShellStateOptions = {}): UseInterviewShellStateResult {
   const pathname = usePathname();
   const { pushToast } = useToast();
   const {
@@ -47,9 +45,7 @@ export function useInterviewShellOrchestrator(
     routeSessionId
   } = useInterviewShellCoreState({ pathname, options });
   const { syncPathname, updateStep } = useInterviewShellNavigation(sessionId, setStep);
-
   const { showToast, showToastError } = useInterviewShellToast(pushToast);
-
   const {
     resumeCandidateSessionId,
     isResumePromptOpen,
@@ -77,9 +73,7 @@ export function useInterviewShellOrchestrator(
     showToastError,
     setUiError
   });
-
   const runBackendHealthCheck = useInterviewShellBackendHealth({ setBackendStatus, setBackendStatusMessage });
-
   const { isStarting, startSession, startError, clearStartError } = useStartSession();
   const [pendingCompletedSessionId, setPendingCompletedSessionId] = useState<string | null>(null);
   const { roomFlow, reportFlow, moveToReport } = useInterviewShellRoomReportFlows({
@@ -134,7 +128,6 @@ export function useInterviewShellOrchestrator(
     restoreSessionIntoRoom,
     autoRestoreAttemptedSessionRef
   });
-
   const { beginInterview, handleStartInterview, handleExit } = useInterviewShellSessionFlow({
     authStatus,
     retryAuthBootstrap,
@@ -171,39 +164,36 @@ export function useInterviewShellOrchestrator(
     handleGoInsights: reportFlow.handleGoInsights,
     runBackendHealthCheck
   });
-
-  return buildInterviewShellState(
-    buildInterviewShellPresenterArgs({
-      step,
-      updateStep,
-      uiError,
-      clearUiError,
-      handleRetryUiError,
-      authStatus,
-      isMemberAuthenticatedBase,
-      isAuthRequired,
-      authRedirectTarget,
-      handleGoogleLogin,
-      handleGoogleLogout,
-      isAuthLoading,
-      backendStatus,
-      backendStatusMessage,
-      runBackendHealthCheck,
-      setupPayload,
-      setSetupPayload,
-      isStarting,
-      sessionId,
-      roomFlow,
-      reportFlow,
-      handleStartInterview,
-      handleExit,
-      isExiting,
-      resumeCandidateSessionId,
-      isResumePromptOpen,
-      isResumeCandidateGuest,
-      isResumeResolving,
-      handleContinueResumeCandidate,
-      handleDismissResumeCandidate
-    })
-  );
+  return buildInterviewShellState(buildInterviewShellPresenterArgs({
+    step,
+    updateStep,
+    uiError,
+    clearUiError,
+    handleRetryUiError,
+    authStatus,
+    isMemberAuthenticatedBase,
+    isAuthRequired,
+    authRedirectTarget,
+    handleGoogleLogin,
+    handleGoogleLogout,
+    isAuthLoading,
+    backendStatus,
+    backendStatusMessage,
+    runBackendHealthCheck,
+    setupPayload,
+    setSetupPayload,
+    isStarting,
+    sessionId,
+    roomFlow,
+    reportFlow,
+    handleStartInterview,
+    handleExit,
+    isExiting,
+    resumeCandidateSessionId,
+    isResumePromptOpen,
+    isResumeCandidateGuest,
+    isResumeResolving,
+    handleContinueResumeCandidate,
+    handleDismissResumeCandidate
+  }));
 }
