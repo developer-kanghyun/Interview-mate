@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { pingBackendHealth } from "@/shared/api/interview-client";
+import { checkInterviewBackendHealthUseCase } from "@/features/interview-session/model/application/interviewSessionUseCases";
 
 type BackendStatus = "checking" | "ok" | "error";
 
@@ -18,7 +18,7 @@ export function useInterviewShellBackendHealth({
     setBackendStatus("checking");
     setBackendStatusMessage(null);
     try {
-      await pingBackendHealth();
+      await checkInterviewBackendHealthUseCase();
       setBackendStatus("ok");
     } catch (error) {
       const message = error instanceof Error ? error.message : "백엔드 연결 확인에 실패했습니다.";

@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
-import { submitAnswer, type InterviewEmotion } from "@/shared/api/interview-client";
+import {
+  submitInterviewAnswerUseCase,
+  type InterviewEmotion
+} from "@/features/interview-session/model/application/interviewSessionUseCases";
 import type { ChatMessage } from "@/shared/chat/ChatBoard";
 import {
   resolveAvatarTransientStateFromAnswer,
@@ -96,7 +99,7 @@ export function useInterviewSubmitAnswer({
       setUiError(null);
 
       try {
-        const response = await submitAnswer(sessionId, submittedAnswer, inputType);
+        const response = await submitInterviewAnswerUseCase(sessionId, submittedAnswer, inputType);
         const previousFollowupCount = lastFollowupCountRef.current;
         setEmotion(response.suggestedEmotion);
         setFollowupCount(response.followupCount);

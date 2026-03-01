@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { completeGoogleAuth } from "@/shared/api/interview";
+import { completeGoogleAuthUseCase } from "@/features/auth/model/application/completeGoogleAuthUseCase";
 import {
   clearPostLoginRedirectTarget,
   getPostLoginRedirectTarget
@@ -63,7 +63,7 @@ export default function GoogleCallbackClient({ code, state, oauthError }: Props)
       }
 
       try {
-        await completeGoogleAuth(code, state);
+        await completeGoogleAuthUseCase(code, state);
         if (!active) {
           return;
         }

@@ -5,7 +5,7 @@ import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type {
   StartInterviewPayload,
   StartInterviewResponse
-} from "@/shared/api/interview-client";
+} from "@/features/interview/start-session/model/application/startInterviewSessionUseCase";
 import {
   clearStoredSessionId,
   setStoredSessionId

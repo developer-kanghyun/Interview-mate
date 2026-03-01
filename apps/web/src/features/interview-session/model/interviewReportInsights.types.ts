@@ -3,7 +3,7 @@ import type {
   ReportQuestionGuide,
   SessionHistoryItem,
   StartInterviewPayload
-} from "@/shared/api/interview-client";
+} from "@/features/interview-session/model/application/interviewSessionUseCases";
 import type { InterviewStep } from "@/features/interview-session/model/interviewSession.constants";
 
 export type UseInterviewReportInsightsOptions = {

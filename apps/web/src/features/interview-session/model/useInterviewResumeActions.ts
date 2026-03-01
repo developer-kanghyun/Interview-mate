@@ -1,8 +1,11 @@
 "use client";
 
 import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
-import { getInterviewSessionState } from "@/shared/api/interview";
-import { restoreInterviewSession, type StartInterviewPayload } from "@/shared/api/interview-client";
+import {
+  fetchInterviewSessionStateUseCase,
+  restoreInterviewSessionUseCase,
+  type StartInterviewPayload
+} from "@/features/interview-session/model/application/interviewSessionUseCases";
 import { clearStoredSessionId } from "@/shared/auth/session";
 import { buildSetupPayloadFromSessionState } from "@/features/interview-session/model/interviewShell.utils";
 import type { InterviewStep } from "@/features/interview-session/model/interviewSession.constants";
@@ -55,13 +58,13 @@ export function useInterviewResumeActions({
       setUiError(null);
 
       try {
-        const stateResponse = await getInterviewSessionState(targetSessionId);
+        const stateResponse = await fetchInterviewSessionStateUseCase(targetSessionId);
         const state = stateResponse.data;
         if (state.status !== "in_progress" || !state.current_question) {
           throw new Error("재개 가능한 진행중 세션이 없습니다. 새 면접을 시작해 주세요.");
         }
 
-        await restoreInterviewSession(targetSessionId);
+        await restoreInterviewSessionUseCase(targetSessionId);
 
         setSessionId(targetSessionId);
         setSetupPayload(buildSetupPayloadFromSessionState(state));

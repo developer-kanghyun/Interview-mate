@@ -1,5 +1,5 @@
 import Image from "next/image";
-import type { StartInterviewPayload } from "@/shared/api/interview-client";
+import type { StartInterviewPayload } from "@/features/interview/start-session/model/application/startInterviewSessionUseCase";
 import { characterOptions, stepBodyClass } from "@/features/interview-setup/ui/setupView.constants";
 
 type SetupStepCharacterProps = {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import type { StartInterviewPayload } from "@/shared/api/interview-client";
+import type { StartInterviewPayload } from "@/features/interview/start-session/model/application/startInterviewSessionUseCase";
 import { SetupActions } from "@/features/interview-setup/ui/SetupActions";
 import { SetupProgress } from "@/features/interview-setup/ui/SetupProgress";
 import { SetupStepCharacter } from "@/features/interview-setup/ui/SetupStepCharacter";

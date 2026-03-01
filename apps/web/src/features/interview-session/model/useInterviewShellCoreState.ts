@@ -6,7 +6,7 @@ import {
   resolveSessionIdFromPath,
   resolveStepFromPath
 } from "@/features/interview-session/model/interviewShell.utils";
-import type { StartInterviewPayload } from "@/shared/api/interview-client";
+import type { StartInterviewPayload } from "@/features/interview-session/model/application/interviewSessionUseCases";
 import type { UseInterviewShellStateOptions } from "@/features/interview-session/model/interviewShell.types";
 
 type UseInterviewShellCoreStateOptions = {

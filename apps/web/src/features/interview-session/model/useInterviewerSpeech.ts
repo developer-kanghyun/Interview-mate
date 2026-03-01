@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState, type MutableRefObject } from "react";
+import { requestInterviewerSpeechUseCase } from "@/features/interview-session/model/application/requestInterviewerSpeechUseCase";
 import {
   playBlobWithAudioElement,
   resetTtsAudioElement
@@ -87,15 +88,9 @@ export function useInterviewerSpeech(
       let playedFromBackend = false;
 
       try {
-        const response = await fetch("/api/tts", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            text: trimmedText,
-            character: character
-          }),
+        const response = await requestInterviewerSpeechUseCase({
+          text: trimmedText,
+          character,
           signal: abortController.signal
         });
 

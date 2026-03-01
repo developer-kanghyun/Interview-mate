@@ -1,5 +1,8 @@
 import type { Dispatch, RefObject, SetStateAction } from "react";
-import type { InterviewEmotion, StartInterviewPayload } from "@/shared/api/interview-client";
+import type {
+  InterviewEmotion,
+  StartInterviewPayload
+} from "@/features/interview-session/model/application/interviewSessionUseCases";
 import type { ChatMessage } from "@/shared/chat/ChatBoard";
 import type { InterviewStep } from "@/features/interview-session/model/interviewSession.constants";
 import type { AvatarState } from "@/entities/avatar/model/avatarBehaviorMachine";

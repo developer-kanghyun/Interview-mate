@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { getReport, type InterviewReport } from "@/shared/api/interview-client";
+import {
+  fetchInterviewReportUseCase,
+  type InterviewReport
+} from "@/features/interview-report/model/application/fetchInterviewReportUseCase";
 import { getAuthRequiredMessage } from "@/shared/auth/session";
 
 type ReportFetchErrorCode = "auth_required" | "unknown";
@@ -24,7 +27,7 @@ export function useFetchReport(): UseFetchReportResult {
     setReportFetchError(null);
     setReportFetchErrorCode(null);
     try {
-      return await getReport(sessionId);
+      return await fetchInterviewReportUseCase(sessionId);
     } catch (error) {
       const message = error instanceof Error ? error.message : "리포트 조회에 실패했습니다.";
       setReportFetchError(message);

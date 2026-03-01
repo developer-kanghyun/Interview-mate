@@ -1,7 +1,9 @@
 "use client";
 
-import type { SessionStateResponse } from "@/shared/api/interview";
-import type { StartInterviewPayload } from "@/shared/api/interview-client";
+import type {
+  SessionStateResponse,
+  StartInterviewPayload
+} from "@/features/interview-session/model/application/interviewSessionUseCases";
 import {
   defaultStackByRole,
   mapCharacterFromApi,

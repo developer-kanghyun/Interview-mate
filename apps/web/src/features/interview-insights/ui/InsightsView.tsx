@@ -1,4 +1,7 @@
-import type { ReportQuestionGuide, SessionHistoryItem } from "@/shared/api/interview-client";
+import type {
+  ReportQuestionGuide,
+  SessionHistoryItem
+} from "@/features/interview-session/model/application/interviewSessionUseCases";
 import { SubCard } from "@/shared/cards/SubCard";
 import { Button } from "@/shared/ui/Button";
 import { Chip } from "@/shared/ui/Chip";

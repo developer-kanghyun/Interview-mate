@@ -1,4 +1,4 @@
-import type { InterviewReport } from "@/shared/api/interview-client";
+import type { InterviewReport } from "@/features/interview-session/model/application/interviewSessionUseCases";
 import { AxisCard } from "@/shared/cards/AxisCard";
 import { MetricCard } from "@/shared/cards/MetricCard";
 import { SubCard } from "@/shared/cards/SubCard";

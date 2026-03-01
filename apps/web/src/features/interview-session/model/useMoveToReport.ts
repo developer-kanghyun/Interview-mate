@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, type Dispatch, type SetStateAction } from "react";
-import { listSessions, type InterviewReport, type SessionHistoryItem } from "@/shared/api/interview-client";
+import {
+  listInterviewSessionsUseCase,
+  type InterviewReport,
+  type SessionHistoryItem
+} from "@/features/interview-session/model/application/interviewSessionUseCases";
 import { clearStoredSessionId } from "@/shared/auth/session";
 import type { InterviewStep } from "@/features/interview-session/model/interviewSession.constants";
 
@@ -52,7 +56,7 @@ export function useMoveToReport({
       setReport(null);
 
       try {
-        const sessionsPromise = listSessions(30);
+        const sessionsPromise = listInterviewSessionsUseCase(30);
         const nextReport = await fetchReport(targetSessionId);
 
         try {

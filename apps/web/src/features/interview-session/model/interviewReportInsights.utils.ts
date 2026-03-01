@@ -1,4 +1,7 @@
-import type { InterviewReport, StartInterviewPayload } from "@/shared/api/interview-client";
+import type {
+  InterviewReport,
+  StartInterviewPayload
+} from "@/features/interview-session/model/application/interviewSessionUseCases";
 
 type RetryPreset = {
   jobRole?: StartInterviewPayload["jobRole"];
