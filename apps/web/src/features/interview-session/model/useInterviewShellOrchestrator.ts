@@ -1,15 +1,8 @@
 "use client";
 
-import {
-  useCallback,
-  useMemo,
-  useState
-} from "react";
+import { useCallback, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import {
-  pingBackendHealth,
-  type StartInterviewPayload
-} from "@/shared/api/interview-client";
+import { type StartInterviewPayload } from "@/shared/api/interview-client";
 import { useInterviewAuthState } from "@/features/interview-session/model/useInterviewAuthState";
 import { buildInterviewShellState } from "@/features/interview-session/model/interviewShell.presenter";
 import { useInterviewShellBootstrapEffects } from "@/features/interview-session/model/useInterviewShellBootstrapEffects";
@@ -21,19 +14,14 @@ import { useInterviewResumeActions } from "@/features/interview-session/model/us
 import { useInterviewShellNavigation } from "@/features/interview-session/model/useInterviewShellNavigation";
 import { useInterviewShellToast } from "@/features/interview-session/model/useInterviewShellToast";
 import { useInterviewUiRecovery } from "@/features/interview-session/model/useInterviewUiRecovery";
-import {
-  buildRetryPreset
-} from "@/features/interview-session/model/interviewShell.utils";
-import {
-  resolveAvatarReportState
-} from "@/entities/avatar/model/avatarBehaviorMachine";
+import { buildRetryPreset } from "@/features/interview-session/model/interviewShell.utils";
+import { resolveAvatarReportState } from "@/entities/avatar/model/avatarBehaviorMachine";
 import { useToast } from "@/shared/ui/toast/useToast";
-import type {
-  UseInterviewShellStateOptions,
-  UseInterviewShellStateResult
-} from "@/features/interview-session/model/interviewShell.types";
+import type { UseInterviewShellStateOptions, UseInterviewShellStateResult } from "@/features/interview-session/model/interviewShell.types";
 import { useInterviewShellCoreState } from "@/features/interview-session/model/useInterviewShellCoreState";
 import { useInterviewShellSessionFlow } from "@/features/interview-session/model/useInterviewShellSessionFlow";
+import { useInterviewShellBackendHealth } from "@/features/interview-session/model/useInterviewShellBackendHealth";
+import { useInterviewRoomCompletion } from "@/features/interview-session/model/useInterviewRoomCompletion";
 
 export type { UseInterviewShellStateOptions, UseInterviewShellStateResult };
 
@@ -65,9 +53,7 @@ export function useInterviewShellOrchestrator(
   } = useInterviewShellCoreState({ pathname, options });
   const { syncPathname, updateStep } = useInterviewShellNavigation(sessionId, setStep);
 
-  const updateSetupPayload = useCallback((next: StartInterviewPayload) => {
-    setSetupPayload(next);
-  }, [setSetupPayload]);
+  const updateSetupPayload = useCallback((next: StartInterviewPayload) => setSetupPayload(next), [setSetupPayload]);
   const { showToast, showToastError } = useInterviewShellToast(pushToast);
 
   const {
@@ -108,21 +94,13 @@ export function useInterviewShellOrchestrator(
     onResetResumeState: resetResumeState
   });
 
-  const runBackendHealthCheck = useCallback(async () => {
-    setBackendStatus("checking");
-    setBackendStatusMessage(null);
-    try {
-      await pingBackendHealth();
-      setBackendStatus("ok");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "백엔드 연결 확인에 실패했습니다.";
-      setBackendStatus("error");
-      setBackendStatusMessage(message);
-    }
-  }, [setBackendStatus, setBackendStatusMessage]);
+  const runBackendHealthCheck = useInterviewShellBackendHealth({ setBackendStatus, setBackendStatusMessage });
 
   const { isStarting, startSession, startError, clearStartError } = useStartSession();
   const [pendingCompletedSessionId, setPendingCompletedSessionId] = useState<string | null>(null);
+  const handleRoomSessionComplete = useInterviewRoomCompletion({
+    setStep, syncPathname, setAuthPromptReason, setUiError, setPendingCompletedSessionId
+  });
 
   const roomFlow = useInterviewRoomFlow({
     step,
@@ -134,16 +112,7 @@ export function useInterviewShellOrchestrator(
     isResumeResolving,
     showToast,
     showToastError,
-    onSessionComplete: async (targetSessionId, guest) => {
-      if (guest) {
-        setStep("report");
-        syncPathname(`/report/${encodeURIComponent(targetSessionId)}`);
-        setAuthPromptReason("auth_required");
-        setUiError(null);
-        return;
-      }
-      setPendingCompletedSessionId(targetSessionId);
-    },
+    onSessionComplete: handleRoomSessionComplete,
     setUiError,
     setAuthPromptReason
   });
@@ -183,9 +152,6 @@ export function useInterviewShellOrchestrator(
     buildRetryPreset
   });
   const moveToReport = reportFlow.moveToReport;
-  const handleGoInsights = reportFlow.handleGoInsights;
-  const clearReportFetchError = reportFlow.clearReportFetchError;
-  const resetReportState = reportFlow.resetReportState;
   const { restoreSessionIntoRoom, handleContinueResumeCandidate } = useInterviewResumeActions({
     resumeCandidateSessionId,
     isResumeResolving,
@@ -198,7 +164,7 @@ export function useInterviewShellOrchestrator(
     setSessionId,
     setSetupPayload,
     resetRoomState,
-    resetReportState,
+    resetReportState: reportFlow.resetReportState,
     resetResumeState,
     showToastError,
     syncPathname,
@@ -231,14 +197,14 @@ export function useInterviewShellOrchestrator(
     syncPathname,
     setUiError,
     setAuthPromptReason,
-    clearReportFetchError,
+    clearReportFetchError: reportFlow.clearReportFetchError,
     setIsExiting,
     resetResumeState,
     clearStartError,
     startSession,
     autoRestoreAttemptedSessionRef,
     setSessionId,
-    resetReportState,
+    resetReportState: reportFlow.resetReportState,
     resetRoomState,
     startRoomQuestionStream
   });
@@ -249,16 +215,13 @@ export function useInterviewShellOrchestrator(
     setUiError,
     setAuthPromptReason,
     moveToReport,
-    handleGoInsights,
+    handleGoInsights: reportFlow.handleGoInsights,
     runBackendHealthCheck
   });
   const isMemberAuthenticated = useMemo(
     () => isMemberAuthenticatedBase && reportFlow.reportErrorCode !== "auth_required",
     [isMemberAuthenticatedBase, reportFlow.reportErrorCode]
   );
-  const weakKeywords = reportFlow.weakKeywords;
-  const studyGuide = reportFlow.studyGuide;
-  const questionGuides = reportFlow.questionGuides;
 
   return buildInterviewShellState({
     step,
@@ -308,13 +271,13 @@ export function useInterviewShellOrchestrator(
     isReportLoading: reportFlow.isReportLoading,
     reportErrorMessage: reportFlow.reportErrorMessage,
     handleRetryReport: reportFlow.handleRetryReport,
-    handleGoInsights,
+    handleGoInsights: reportFlow.handleGoInsights,
     isInsightsLoading: reportFlow.isInsightsLoading,
     insightsErrorMessage: reportFlow.insightsErrorMessage,
     sessions: reportFlow.sessions,
-    weakKeywords,
-    studyGuide,
-    questionGuides,
+    weakKeywords: reportFlow.weakKeywords,
+    studyGuide: reportFlow.studyGuide,
+    questionGuides: reportFlow.questionGuides,
     isRetryingWeakness: reportFlow.isRetryingWeakness,
     handleRetryWeakness: reportFlow.handleRetryWeakness,
     resumeCandidateSessionId,
