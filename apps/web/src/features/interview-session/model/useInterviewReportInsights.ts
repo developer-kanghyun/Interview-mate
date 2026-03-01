@@ -4,56 +4,17 @@ import { useCallback, useMemo, useState } from "react";
 import {
   listSessions,
   type InterviewReport,
-  type ReportQuestionGuide,
   type SessionHistoryItem,
   type StartInterviewPayload
 } from "@/shared/api/interview-client";
 import { useFetchReport } from "@/features/interview-report/model/useFetchReport";
-import type { InterviewStep } from "@/features/interview-session/model/interviewSession.constants";
+import type {
+  UseInterviewReportInsightsOptions,
+  UseInterviewReportInsightsResult
+} from "@/features/interview-session/model/interviewReportInsights.types";
 import { useMoveToReport } from "@/features/interview-session/model/useMoveToReport";
 import { buildWeakRetryPayloads } from "@/features/interview-session/model/interviewReportInsights.utils";
 import { selectReportInsightsSummary } from "@/features/interview-session/model/interviewReportInsights.selectors";
-
-type UseInterviewReportInsightsOptions = {
-  sessionId: string | null;
-  setupPayload: StartInterviewPayload;
-  setSetupPayload: (next: StartInterviewPayload) => void;
-  setStep: (next: InterviewStep) => void;
-  syncPathname: (nextPath: string, mode?: "push" | "replace") => void;
-  isStarting: boolean;
-  isExiting: boolean;
-  setIsExiting: (next: boolean) => void;
-  setUiError: (next: string | null) => void;
-  setAuthPromptReason: (next: "auth_required" | null) => void;
-  showToastError: (message: string, dedupeKey?: string) => void;
-  onBeforeMoveToReport: () => void;
-  onReportResolved: (report: InterviewReport) => void;
-  onRetryInterview: (payload: StartInterviewPayload) => Promise<void>;
-  buildRetryPreset: (weakKeywords: string[], fallback: StartInterviewPayload) => {
-    jobRole?: StartInterviewPayload["jobRole"];
-    stack?: StartInterviewPayload["stack"];
-  };
-};
-
-type UseInterviewReportInsightsResult = {
-  report: InterviewReport | null;
-  sessions: SessionHistoryItem[];
-  weakKeywords: string[];
-  studyGuide: string[];
-  questionGuides: ReportQuestionGuide[];
-  isInsightsLoading: boolean;
-  insightsErrorMessage: string | null;
-  isRetryingWeakness: boolean;
-  isReportLoading: boolean;
-  reportErrorMessage: string | null;
-  reportErrorCode: "auth_required" | "unknown" | null;
-  clearReportFetchError: () => void;
-  resetReportState: () => void;
-  moveToReport: (targetSessionId: string) => Promise<void>;
-  handleRetryReport: () => Promise<void>;
-  handleGoInsights: () => Promise<void>;
-  handleRetryWeakness: () => Promise<void>;
-};
 
 export function useInterviewReportInsights({
   sessionId,
