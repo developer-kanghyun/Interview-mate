@@ -3,88 +3,27 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
-  type RefObject,
-  type Dispatch,
   type SetStateAction
 } from "react";
-import {
-  type InterviewEmotion,
-  type StartInterviewPayload
-} from "@/shared/api/interview-client";
+import { type InterviewEmotion } from "@/shared/api/interview-client";
 import type { ChatMessage } from "@/shared/chat/ChatBoard";
-import type { InterviewStep } from "@/features/interview-session/model/interviewSession.constants";
 import { useInterviewerSpeech } from "@/features/interview-session/model/useInterviewerSpeech";
 import { useQuestionStreaming } from "@/features/interview-session/model/useQuestionStreaming";
 import {
-  useInterviewSubmitAnswer,
-  type SubmitAnswerOptions
+  useInterviewSubmitAnswer
 } from "@/features/interview-session/model/useInterviewSubmitAnswer";
 import { useSpeechToText } from "@/shared/lib/useSpeechToText";
 import {
   createPauseMessage
 } from "@/features/interview-session/model/interviewRoom.utils";
-import {
-  getAvatarTransientDurationMs,
-  type AvatarState,
-  type AvatarTransientState
-} from "@/entities/avatar/model/avatarBehaviorMachine";
 import { getAuthRequiredMessage } from "@/shared/auth/session";
-
-type ToastVariant = "info" | "success" | "warning" | "error";
-type ShowToast = (options: {
-  message: string;
-  variant?: ToastVariant;
-  dedupeKey?: string;
-  title?: string;
-}) => void;
-
-type UseInterviewRoomFlowOptions = {
-  step: InterviewStep;
-  setupPayload: StartInterviewPayload;
-  sessionId: string | null;
-  uiError: string | null;
-  isGuestUser: boolean;
-  isExiting: boolean;
-  isResumeResolving: boolean;
-  showToast: ShowToast;
-  showToastError: (message: string, dedupeKey?: string) => void;
-  onSessionComplete: (targetSessionId: string, isGuestUser: boolean) => Promise<void> | void;
-  setUiError: Dispatch<SetStateAction<string | null>>;
-  setAuthPromptReason: (next: "auth_required" | null) => void;
-};
-
-type UseInterviewRoomFlowResult = {
-  questionOrder: number;
-  followupCount: number;
-  streamingQuestionText: string;
-  isQuestionStreaming: boolean;
-  messages: ChatMessage[];
-  answerText: string;
-  setAnswerText: (value: string) => void;
-  isSubmitting: boolean;
-  emotion: InterviewEmotion;
-  avatarState: AvatarState;
-  avatarCueToken: number;
-  ttsAudioRef: RefObject<HTMLAudioElement>;
-  isAutoplayBlocked: boolean;
-  playTtsAudio: () => void;
-  isRecording: boolean;
-  isSttSupported: boolean;
-  isSttBusy: boolean;
-  handleToggleRecording: () => void;
-  handleSubmitAnswer: (options?: SubmitAnswerOptions) => Promise<void>;
-  handlePause: () => void;
-  resetRoomState: (next: { questionOrder: number; followupCount: number; clearMessages?: boolean }) => void;
-  setAvatarState: Dispatch<SetStateAction<AvatarState>>;
-  clearAvatarCue: () => void;
-  stopRecording: () => void;
-  startQuestionStream: (targetSessionId: string) => void;
-  stopQuestionStream: () => void;
-  stopTtsPlayback: () => void;
-};
+import { useRoomAvatarCue } from "@/features/interview-session/model/useRoomAvatarCue";
+import type {
+  UseInterviewRoomFlowOptions,
+  UseInterviewRoomFlowResult
+} from "@/features/interview-session/model/interviewRoom.types";
 
 export function useInterviewRoomFlow({
   step,
@@ -107,11 +46,16 @@ export function useInterviewRoomFlow({
   const [answerText, setAnswerText] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [emotion, setEmotion] = useState<InterviewEmotion>("neutral");
-  const [avatarState, setAvatarState] = useState<AvatarState>("idle");
-  const [activeAvatarCue, setActiveAvatarCue] = useState<AvatarTransientState | null>(null);
-  const [avatarCueToken, setAvatarCueToken] = useState(0);
+  const {
+    avatarState,
+    setAvatarState,
+    effectiveAvatarState,
+    avatarCueToken,
+    triggerAvatarCue,
+    clearAvatarCue,
+    clearAvatarCueTimer
+  } = useRoomAvatarCue();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const avatarCueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const uiErrorRef = useRef<string | null>(null);
   const lastFollowupCountRef = useRef(0);
   const {
@@ -129,27 +73,6 @@ export function useInterviewRoomFlow({
 
   const appendMessage = useCallback((nextMessage: ChatMessage) => {
     setMessages((previous) => [...previous, nextMessage]);
-  }, []);
-
-  const triggerAvatarCue = useCallback((cue: AvatarTransientState) => {
-    if (avatarCueTimerRef.current) {
-      clearTimeout(avatarCueTimerRef.current);
-    }
-
-    setActiveAvatarCue(cue);
-    setAvatarCueToken((current) => current + 1);
-    avatarCueTimerRef.current = setTimeout(() => {
-      setActiveAvatarCue(null);
-      avatarCueTimerRef.current = null;
-    }, getAvatarTransientDurationMs(cue));
-  }, []);
-
-  const clearAvatarCue = useCallback(() => {
-    if (avatarCueTimerRef.current) {
-      clearTimeout(avatarCueTimerRef.current);
-      avatarCueTimerRef.current = null;
-    }
-    setActiveAvatarCue(null);
   }, []);
 
   const { ttsAudioRef, stopTtsPlayback, speakInterviewer: rawSpeakInterviewer, isAutoplayBlocked, playTtsAudio } =
@@ -209,11 +132,9 @@ export function useInterviewRoomFlow({
       stopRecording();
       stopQuestionStream();
       stopTtsPlayback();
-      if (avatarCueTimerRef.current) {
-        clearTimeout(avatarCueTimerRef.current);
-      }
+      clearAvatarCueTimer();
     };
-  }, [stopQuestionStream, stopRecording, stopTtsPlayback]);
+  }, [clearAvatarCueTimer, stopQuestionStream, stopRecording, stopTtsPlayback]);
 
   useEffect(() => {
     if (step === "room" || !isRecording) {
@@ -307,6 +228,7 @@ export function useInterviewRoomFlow({
     isQuestionStreaming,
     isRecording,
     isSubmitting,
+    setAvatarState,
     showToast,
     startRecording,
     stopRecording
@@ -316,7 +238,7 @@ export function useInterviewRoomFlow({
     clearAvatarCue();
     setAvatarState("idle");
     appendMessage(createPauseMessage());
-  }, [appendMessage, clearAvatarCue]);
+  }, [appendMessage, clearAvatarCue, setAvatarState]);
 
   const resetRoomState = useCallback(
     (next: { questionOrder: number; followupCount: number; clearMessages?: boolean }) => {
@@ -333,10 +255,8 @@ export function useInterviewRoomFlow({
         setMessages([]);
       }
     },
-    [clearAvatarCue]
+    [clearAvatarCue, setAvatarState]
   );
-
-  const effectiveAvatarState = useMemo(() => activeAvatarCue ?? avatarState, [activeAvatarCue, avatarState]);
 
   return {
     questionOrder,
