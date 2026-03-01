@@ -11,12 +11,8 @@ import {
   pingBackendHealth,
   type StartInterviewPayload
 } from "@/shared/api/interview-client";
-import {
-  interviewerNameMap,
-  mapDifficultyLabel,
-  mapRoleLabel
-} from "@/features/interview-session/model/interviewSession.constants";
 import { useInterviewAuthState } from "@/features/interview-session/model/useInterviewAuthState";
+import { buildInterviewShellState } from "@/features/interview-session/model/interviewShell.presenter";
 import { useInterviewShellBootstrapEffects } from "@/features/interview-session/model/useInterviewShellBootstrapEffects";
 import { useInterviewResumeState } from "@/features/interview-session/model/useInterviewResumeState";
 import { useInterviewRoomFlow } from "@/features/interview-session/model/useInterviewRoomFlow";
@@ -331,9 +327,9 @@ export function useInterviewShellOrchestrator(
   const studyGuide = reportFlow.studyGuide;
   const questionGuides = reportFlow.questionGuides;
 
-  return {
+  return buildInterviewShellState({
     step,
-    setStep: updateStep,
+    updateStep,
     uiError,
     clearUiError,
     handleRetryUiError,
@@ -347,13 +343,11 @@ export function useInterviewShellOrchestrator(
     isAuthLoading,
     backendStatus,
     backendStatusMessage,
-    retryBackendHealthCheck: runBackendHealthCheck,
+    runBackendHealthCheck,
     setupPayload,
     setSetupPayload: updateSetupPayload,
     isStarting,
     sessionId,
-    interviewerName: interviewerNameMap[setupPayload.character],
-    character: setupPayload.character,
     avatarState: roomFlow.avatarState,
     avatarCueToken: roomFlow.avatarCueToken,
     emotion: roomFlow.emotion,
@@ -364,12 +358,7 @@ export function useInterviewShellOrchestrator(
     isSttSupported: roomFlow.isSttSupported,
     isSttBusy: roomFlow.isSttBusy,
     handleToggleRecording: roomFlow.handleToggleRecording,
-    reactionEnabled: setupPayload.reactionEnabled,
-    jobRoleLabel: mapRoleLabel(setupPayload.jobRole),
-    stackLabel: setupPayload.stack,
-    difficultyLabel: mapDifficultyLabel(setupPayload.difficulty),
     questionOrder: roomFlow.questionOrder,
-    totalQuestions: setupPayload.questionCount,
     followupCount: roomFlow.followupCount,
     streamingQuestionText: roomFlow.streamingQuestionText,
     isQuestionStreaming: roomFlow.isQuestionStreaming,
@@ -401,5 +390,5 @@ export function useInterviewShellOrchestrator(
     isResumeResolving,
     handleContinueResumeCandidate,
     handleDismissResumeCandidate
-  };
+  });
 }
