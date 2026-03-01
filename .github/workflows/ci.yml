@@ -25,6 +25,9 @@ jobs:
       - name: Lint web
         run: npm run lint
 
+      - name: Check web layer boundaries
+        run: npm --prefix ./apps/web run lint
+
       - name: Build web
         run: npm run build:web
 
