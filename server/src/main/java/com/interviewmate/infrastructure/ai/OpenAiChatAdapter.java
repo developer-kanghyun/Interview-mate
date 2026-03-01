@@ -23,6 +23,11 @@ public class OpenAiChatAdapter implements AiChatPort, AiChatCompletionPort, AiCh
                 new OpenAiMessage("system", systemPrompt),
                 new OpenAiMessage("user", userPrompt)
         );
+        return requestCompletion(messages);
+    }
+
+    @Override
+    public String requestCompletion(List<OpenAiMessage> messages) {
         return openAiService.createChatCompletion(messages);
     }
 

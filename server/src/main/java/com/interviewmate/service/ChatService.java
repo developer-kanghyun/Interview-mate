@@ -1,5 +1,7 @@
 package com.interviewmate.service;
 
+import com.interviewmate.application.ai.port.AiChatCompletionPort;
+import com.interviewmate.application.ai.port.AiChatStreamPort;
 import com.interviewmate.dto.request.ChatCompletionRequest;
 import com.interviewmate.dto.response.ChatCompletionResponse;
 import com.interviewmate.dto.openai.OpenAiMessage;
@@ -23,7 +25,8 @@ import java.util.List;
 public class ChatService {
 
     private final ConversationContextService conversationContextService;
-    private final OpenAiService openAiService;
+    private final AiChatCompletionPort aiChatCompletionPort;
+    private final AiChatStreamPort aiChatStreamPort;
 
     @Transactional
     public ChatCompletionResponse createChatCompletion(ChatCompletionRequest request, Long userId) {
@@ -35,7 +38,7 @@ public class ChatService {
         List<OpenAiMessage> openAiMessages =
                 conversationContextService.buildOpenAiContextMessages(conversation.getId());
 
-        String assistantContent = openAiService.createChatCompletion(openAiMessages);
+        String assistantContent = aiChatCompletionPort.requestCompletion(openAiMessages);
 
         Message assistantMessage = conversationContextService.saveAssistantMessage(conversation, assistantContent);
 
@@ -62,7 +65,7 @@ public class ChatService {
 
         StringBuilder gatheredContent = new StringBuilder();
 
-        openAiService.createChatCompletionStream(openAiMessages)
+        aiChatStreamPort.requestStream(openAiMessages)
                 .subscribe(
                         content -> {
                             if (content != null) {
