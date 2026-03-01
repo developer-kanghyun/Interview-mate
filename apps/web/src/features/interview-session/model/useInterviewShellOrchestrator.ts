@@ -14,13 +14,11 @@ import {
   pingBackendHealth,
   type InterviewCharacter,
   type ReportQuestionGuide,
-  restoreInterviewSession,
   type InterviewEmotion,
   type InterviewReport,
   type SessionHistoryItem,
   type StartInterviewPayload
 } from "@/shared/api/interview-client";
-import { getInterviewSessionState } from "@/shared/api/interview";
 import type { ChatMessage } from "@/shared/chat/ChatBoard";
 import {
   defaultSetupPayload,
@@ -35,11 +33,11 @@ import { useInterviewResumeState } from "@/features/interview-session/model/useI
 import { useInterviewRoomFlow } from "@/features/interview-session/model/useInterviewRoomFlow";
 import { useInterviewReportInsights } from "@/features/interview-session/model/useInterviewReportInsights";
 import { useStartSession } from "@/features/interview/start-session/model/useStartSession";
+import { useInterviewResumeActions } from "@/features/interview-session/model/useInterviewResumeActions";
 import { useInterviewShellNavigation } from "@/features/interview-session/model/useInterviewShellNavigation";
 import { useInterviewShellToast } from "@/features/interview-session/model/useInterviewShellToast";
 import {
   buildRetryPreset,
-  buildSetupPayloadFromSessionState,
   resolveSessionIdFromPath,
   resolveStepFromPath
 } from "@/features/interview-session/model/interviewShell.utils";
@@ -304,86 +302,24 @@ export function useInterviewShellOrchestrator(
   const handleGoInsights = reportFlow.handleGoInsights;
   const clearReportFetchError = reportFlow.clearReportFetchError;
   const resetReportState = reportFlow.resetReportState;
-
-  const restoreSessionIntoRoom = useCallback(
-    async (
-      targetSessionId: string,
-      options?: {
-        stepFallbackMessage?: string;
-      }
-    ) => {
-      setIsResumeResolving(true);
-      setUiError(null);
-
-      try {
-        const stateResponse = await getInterviewSessionState(targetSessionId);
-        const state = stateResponse.data;
-        if (state.status !== "in_progress" || !state.current_question) {
-          throw new Error("재개 가능한 진행중 세션이 없습니다. 새 면접을 시작해 주세요.");
-        }
-
-        await restoreInterviewSession(targetSessionId);
-
-        setSessionId(targetSessionId);
-        setSetupPayload(buildSetupPayloadFromSessionState(state));
-        resetRoomState({
-          questionOrder: state.current_question.question_order,
-          followupCount: state.current_question.followup_count,
-          clearMessages: true
-        });
-        resetReportState();
-        setStep("room");
-        syncPathname(`/interview/${encodeURIComponent(targetSessionId)}`, "replace");
-        startQuestionStreamRef.current?.(targetSessionId);
-        clearStoredSessionId();
-        resetResumeState();
-      } catch (error) {
-        const fallbackMessage = options?.stepFallbackMessage ?? "이전 세션 재개에 실패했습니다. 새 면접을 시작해 주세요.";
-        const message = error instanceof Error ? error.message : fallbackMessage;
-        setStep("setup");
-        syncPathname("/setup", "replace");
-        resetResumeState();
-        showToastError(message || fallbackMessage, "resume:restore-failed");
-      } finally {
-        setIsResumeResolving(false);
-      }
-    },
-    [
-      resetReportState,
-      resetResumeState,
-      resetRoomState,
-      setIsResumeResolving,
-      showToastError,
-      syncPathname
-    ]
-  );
-
-  const handleContinueResumeCandidate = useCallback(async () => {
-    if (!resumeCandidateSessionId || isResumeResolving) {
-      return;
-    }
-
-    if (isResumeCandidateGuest) {
-      setIsResumeResolving(true);
-      setIsResumePromptOpen(false);
-      try {
-        await handleGoogleLogin(`/interview/${encodeURIComponent(resumeCandidateSessionId)}`);
-      } finally {
-        setIsResumeResolving(false);
-      }
-      return;
-    }
-
-    await restoreSessionIntoRoom(resumeCandidateSessionId);
-  }, [
-    handleGoogleLogin,
-    isResumeCandidateGuest,
+  const { restoreSessionIntoRoom, handleContinueResumeCandidate } = useInterviewResumeActions({
+    resumeCandidateSessionId,
     isResumeResolving,
-    restoreSessionIntoRoom,
-    setIsResumePromptOpen,
+    isResumeCandidateGuest,
     setIsResumeResolving,
-    resumeCandidateSessionId
-  ]);
+    setIsResumePromptOpen,
+    handleGoogleLogin,
+    setUiError,
+    setStep,
+    setSessionId,
+    setSetupPayload,
+    resetRoomState,
+    resetReportState,
+    resetResumeState,
+    showToastError,
+    syncPathname,
+    startQuestionStreamRef
+  });
 
   useEffect(() => {
     void runBackendHealthCheck();
