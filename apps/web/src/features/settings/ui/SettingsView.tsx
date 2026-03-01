@@ -7,6 +7,7 @@ import {
   type InterviewPreferences
 } from "@/shared/config/interview-preferences";
 import { loadSettingsAccountUseCase } from "@/features/settings/model/application/loadSettingsAccountUseCase";
+import { mapSettingsAccountState } from "@/features/settings/model/domain/settingsAccount";
 import { SettingsAccountCard, type AccountState } from "@/features/settings/ui/SettingsAccountCard";
 import { SettingsPreferencesCard } from "@/features/settings/ui/SettingsPreferencesCard";
 import { defaultPreferences, stackOptionsByRole } from "@/features/settings/ui/settings.constants";
@@ -29,10 +30,7 @@ export function SettingsView() {
     setAccountError(null);
     try {
       const profile = await loadSettingsAccountUseCase();
-      setAccountState({
-        name: profile.data.name ?? "이름 미등록",
-        email: profile.data.email
-      });
+      setAccountState(mapSettingsAccountState(profile.data));
     } catch (error) {
       const nextMessage = error instanceof Error ? error.message : "계정 정보를 불러오지 못했습니다.";
       setAccountError(nextMessage);

@@ -5,7 +5,7 @@ import { ReportView } from "@/features/interview-report/ui/ReportView";
 import { InsightsView } from "@/features/interview-insights/ui/InsightsView";
 import { Button } from "@/shared/ui/Button";
 import { InlineNotice } from "@/shared/ui/InlineNotice";
-import type { UseInterviewShellStateResult } from "@/widgets/interview/model/useInterviewShellState";
+import type { UseInterviewShellStateResult } from "@/features/interview-session/model/application/useInterviewShellState";
 
 type InterviewShellStepContentProps = {
   shellState: UseInterviewShellStateResult;

@@ -5,7 +5,7 @@ import {
   fetchLandingGoogleAuthUrlUseCase,
   fetchLandingProfileUseCase
 } from "@/features/landing/model/application/landingAuthUseCases";
-import { clearStoredSessionId } from "@/shared/auth/session";
+import { clearLandingSession } from "@/features/landing/model/domain/landingSession";
 
 export function useLandingAuth() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -33,11 +33,7 @@ export function useLandingAuth() {
   }, []);
 
   const handleLogout = useCallback(() => {
-    try {
-      localStorage.removeItem("im_session_id");
-      localStorage.removeItem("im_api_key");
-      clearStoredSessionId();
-    } catch {}
+    clearLandingSession();
     window.location.reload();
   }, []);
 

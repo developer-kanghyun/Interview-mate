@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { completeGoogleAuthUseCase } from "@/features/auth/model/application/completeGoogleAuthUseCase";
+import { resolveOAuthRedirectTarget } from "@/features/auth/model/domain/oauthRedirectTarget";
 import {
   clearPostLoginRedirectTarget,
   getPostLoginRedirectTarget
@@ -13,28 +14,6 @@ type Props = {
   state: string | null;
   oauthError: string | null;
 };
-
-function resolveRedirectTarget() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const rawTarget = new URLSearchParams(window.location.search).get("redirectTo");
-  if (!rawTarget) {
-    return null;
-  }
-
-  const trimmed = rawTarget.trim();
-  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) {
-    return null;
-  }
-
-  if (trimmed.startsWith("/auth/google/callback")) {
-    return null;
-  }
-
-  return trimmed;
-}
 
 export default function GoogleCallbackClient({ code, state, oauthError }: Props) {
   const router = useRouter();
@@ -67,7 +46,8 @@ export default function GoogleCallbackClient({ code, state, oauthError }: Props)
         if (!active) {
           return;
         }
-        const redirectTarget = resolveRedirectTarget() ?? getPostLoginRedirectTarget() ?? "/setup";
+        const redirectTarget =
+          resolveOAuthRedirectTarget(window.location.search) ?? getPostLoginRedirectTarget() ?? "/setup";
         clearPostLoginRedirectTarget();
         setMessage("로그인 성공. 인터뷰 화면으로 이동합니다...");
         redirectTimer = setTimeout(() => {
