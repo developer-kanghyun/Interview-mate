@@ -3,11 +3,9 @@
 import dynamic from "next/dynamic";
 import { useCallback, type FocusEvent, type KeyboardEvent, type RefObject } from "react";
 import { ChatBoard, type ChatMessage } from "@/shared/chat/ChatBoard";
-import { Button } from "@/shared/ui/Button";
-import { LoadingSpinner } from "@/shared/ui/LoadingSpinner";
-import { Textarea } from "@/shared/ui/Textarea";
-import { BrandIdentityLink } from "@/shared/ui/BrandIdentityLink";
-import { Mic, MicOff } from "lucide-react";
+import { RoomAnswerFooter } from "@/widgets/interview-room/ui/RoomAnswerFooter";
+import { RoomHeader } from "@/widgets/interview-room/ui/RoomHeader";
+import { RoomQuestionBanner } from "@/widgets/interview-room/ui/RoomQuestionBanner";
 
 import type { InterviewCharacter, InterviewEmotion } from "@/shared/api/interview-client";
 import type { AvatarState } from "@/entities/avatar/model/avatarBehaviorMachine";
@@ -113,37 +111,14 @@ export function RoomView({
 
   return (
     <div className="flex h-dvh min-h-dvh w-full flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,_#fff8f2,_#ffffff_50%,_#f7fafc)] text-im-text-main">
-      {/* Minimal Header */}
-      <header className="sticky top-0 z-20 flex h-[60px] shrink-0 items-center justify-between border-b border-slate-200/70 bg-white/90 px-4 backdrop-blur-md sm:px-6">
-        <div className="flex min-w-0 items-center gap-6">
-          <BrandIdentityLink className="shrink-0" />
-          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            <p className="hidden min-w-0 max-w-[860px] truncate text-sm font-semibold text-slate-700 md:block lg:text-base">
-              {jobRoleLabel}
-              <span className="mx-2 text-slate-300">|</span>
-              {stackLabel}
-              <span className="mx-2 text-slate-300">|</span>
-              {difficultyLabel}
-            </p>
-          </div>
-        </div>
-
-        <Button
-          variant="ghost"
-          onClick={onExit}
-          disabled={!canExit}
-          className="gap-2 rounded-xl text-rose-500 hover:bg-rose-50 hover:text-rose-600"
-        >
-          {isExiting ? (
-            <>
-              <LoadingSpinner size="sm" tone="primary" />
-              리포트 불러오는 중...
-            </>
-          ) : (
-            "나가기"
-          )}
-        </Button>
-      </header>
+      <RoomHeader
+        jobRoleLabel={jobRoleLabel}
+        stackLabel={stackLabel}
+        difficultyLabel={difficultyLabel}
+        canExit={canExit}
+        isExiting={isExiting}
+        onExit={onExit}
+      />
 
       {/* Main Content: 2-Column Split */}
       <main className="flex min-h-0 flex-1 gap-4 p-4 sm:gap-5 sm:p-5">
@@ -164,85 +139,35 @@ export function RoomView({
 
         {/* Right Column: Chat + Input */}
         <section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-sm">
-          {/* Question Banner */}
-          <div
-            data-testid="room-question-banner"
-            className="shrink-0 border-b border-slate-200/70 bg-gradient-to-r from-im-primary-soft via-white to-im-subtle px-5 py-4"
-          >
-            {isAutoplayBlocked ? (
-              <div className="flex justify-end">
-                <Button
-                  variant="secondary"
-                  onClick={playTtsAudio}
-                  className="h-7 border-rose-200 bg-rose-50 px-3 text-xs text-rose-600 hover:bg-rose-100 hover:text-rose-700"
-                >
-                  질문 듣기
-                </Button>
-              </div>
-            ) : null}
-            <p className="mt-2 whitespace-pre-wrap text-base leading-7 text-im-text-main sm:text-lg sm:leading-8">
-              <span className="mr-2 text-sm font-black text-im-primary sm:text-base">
-                {questionOrder}/{totalQuestions}
-              </span>
-              {followupCount > 0 ? (
-                <span className="mr-2 text-sm font-semibold text-emerald-700 sm:text-base">(꼬리질문)</span>
-              ) : null}
-              {streamingQuestionText || "질문을 불러오는 중입니다..."}
-              {isQuestionStreaming ? <span className="sse-caret" /> : null}
-            </p>
-            {isResumeResolving ? (
-              <p className="mt-2 text-xs font-medium text-im-text-muted">이전 세션 복구 중입니다...</p>
-            ) : null}
-          </div>
+          <RoomQuestionBanner
+            isAutoplayBlocked={isAutoplayBlocked}
+            playTtsAudio={playTtsAudio}
+            questionOrder={questionOrder}
+            totalQuestions={totalQuestions}
+            followupCount={followupCount}
+            streamingQuestionText={streamingQuestionText}
+            isQuestionStreaming={isQuestionStreaming}
+            isResumeResolving={isResumeResolving}
+          />
 
           {/* Chat History */}
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-slate-50/40 px-5 py-4">
             <ChatBoard messages={visibleMessages} />
           </div>
 
-          {/* Input Area */}
-          <footer className="shrink-0 border-t border-slate-200/70 bg-white/95 px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm">
-            <Textarea
-              data-testid="room-answer-input"
-              value={answerText}
-              onChange={(event) => onChangeAnswer(event.target.value)}
-              disabled={isBusy}
-              onFocus={handleFocusAnswer}
-              onKeyDown={handleAnswerKeyDown}
-              aria-label="면접 답변 입력"
-              placeholder="답변을 입력하세요..."
-              className="min-h-[80px] max-h-[22dvh] resize-none rounded-2xl border-slate-200 sm:min-h-[100px] sm:max-h-[32vh]"
-            />
-
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Button
-                data-testid="room-voice-toggle"
-                variant={isRecording ? "primary" : "secondary"}
-                onClick={onToggleRecording}
-                disabled={!isRecording && isSttBusy}
-                className="shrink-0 rounded-xl"
-              >
-                {isRecording ? <MicOff className="mr-1.5 h-4 w-4" /> : <Mic className="mr-1.5 h-4 w-4" />}
-                {isRecording ? "녹음 종료" : "음성 답변"}
-              </Button>
-              <div className="flex-1" />
-              <Button
-                data-testid="room-submit-answer"
-                onClick={onSubmitAnswer}
-                disabled={!canSubmitAnswer}
-                className="min-w-[120px] gap-2 rounded-xl"
-              >
-                {isSubmitting ? (
-                  <>
-                    <LoadingSpinner size="sm" tone="on-primary" />
-                    제출 중...
-                  </>
-                ) : (
-                  "답변 완료"
-                )}
-              </Button>
-            </div>
-          </footer>
+          <RoomAnswerFooter
+            answerText={answerText}
+            onChangeAnswer={onChangeAnswer}
+            isBusy={isBusy}
+            handleFocusAnswer={handleFocusAnswer}
+            handleAnswerKeyDown={handleAnswerKeyDown}
+            isRecording={isRecording}
+            isSttBusy={isSttBusy}
+            onToggleRecording={onToggleRecording}
+            onSubmitAnswer={onSubmitAnswer}
+            canSubmitAnswer={canSubmitAnswer}
+            isSubmitting={isSubmitting}
+          />
         </section>
       </main>
 
