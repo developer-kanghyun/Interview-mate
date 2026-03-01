@@ -2,7 +2,6 @@
 
 import {
   useCallback,
-  useEffect,
   useMemo,
   useState
 } from "react";
@@ -28,16 +27,13 @@ import {
 import {
   resolveAvatarReportState
 } from "@/entities/avatar/model/avatarBehaviorMachine";
-import {
-  clearStoredSessionId,
-  setStoredSessionId
-} from "@/shared/auth/session";
 import { useToast } from "@/shared/ui/toast/useToast";
 import type {
   UseInterviewShellStateOptions,
   UseInterviewShellStateResult
 } from "@/features/interview-session/model/interviewShell.types";
 import { useInterviewShellCoreState } from "@/features/interview-session/model/useInterviewShellCoreState";
+import { useInterviewShellSessionFlow } from "@/features/interview-session/model/useInterviewShellSessionFlow";
 
 export type { UseInterviewShellStateOptions, UseInterviewShellStateResult };
 
@@ -220,96 +216,33 @@ export function useInterviewShellOrchestrator(
     autoRestoreAttemptedSessionRef
   });
 
-  const beginInterview = useCallback(
-    async (payload: StartInterviewPayload) => {
-      setUiError(null);
-      setAuthPromptReason(null);
-      clearReportFetchError();
-      setIsExiting(false);
-      resetResumeState();
-      clearStartError();
-      try {
-        const started = await startSession(payload);
-        if (!started) {
-          return;
-        }
-        autoRestoreAttemptedSessionRef.current = started.sessionId;
-        setStoredSessionId(started.sessionId);
-        setSessionId(started.sessionId);
-        resetReportState();
-        resetRoomState({
-          questionOrder: 1,
-          followupCount: 0,
-          clearMessages: true
-        });
-        setStep("room");
-        syncPathname(`/interview/${encodeURIComponent(started.sessionId)}`);
-        startRoomQuestionStream(started.sessionId);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "면접 시작에 실패했습니다.";
-        showToastError(message, "interview:start");
-        clearStoredSessionId();
-      }
-    },
-    [
-      autoRestoreAttemptedSessionRef,
-      clearStartError,
-      clearReportFetchError,
-      resetResumeState,
-      resetRoomState,
-      resetReportState,
-      setIsExiting,
-      setSessionId,
-      setStep,
-      setAuthPromptReason,
-      setUiError,
-      showToastError,
-      startRoomQuestionStream,
-      startSession,
-      syncPathname
-    ]
-  );
+  const { beginInterview, handleStartInterview, handleExit } = useInterviewShellSessionFlow({
+    authStatus,
+    retryAuthBootstrap,
+    setupPayload,
+    showToastError,
+    pendingCompletedSessionId,
+    setPendingCompletedSessionId,
+    isExiting,
+    isResumeResolving,
+    sessionId,
+    moveToReport,
+    setStep,
+    syncPathname,
+    setUiError,
+    setAuthPromptReason,
+    clearReportFetchError,
+    setIsExiting,
+    resetResumeState,
+    clearStartError,
+    startSession,
+    autoRestoreAttemptedSessionRef,
+    setSessionId,
+    resetReportState,
+    resetRoomState,
+    startRoomQuestionStream
+  });
   beginInterviewRef.current = beginInterview;
-
-  const handleStartInterview = useCallback(async () => {
-    if (authStatus === "loading") {
-      showToastError("인증 상태 확인 중입니다. 잠시 후 다시 시도해 주세요.", "auth:loading-start");
-      return;
-    }
-    if (authStatus !== "member" && authStatus !== "guest") {
-      const recovered = await retryAuthBootstrap();
-      if (!recovered) {
-        return;
-      }
-    }
-    await beginInterview(setupPayload);
-  }, [authStatus, beginInterview, retryAuthBootstrap, setupPayload, showToastError]);
-  useEffect(() => {
-    if (!pendingCompletedSessionId || isExiting) {
-      return;
-    }
-
-    void (async () => {
-      try {
-        await moveToReport(pendingCompletedSessionId);
-      } finally {
-        setPendingCompletedSessionId(null);
-      }
-    })();
-  }, [isExiting, moveToReport, pendingCompletedSessionId]);
-
-  const handleExit = useCallback(async () => {
-    if (isExiting || isResumeResolving) {
-      return;
-    }
-    if (!sessionId) {
-      clearStoredSessionId();
-      syncPathname("/setup", "replace");
-      setStep("setup");
-      return;
-    }
-    await moveToReport(sessionId);
-  }, [isExiting, isResumeResolving, moveToReport, sessionId, setStep, syncPathname]);
   const { clearUiError, handleRetryUiError } = useInterviewUiRecovery({
     step,
     sessionId,
