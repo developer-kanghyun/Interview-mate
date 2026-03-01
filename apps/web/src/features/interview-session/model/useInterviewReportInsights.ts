@@ -8,14 +8,10 @@ import {
   type SessionHistoryItem,
   type StartInterviewPayload
 } from "@/shared/api/interview-client";
-import { clearStoredSessionId } from "@/shared/auth/session";
 import { useFetchReport } from "@/features/interview-report/model/useFetchReport";
 import type { InterviewStep } from "@/features/interview-session/model/interviewSession.constants";
-
-type RetryPreset = {
-  jobRole?: StartInterviewPayload["jobRole"];
-  stack?: StartInterviewPayload["stack"];
-};
+import { useMoveToReport } from "@/features/interview-session/model/useMoveToReport";
+import { buildWeakRetryPayloads } from "@/features/interview-session/model/interviewReportInsights.utils";
 
 type UseInterviewReportInsightsOptions = {
   sessionId: string | null;
@@ -32,7 +28,10 @@ type UseInterviewReportInsightsOptions = {
   onBeforeMoveToReport: () => void;
   onReportResolved: (report: InterviewReport) => void;
   onRetryInterview: (payload: StartInterviewPayload) => Promise<void>;
-  buildRetryPreset: (weakKeywords: string[], fallback: StartInterviewPayload) => RetryPreset;
+  buildRetryPreset: (weakKeywords: string[], fallback: StartInterviewPayload) => {
+    jobRole?: StartInterviewPayload["jobRole"];
+    stack?: StartInterviewPayload["stack"];
+  };
 };
 
 type UseInterviewReportInsightsResult = {
@@ -83,61 +82,21 @@ export function useInterviewReportInsights({
     setReport(null);
   }, []);
 
-  const moveToReport = useCallback(
-    async (targetSessionId: string) => {
-      if (isExiting) {
-        return;
-      }
-
-      setIsExiting(true);
-      onBeforeMoveToReport();
-      setUiError(null);
-      setAuthPromptReason(null);
-      clearReportFetchError();
-      syncPathname(`/report/${encodeURIComponent(targetSessionId)}`);
-      setStep("report");
-      setReport(null);
-
-      try {
-        const sessionsPromise = listSessions(30);
-        const nextReport = await fetchReport(targetSessionId);
-
-        try {
-          const nextSessions = await sessionsPromise;
-          setSessions(nextSessions);
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "세션 목록 조회에 실패했습니다.";
-          showToastError(message, "sessions:list");
-        }
-
-        if (!nextReport) {
-          return;
-        }
-
-        setReport(nextReport);
-        onReportResolved(nextReport);
-        clearStoredSessionId();
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "리포트 조회에 실패했습니다.";
-        showToastError(message, "report:move");
-      } finally {
-        setIsExiting(false);
-      }
-    },
-    [
-      clearReportFetchError,
-      fetchReport,
-      isExiting,
-      onBeforeMoveToReport,
-      onReportResolved,
-      setAuthPromptReason,
-      setIsExiting,
-      setStep,
-      setUiError,
-      showToastError,
-      syncPathname
-    ]
-  );
+  const moveToReport = useMoveToReport({
+    isExiting,
+    setIsExiting,
+    onBeforeMoveToReport,
+    setUiError,
+    setAuthPromptReason,
+    clearReportFetchError,
+    syncPathname,
+    setStep,
+    setReport,
+    setSessions,
+    fetchReport,
+    onReportResolved,
+    showToastError
+  });
 
   const handleRetryReport = useCallback(async () => {
     if (!sessionId) {
@@ -192,19 +151,11 @@ export function useInterviewReportInsights({
     }
 
     const retryPreset = buildRetryPreset(weakKeywords, setupPayload);
-    const retryPayloadForSetup: StartInterviewPayload = {
-      ...setupPayload,
-      ...retryPreset,
-      difficulty: report && report.totalScore >= 70 ? "junior" : "jobseeker",
-      questionCount: Math.min(setupPayload.questionCount, 5),
-      retryMode: undefined,
-      sourceSessionId: undefined
-    };
-    const retryPayloadForStart: StartInterviewPayload = {
-      ...retryPayloadForSetup,
-      retryMode: "weak_first",
-      sourceSessionId: report.sessionId
-    };
+    const { retryPayloadForSetup, retryPayloadForStart } = buildWeakRetryPayloads({
+      setupPayload,
+      report,
+      retryPreset
+    });
 
     setIsRetryingWeakness(true);
     try {
