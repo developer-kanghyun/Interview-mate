@@ -3,7 +3,7 @@ package com.interviewmate.application.ai.usecase;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.interviewmate.application.ai.prompt.InterviewerToneGuide;
-import com.interviewmate.application.ai.port.AiChatPort;
+import com.interviewmate.application.ai.port.AiChatCompletionPort;
 import com.interviewmate.domain.ai.AnswerEvaluationResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class GenerateRealtimeCoachingUseCase {
 
-    private final AiChatPort aiChatPort;
+    private final AiChatCompletionPort aiChatPort;
     private final ObjectMapper objectMapper;
 
     public RealtimeCoachingResult execute(
