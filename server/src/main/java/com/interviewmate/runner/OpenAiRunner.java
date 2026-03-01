@@ -1,7 +1,7 @@
 package com.interviewmate.runner;
 
+import com.interviewmate.application.ai.port.AiChatCompletionPort;
 import com.interviewmate.dto.openai.OpenAiMessage;
-import com.interviewmate.service.OpenAiService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -16,7 +16,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OpenAiRunner implements CommandLineRunner {
 
-    private final OpenAiService openAiService;
+    private final AiChatCompletionPort aiChatCompletionPort;
 
     @Override
     public void run(String... args) throws Exception {
@@ -28,7 +28,7 @@ public class OpenAiRunner implements CommandLineRunner {
                     new OpenAiMessage("user", "Hello! Who are you? Reply briefly.")
             );
 
-            String response = openAiService.createChatCompletion(messages);
+            String response = aiChatCompletionPort.requestCompletion(messages);
             log.info("GPT 응답: {}", response);
             log.info("=== OpenAI 연동 테스트 성공! ===");
 

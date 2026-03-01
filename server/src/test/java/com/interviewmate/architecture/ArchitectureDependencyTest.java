@@ -15,7 +15,6 @@ class ArchitectureDependencyTest {
             noClasses()
                     .that().resideInAPackage("..service..")
                     .and().doNotHaveSimpleName("OpenAiService")
-                    .and().doNotHaveSimpleName("ChatService")
                     .should().dependOnClassesThat()
                     .haveFullyQualifiedName("com.interviewmate.service.OpenAiService");
 
