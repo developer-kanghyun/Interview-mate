@@ -9,7 +9,7 @@ import { SetupStepCharacter } from "@/features/interview-setup/ui/SetupStepChara
 import { SetupStepRole } from "@/features/interview-setup/ui/SetupStepRole";
 import { SetupStepStack } from "@/features/interview-setup/ui/SetupStepStack";
 import { stacksByJobId, type VisualJobId } from "@/features/interview-setup/ui/setupView.constants";
-import { parseSelectedStacks } from "@/features/interview-setup/model/domain/setupStackPolicy";
+import { parseSetupStacksUseCase } from "@/features/interview-setup/model/application/setupStackUseCases";
 
 type SetupViewProps = {
   value: StartInterviewPayload;
@@ -30,7 +30,7 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
   const currentStackOptions = stacksByJobId[visualJobId];
 
   useEffect(() => {
-    const parsedStacks = parseSelectedStacks(value.stack, currentStackOptions);
+    const parsedStacks = parseSetupStacksUseCase(value.stack, currentStackOptions);
     setSelectedStacks((previous) => (previous.join("|") === parsedStacks.join("|") ? previous : parsedStacks));
   }, [currentStackOptions, value.stack]);
 
