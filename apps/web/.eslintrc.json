@@ -1,3 +1,69 @@
 {
-  "extends": ["next/core-web-vitals"]
+  "extends": ["next/core-web-vitals"],
+  "overrides": [
+    {
+      "files": ["src/shared/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/entities/*", "@/features/*", "@/widgets/*", "@/app/*"],
+                "message": "shared 레이어는 상위 레이어를 참조할 수 없습니다."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/entities/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/features/*", "@/widgets/*", "@/app/*"],
+                "message": "entities 레이어는 features/widgets/app를 참조할 수 없습니다."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/features/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/widgets/*", "@/app/*"],
+                "message": "features 레이어는 widgets/app를 참조할 수 없습니다."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/widgets/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/app/*"],
+                "message": "widgets 레이어는 app 레이어를 참조할 수 없습니다."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }
