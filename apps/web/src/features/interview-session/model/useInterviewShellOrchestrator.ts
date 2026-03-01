@@ -23,27 +23,8 @@ export type { UseInterviewShellStateOptions, UseInterviewShellStateResult };
 export function useInterviewShellOrchestrator(options: UseInterviewShellStateOptions = {}): UseInterviewShellStateResult {
   const pathname = usePathname();
   const { pushToast } = useToast();
-  const {
-    step,
-    setStep,
-    setupPayload,
-    setSetupPayload,
-    sessionId,
-    setSessionId,
-    isExiting,
-    setIsExiting,
-    uiError,
-    setUiError,
-    backendStatus,
-    setBackendStatus,
-    backendStatusMessage,
-    setBackendStatusMessage,
-    autoRestoreAttemptedSessionRef,
-    startQuestionStreamRef,
-    beginInterviewRef,
-    routeStep,
-    routeSessionId
-  } = useInterviewShellCoreState({ pathname, options });
+  const { step, setStep, setupPayload, setSetupPayload, sessionId, setSessionId, isExiting, setIsExiting, uiError, setUiError, backendStatus, setBackendStatus, backendStatusMessage, setBackendStatusMessage, autoRestoreAttemptedSessionRef, startQuestionStreamRef, beginInterviewRef, routeStep, routeSessionId } =
+    useInterviewShellCoreState({ pathname, options });
   const { syncPathname, updateStep } = useInterviewShellNavigation(sessionId, setStep);
   const { showToast, showToastError } = useInterviewShellToast(pushToast);
   const {
@@ -65,14 +46,7 @@ export function useInterviewShellOrchestrator(options: UseInterviewShellStateOpt
     handleGoogleLogin,
     handleGoogleLogout,
     retryAuthBootstrap
-  } = useInterviewShellAccessState({
-    routeSessionId,
-    routeStep,
-    step,
-    sessionId,
-    showToastError,
-    setUiError
-  });
+  } = useInterviewShellAccessState({ routeSessionId, routeStep, step, sessionId, showToastError, setUiError });
   const runBackendHealthCheck = useInterviewShellBackendHealth({ setBackendStatus, setBackendStatusMessage });
   const { isStarting, startSession, startError, clearStartError } = useStartSession();
   const [pendingCompletedSessionId, setPendingCompletedSessionId] = useState<string | null>(null);
@@ -117,17 +91,7 @@ export function useInterviewShellOrchestrator(options: UseInterviewShellStateOpt
     syncPathname,
     startQuestionStreamRef
   });
-  useInterviewShellBootstrapEffects({
-    runBackendHealthCheck,
-    startError,
-    showToastError,
-    setSetupPayload,
-    step,
-    sessionId,
-    isResumeResolving,
-    restoreSessionIntoRoom,
-    autoRestoreAttemptedSessionRef
-  });
+  useInterviewShellBootstrapEffects({ runBackendHealthCheck, startError, showToastError, setSetupPayload, step, sessionId, isResumeResolving, restoreSessionIntoRoom, autoRestoreAttemptedSessionRef });
   const { beginInterview, handleStartInterview, handleExit } = useInterviewShellSessionFlow({
     authStatus,
     retryAuthBootstrap,
@@ -155,15 +119,7 @@ export function useInterviewShellOrchestrator(options: UseInterviewShellStateOpt
     startRoomQuestionStream
   });
   beginInterviewRef.current = beginInterview;
-  const { clearUiError, handleRetryUiError } = useInterviewUiRecovery({
-    step,
-    sessionId,
-    setUiError,
-    setAuthPromptReason,
-    moveToReport,
-    handleGoInsights: reportFlow.handleGoInsights,
-    runBackendHealthCheck
-  });
+  const { clearUiError, handleRetryUiError } = useInterviewUiRecovery({ step, sessionId, setUiError, setAuthPromptReason, moveToReport, handleGoInsights: reportFlow.handleGoInsights, runBackendHealthCheck });
   return buildInterviewShellState(buildInterviewShellPresenterArgs({
     step,
     updateStep,
