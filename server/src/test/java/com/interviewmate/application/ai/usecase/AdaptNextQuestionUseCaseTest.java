@@ -56,4 +56,58 @@ class AdaptNextQuestionUseCaseTest {
         assertThat(systemPromptCaptor.getValue()).contains("캐릭터: 아이언");
         assertThat(systemPromptCaptor.getValue()).contains("아이언 추가 가드레일");
     }
+
+    @Test
+    void executeNormalizesMixedPunctuation() {
+        when(aiChatPort.requestSingleResponse(anyString(), anyString()))
+                .thenReturn("상태 공유 방식의 장단점을 예시로 설명해보세요.?");
+
+        String result = useCase.execute(
+                "frontend",
+                "React",
+                "jobseeker",
+                "Context와 전역 상태 관리 전략을 설명해보세요.",
+                "답변 요약",
+                "luna"
+        );
+
+        assertThat(result).doesNotContain(".?");
+        assertThat(result).isEqualTo("상태 공유 방식의 장단점을 예시로 설명해보세요?");
+    }
+
+    @Test
+    void executeRemovesPositivePrefaceForNonLuna() {
+        when(aiChatPort.requestSingleResponse(anyString(), anyString()))
+                .thenReturn("좋은 답변 감사합니다! 상태 공유 방식의 장단점을 예시로 설명해보세요.?");
+
+        String result = useCase.execute(
+                "frontend",
+                "React",
+                "jobseeker",
+                "Context와 전역 상태 관리 전략을 설명해보세요.",
+                "답변 요약",
+                "jet"
+        );
+
+        assertThat(result).isEqualTo("상태 공유 방식의 장단점을 예시로 설명해보세요?");
+        assertThat(result).doesNotContain("감사");
+    }
+
+    @Test
+    void executeRewritesDeclarativeEndingIntoQuestion() {
+        when(aiChatPort.requestSingleResponse(anyString(), anyString()))
+                .thenReturn("컴포넌트 분리를 이렇게 하는게 좋습니다?");
+
+        String result = useCase.execute(
+                "frontend",
+                "React",
+                "jobseeker",
+                "컴포넌트 분리 전략을 설명해보세요.",
+                "답변 요약",
+                "jet"
+        );
+
+        assertThat(result).isEqualTo("컴포넌트 분리를 이렇게 하는게 좋을까요?");
+        assertThat(result).doesNotEndWith("좋습니다?");
+    }
 }

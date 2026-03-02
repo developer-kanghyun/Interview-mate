@@ -102,4 +102,89 @@ class GenerateFollowupQuestionUseCaseTest {
         assertThat(systemPromptCaptor.getValue()).contains("캐릭터: 아이언");
         assertThat(systemPromptCaptor.getValue()).contains("아이언 추가 가드레일");
     }
+
+    @Test
+    void testExecuteNormalizesMixedPunctuationQuestionEnding() {
+        AiChatPort aiChatPort = mock(AiChatPort.class);
+        when(aiChatPort.requestSingleResponse(anyString(), anyString()))
+                .thenReturn("좋은 답변 감사합니다! React의 상태 관리 방법을 구체적으로 설명해 주실 수 있을까요.?");
+
+        GenerateFollowupQuestionUseCase useCase = new GenerateFollowupQuestionUseCase(aiChatPort);
+        String followupQuestion = useCase.execute(
+                "frontend",
+                "React",
+                "jobseeker",
+                "상태 관리 전략을 설명해보세요.",
+                "state를 나눠 관리합니다.",
+                "답변 요약",
+                "luna"
+        );
+
+        assertThat(followupQuestion).isEqualTo("좋은 답변 감사합니다! React의 상태 관리 방법을 구체적으로 설명해 주실 수 있을까요?");
+        assertThat(followupQuestion).doesNotContain(".?");
+        assertThat(followupQuestion).doesNotEndWith("같습니다?");
+    }
+
+    @Test
+    void testExecuteRemovesPositivePrefaceForNonLuna() {
+        AiChatPort aiChatPort = mock(AiChatPort.class);
+        when(aiChatPort.requestSingleResponse(anyString(), anyString()))
+                .thenReturn("좋은 답변 감사합니다! React의 상태 관리 방법을 구체적으로 설명해 주실 수 있을까요.?");
+
+        GenerateFollowupQuestionUseCase useCase = new GenerateFollowupQuestionUseCase(aiChatPort);
+        String followupQuestion = useCase.execute(
+                "frontend",
+                "React",
+                "jobseeker",
+                "상태 관리 전략을 설명해보세요.",
+                "state를 나눠 관리합니다.",
+                "답변 요약",
+                "jet"
+        );
+
+        assertThat(followupQuestion).isEqualTo("React의 상태 관리 방법을 구체적으로 설명해 주실 수 있을까요?");
+        assertThat(followupQuestion).doesNotContain("감사");
+    }
+
+    @Test
+    void testExecuteRewritesDeclarativeEndingIntoQuestion() {
+        AiChatPort aiChatPort = mock(AiChatPort.class);
+        when(aiChatPort.requestSingleResponse(anyString(), anyString()))
+                .thenReturn("컴포넌트 분리를 이렇게 하는게 좋습니다?");
+
+        GenerateFollowupQuestionUseCase useCase = new GenerateFollowupQuestionUseCase(aiChatPort);
+        String followupQuestion = useCase.execute(
+                "frontend",
+                "React",
+                "jobseeker",
+                "컴포넌트 분리 전략을 설명해보세요.",
+                "가독성을 높일 수 있습니다.",
+                "답변 요약",
+                "jet"
+        );
+
+        assertThat(followupQuestion).isEqualTo("컴포넌트 분리를 이렇게 하는게 좋을까요?");
+        assertThat(followupQuestion).doesNotEndWith("좋습니다?");
+    }
+
+    @Test
+    void testExecuteRewritesWouldBeHelpfulPattern() {
+        AiChatPort aiChatPort = mock(AiChatPort.class);
+        when(aiChatPort.requestSingleResponse(anyString(), anyString()))
+                .thenReturn("상태 변경 흐름을 단계별로 말씀해 주시면 도움이 될 것 같습니다.?");
+
+        GenerateFollowupQuestionUseCase useCase = new GenerateFollowupQuestionUseCase(aiChatPort);
+        String followupQuestion = useCase.execute(
+                "frontend",
+                "React",
+                "jobseeker",
+                "상태 변경 흐름을 설명해보세요.",
+                "컨텍스트를 사용합니다.",
+                "답변 요약",
+                "jet"
+        );
+
+        assertThat(followupQuestion).isEqualTo("상태 변경 흐름을 단계별로 말씀해 주실 수 있을까요?");
+        assertThat(followupQuestion).doesNotContain("같습니다?");
+    }
 }

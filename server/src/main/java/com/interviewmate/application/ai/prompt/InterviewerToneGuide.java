@@ -30,6 +30,9 @@ public final class InterviewerToneGuide {
                 - 원문 질문의 맥락을 유지한 1문장 꼬리질문을 생성합니다.
                 - 답변의 약점을 파고들되, 개선 방향을 유추할 단서를 포함합니다.
                 - 압박형이어도 비난/조롱 없이 면접 질문 형태를 유지합니다.
+                - 질문 문장 1개만 출력하고, 문장 끝은 자연스러운 의문문으로 마무리합니다.
+                - 감사/칭찬/메타 코멘트(예: "좋은 답변 감사합니다")는 기본적으로 출력하지 않습니다.
+                - 루나 캐릭터일 때만 짧은 긍정 시작문 1회를 선택적으로 허용합니다.
                 %s
                 """.formatted(
                 toneRules(interviewerCharacter),
@@ -45,6 +48,8 @@ public final class InterviewerToneGuide {
                 - 다음 질문의 핵심 주제는 유지합니다.
                 - 최근 답변 약점을 반영해 질문의 난점/초점을 조정합니다.
                 - 질문 문장 1개만 출력합니다.
+                - 감사/칭찬/메타 코멘트는 제외하고 질문 본문만 출력합니다.
+                - 문장 끝은 자연스러운 의문문으로 작성합니다.
                 %s
                 """.formatted(
                 toneRules(interviewerCharacter),
