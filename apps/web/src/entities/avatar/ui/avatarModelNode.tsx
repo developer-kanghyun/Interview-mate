@@ -31,6 +31,7 @@ export type AvatarModelProps = {
   reactionEnabled: boolean;
   audioRef?: React.RefObject<HTMLAudioElement>;
   debugMorph: boolean;
+  onReady?: () => void;
 };
 
 export function AvatarModel({
@@ -41,7 +42,8 @@ export function AvatarModel({
   emotion,
   reactionEnabled,
   audioRef,
-  debugMorph
+  debugMorph,
+  onReady
 }: AvatarModelProps) {
   const { camera } = useThree();
   const modelFrameRef = React.useRef<ModelFrame | null>(null);
@@ -68,6 +70,10 @@ export function AvatarModel({
 
   const analyserRef = React.useRef<AnalyserNode | null>(null);
   const analyserDataRef = React.useRef<TimeDomainDataBuffer | null>(null);
+
+  React.useEffect(() => {
+    onReady?.();
+  }, [onReady]);
 
   useAvatarModelEffects({
     character,

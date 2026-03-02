@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import type { StartInterviewPayload } from "@/features/interview/start-session/model/application/startInterviewSessionUseCase";
 import { SetupActions } from "@/features/interview-setup/ui/SetupActions";
 import { SetupProgress } from "@/features/interview-setup/ui/SetupProgress";
@@ -44,15 +43,10 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
 
   return (
     <div className="relative mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-10">
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="overflow-hidden rounded-[2rem] border border-im-border/60 bg-white p-6 shadow-sm sm:p-8"
-      >
+      <div className="overflow-hidden rounded-[2rem] border border-im-border/60 bg-white p-6 shadow-sm sm:p-8">
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-im-primary">Interview Setup</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-im-primary-strong">Interview Setup</p>
             <p className="mt-1 text-sm font-semibold text-im-text-muted sm:text-base">직무, 난이도, 면접관을 순서대로 선택하세요.</p>
           </div>
         </div>
@@ -60,7 +54,7 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
         <SetupProgress step={step} />
 
         {step === 1 ? (
-          <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.35, ease: "easeOut" }}>
+          <div key="step1" className="transition-all duration-300 ease-out">
             <SetupStepRole
               value={value}
               onChange={onChange}
@@ -69,11 +63,11 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
               setVisualJobId={setVisualJobId}
               setSelectedStacks={setSelectedStacks}
             />
-          </motion.div>
+          </div>
         ) : null}
 
         {step === 2 ? (
-          <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.35, ease: "easeOut" }}>
+          <div key="step2" className="transition-all duration-300 ease-out">
             <SetupStepStack
               value={value}
               onChange={onChange}
@@ -82,13 +76,13 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
               selectedStacks={selectedStacks}
               setSelectedStacks={setSelectedStacks}
             />
-          </motion.div>
+          </div>
         ) : null}
 
         {step === 3 ? (
-          <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.35, ease: "easeOut" }}>
+          <div key="step3" className="transition-all duration-300 ease-out">
             <SetupStepCharacter value={value} onChange={onChange} isSetupBusy={isSetupBusy} />
-          </motion.div>
+          </div>
         ) : null}
 
         <SetupActions
@@ -102,7 +96,7 @@ export function SetupView({ value, onChange, onStart, isStarting, canStart = tru
           isStarting={isStarting}
           canStart={canStart}
         />
-      </motion.div>
+      </div>
     </div>
   );
 }

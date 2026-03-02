@@ -1,6 +1,8 @@
 import { requestJson } from "@/shared/api/http";
 import {
-  AUTH_REQUEST_TIMEOUT_MS,
+  AUTH_GOOGLE_REQUEST_TIMEOUT_MS,
+  AUTH_GUEST_REQUEST_TIMEOUT_MS,
+  AUTH_ME_REQUEST_TIMEOUT_MS,
   HEALTH_REQUEST_TIMEOUT_MS,
   REPORT_REQUEST_TIMEOUT_MS,
   SESSION_READ_TIMEOUT_MS,
@@ -143,7 +145,7 @@ export async function getGoogleAuthUrl() {
   return requestJson<GoogleAuthUrlApiResponse>("/api/auth/google/url", {
     method: "GET",
     requireAuth: false,
-    timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
+    timeoutMs: AUTH_GOOGLE_REQUEST_TIMEOUT_MS,
     fallbackMessage: "Google 로그인 URL 조회 실패"
   });
 }
@@ -157,7 +159,7 @@ export async function completeGoogleAuth(code: string, state?: string | null) {
   return requestJson<GoogleAuthCallbackApiResponse>(`/api/auth/google/callback?${query.toString()}`, {
     method: "GET",
     requireAuth: false,
-    timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
+    timeoutMs: AUTH_GOOGLE_REQUEST_TIMEOUT_MS,
     fallbackMessage: "Google 로그인 처리 실패"
   });
 }
@@ -166,7 +168,7 @@ export async function getGuestAccess() {
   return requestJson<GuestAuthApiResponse>("/api/auth/guest", {
     method: "GET",
     requireAuth: false,
-    timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
+    timeoutMs: AUTH_GUEST_REQUEST_TIMEOUT_MS,
     fallbackMessage: "게스트 인증 발급 실패"
   });
 }
@@ -174,7 +176,7 @@ export async function getGuestAccess() {
 export async function getMyProfile() {
   return requestJson<AuthMeApiResponse>("/api/auth/me", {
     method: "GET",
-    timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
+    timeoutMs: AUTH_ME_REQUEST_TIMEOUT_MS,
     fallbackMessage: "로그인 사용자 조회 실패"
   });
 }

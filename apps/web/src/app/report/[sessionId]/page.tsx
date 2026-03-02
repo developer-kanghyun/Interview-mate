@@ -1,4 +1,4 @@
-import { InterviewShell } from "@/widgets/interview/ui/InterviewShell";
+import { InterviewShellSurface } from "@/widgets/interview/ui/InterviewShellSurface";
 
 type ReportPageProps = {
   params: {
@@ -7,5 +7,5 @@ type ReportPageProps = {
 };
 
 export default function ReportPage({ params }: ReportPageProps) {
-  return <InterviewShell initialStep="report" initialSessionId={decodeURIComponent(params.sessionId)} />;
+  return <InterviewShellSurface initialStep="report" initialSessionId={decodeURIComponent(params.sessionId)} />;
 }

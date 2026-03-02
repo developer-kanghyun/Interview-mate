@@ -29,6 +29,9 @@ type InterviewerAvatarAnimatedProps = {
   debugScene?: boolean;
   stageVariant?: AvatarStageVariant;
   cameraZoom?: number;
+  onReady?: () => void;
+  onError?: (error: Error) => void;
+  forceFallback?: boolean;
 };
 
 const modelUrlByCharacter: Record<AvatarCharacter, string> = AVATAR_GLB_BY_CHARACTER;
@@ -40,6 +43,7 @@ useGLTF.preload(AVATAR_GLB_BY_CHARACTER.iron);
 type SceneErrorBoundaryProps = {
   children: React.ReactNode;
   fallback: React.ReactNode;
+  onError?: (error: Error) => void;
 };
 
 type SceneErrorBoundaryState = {
@@ -59,6 +63,7 @@ class SceneErrorBoundary extends React.Component<SceneErrorBoundaryProps, SceneE
 
   public componentDidCatch(error: Error) {
     console.warn("[InterviewerAvatarAnimated] GLB load/render fallback:", error.message);
+    this.props.onError?.(error);
   }
 
   public render() {
@@ -80,12 +85,21 @@ export function InterviewerAvatarAnimated({
   debugMorph = false,
   debugScene = false,
   stageVariant = "clean_office",
-  cameraZoom = 1
+  cameraZoom = 1,
+  onReady,
+  onError,
+  forceFallback = false
 }: InterviewerAvatarAnimatedProps) {
   const webglAvailable = React.useMemo(() => canUseWebGL(), []);
   const modelUrl = modelUrlByCharacter[character];
 
-  if (!webglAvailable) {
+  React.useEffect(() => {
+    if (!webglAvailable || forceFallback) {
+      onReady?.();
+    }
+  }, [forceFallback, onReady, webglAvailable]);
+
+  if (!webglAvailable || forceFallback) {
     return (
       <div className="h-full w-full" data-avatar-state={state} data-avatar-cue={cueToken}>
         <WebglUnavailableAvatar state={state} emotion={emotion} />
@@ -105,7 +119,11 @@ export function InterviewerAvatarAnimated({
         <AvatarStage variant={stageVariant} />
         {debugScene ? <DebugSceneHelpers /> : null}
 
-        <SceneErrorBoundary key={modelUrl} fallback={<FallbackAvatar state={state} emotion={emotion} />}>
+        <SceneErrorBoundary
+          key={modelUrl}
+          fallback={<FallbackAvatar state={state} emotion={emotion} />}
+          onError={onError}
+        >
           <React.Suspense fallback={<FallbackAvatar state={state} emotion={emotion} />}>
             <AvatarModel
               character={character}
@@ -116,6 +134,7 @@ export function InterviewerAvatarAnimated({
               reactionEnabled={reactionEnabled}
               audioRef={audioRef}
               debugMorph={debugMorph}
+              onReady={onReady}
             />
           </React.Suspense>
         </SceneErrorBoundary>

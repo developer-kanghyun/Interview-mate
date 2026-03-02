@@ -16,6 +16,8 @@ const config: Config = {
           border: "#f0f2f4",
           primary: "#FF6000",
           "primary-hover": "#E05500",
+          "primary-strong": "#B34700",
+          "primary-strong-hover": "#8F3800",
           "primary-soft": "#FFF2E8",
           "text-main": "#111418",
           "text-muted": "#637488",

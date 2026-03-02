@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchInterviewGoogleAuthUrlUseCase } from "@/features/interview-session/model/application/interviewSessionUseCases";
 import {
   clearPostLoginRedirectTarget,
@@ -46,10 +46,11 @@ export function useInterviewAuthState({
   onSyncResumeCandidate,
   onResetResumeState
 }: UseInterviewAuthStateOptions): UseInterviewAuthStateResult {
-  const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
+  const [authStatus, setAuthStatus] = useState<AuthStatus>("anonymous");
   const [authPromptReason, setAuthPromptReason] = useState<AuthPromptReason>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [isGuestUser, setIsGuestUser] = useState(false);
+  const manualBootstrapInFlightRef = useRef<Promise<boolean> | null>(null);
 
   const authRedirectTarget = useMemo(() => {
     return resolveAuthRedirectTarget(step, sessionId);
@@ -102,17 +103,55 @@ export function useInterviewAuthState({
   }, [isAuthLoading, onResetResumeState, showToastError]);
 
   const bootstrapAuth = useCallback(
-    async (isActive: () => boolean, showErrorToast: boolean) => {
-      return bootstrapInterviewAuth({
-        isActive,
-        showErrorToast,
-        setAuthStatus,
-        setIsGuestUser,
-        setAuthPromptReason,
-        setUiError,
-        showToastError,
-        onSyncResumeCandidate
-      });
+    async ({
+      isActive,
+      showErrorToast,
+      allowGuestIssue,
+      showLoading
+    }: {
+      isActive: () => boolean;
+      showErrorToast: boolean;
+      allowGuestIssue: boolean;
+      showLoading: boolean;
+    }) => {
+      if (showLoading && manualBootstrapInFlightRef.current) {
+        return manualBootstrapInFlightRef.current;
+      }
+
+      const bootstrapPromise = (async () => {
+        if (showLoading) {
+          setIsAuthLoading(true);
+        }
+        try {
+          return await bootstrapInterviewAuth({
+            isActive,
+            showErrorToast,
+            allowGuestIssue,
+            setLoadingState: showLoading,
+            setAuthStatus,
+            setIsGuestUser,
+            setAuthPromptReason,
+            setUiError,
+            showToastError,
+            onSyncResumeCandidate
+          });
+        } finally {
+          if (showLoading) {
+            setIsAuthLoading(false);
+          }
+        }
+      })();
+
+      if (showLoading) {
+        manualBootstrapInFlightRef.current = bootstrapPromise;
+      }
+      try {
+        return await bootstrapPromise;
+      } finally {
+        if (showLoading && manualBootstrapInFlightRef.current === bootstrapPromise) {
+          manualBootstrapInFlightRef.current = null;
+        }
+      }
     },
     [onSyncResumeCandidate, setUiError, showToastError]
   );
@@ -120,8 +159,13 @@ export function useInterviewAuthState({
   useEffect(() => {
     let active = true;
 
-    // 초기 진입 자동 부트스트랩은 조용히 수행하고, 실패 메시지는 사용자 액션 시에만 노출한다.
-    void bootstrapAuth(() => active, false);
+    // 초기 진입은 멤버 상태 확인만 조용히 수행한다(guest 발급/로딩 잠금 없음).
+    void bootstrapAuth({
+      isActive: () => active,
+      showErrorToast: false,
+      allowGuestIssue: false,
+      showLoading: false
+    });
 
     return () => {
       active = false;
@@ -129,7 +173,12 @@ export function useInterviewAuthState({
   }, [bootstrapAuth]);
 
   const retryAuthBootstrap = useCallback(async () => {
-    return bootstrapAuth(() => true, true);
+    return bootstrapAuth({
+      isActive: () => true,
+      showErrorToast: true,
+      allowGuestIssue: true,
+      showLoading: true
+    });
   }, [bootstrapAuth]);
 
   return {

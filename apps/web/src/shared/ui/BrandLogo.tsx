@@ -7,7 +7,7 @@ type BrandLogoProps = {
 export function BrandLogo({ className = "" }: BrandLogoProps) {
   return (
     <span className={`relative inline-flex items-center justify-center overflow-hidden rounded-xl ${className}`}>
-      <Image src="/images/brand_logo_mark.png" alt="Interview Mate" fill sizes="64px" className="object-cover object-center" priority />
+      <Image src="/images/brand_logo_mark.png" alt="" aria-hidden="true" fill sizes="64px" className="object-cover object-center" priority />
     </span>
   );
 }
