@@ -128,10 +128,6 @@ export function useInterviewShellSessionFlow({
   );
 
   const handleStartInterview = useCallback(async () => {
-    if (authStatus === "loading") {
-      showToastError("인증 상태 확인 중입니다. 잠시 후 다시 시도해 주세요.", "auth:loading-start");
-      return;
-    }
     if (authStatus !== "member" && authStatus !== "guest") {
       const recovered = await retryAuthBootstrap();
       if (!recovered) {
@@ -139,7 +135,7 @@ export function useInterviewShellSessionFlow({
       }
     }
     await beginInterview(setupPayload);
-  }, [authStatus, beginInterview, retryAuthBootstrap, setupPayload, showToastError]);
+  }, [authStatus, beginInterview, retryAuthBootstrap, setupPayload]);
 
   useEffect(() => {
     if (!pendingCompletedSessionId || isExiting) {

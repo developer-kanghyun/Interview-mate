@@ -1,14 +1,27 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { SetupView } from "@/features/interview-setup/ui/SetupView";
-import { ReportView } from "@/features/interview-report/ui/ReportView";
-import { InsightsView } from "@/features/interview-insights/ui/InsightsView";
 import { Button } from "@/shared/ui/Button";
 import { InlineNotice } from "@/shared/ui/InlineNotice";
-import type { UseInterviewShellStateResult } from "@/features/interview-session/model/application/useInterviewShellState";
+import type { InterviewShellViewState } from "@/widgets/interview/ui/interviewShellView.types";
+
+const ReportViewSection = dynamic(
+  () => import("@/features/interview-report/ui/ReportView").then((module) => module.ReportView),
+  {
+    ssr: false
+  }
+);
+
+const InsightsViewSection = dynamic(
+  () => import("@/features/interview-insights/ui/InsightsView").then((module) => module.InsightsView),
+  {
+    ssr: false
+  }
+);
 
 type InterviewShellStepContentProps = {
-  shellState: UseInterviewShellStateResult;
+  shellState: InterviewShellViewState;
   isNavigationBusy: boolean;
 };
 
@@ -38,13 +51,13 @@ export function InterviewShellStepContent({ shellState, isNavigationBusy }: Inte
           value={shellState.setupPayload}
           onChange={shellState.setSetupPayload}
           onStart={shellState.handleStartInterview}
-          isStarting={shellState.isStarting}
-          canStart={shellState.authStatus !== "loading" && !shellState.isAuthRequired}
+          isStarting={shellState.isStarting || shellState.isAuthLoading}
+          canStart={!shellState.isAuthRequired}
         />
       ) : null}
 
       {shellState.step === "report" ? (
-        <ReportView
+        <ReportViewSection
           report={shellState.report}
           isLoading={shellState.isReportLoading}
           errorMessage={shellState.reportErrorMessage}
@@ -59,7 +72,7 @@ export function InterviewShellStepContent({ shellState, isNavigationBusy }: Inte
       ) : null}
 
       {shellState.step === "insights" ? (
-        <InsightsView
+        <InsightsViewSection
           sessions={shellState.sessions}
           weakKeywords={shellState.weakKeywords}
           studyGuide={shellState.studyGuide}

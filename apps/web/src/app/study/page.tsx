@@ -1,5 +1,5 @@
-import { InterviewShell } from "@/widgets/interview/ui/InterviewShell";
+import { InterviewShellSurface } from "@/widgets/interview/ui/InterviewShellSurface";
 
 export default function StudyPage() {
-  return <InterviewShell initialStep="insights" />;
+  return <InterviewShellSurface initialStep="insights" />;
 }

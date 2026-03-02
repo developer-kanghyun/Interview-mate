@@ -10,11 +10,11 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variantClassMap: Record<ButtonVariant, string> = {
   primary:
-    "bg-im-primary text-white shadow-soft hover:bg-im-primary-hover focus-visible:ring-im-primary/30 active:scale-[0.97]",
+    "bg-im-primary-strong text-white shadow-soft hover:bg-im-primary-strong-hover focus-visible:ring-im-primary-strong/30 active:scale-[0.97]",
   secondary:
     "border border-im-border bg-white text-im-text-main hover:bg-im-subtle focus-visible:ring-im-primary/20 active:scale-[0.97]",
   ghost:
-    "bg-transparent text-im-text-muted hover:bg-im-subtle focus-visible:ring-im-primary/20"
+    "bg-transparent text-im-text-main hover:bg-im-subtle focus-visible:ring-im-primary/20"
 };
 
 const sizeClassMap: Record<ButtonSize, string> = {
@@ -28,7 +28,7 @@ export function Button({ variant = "primary", size = "md", className = "", type 
   return (
     <button
       type={type}
-      className={`inline-flex items-center justify-center rounded-2xl transition-[background-color,color,border-color,box-shadow,transform,opacity] focus-visible:outline-none focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-50 ${sizeClassMap[size]} ${variantClassMap[variant]} ${className}`}
+      className={`inline-flex items-center justify-center rounded-2xl transition-[background-color,color,border-color,box-shadow,transform,opacity] focus-visible:outline-none focus-visible:ring-4 disabled:cursor-not-allowed disabled:border-im-border disabled:bg-im-subtle disabled:text-im-text-main ${sizeClassMap[size]} ${variantClassMap[variant]} ${className}`}
       {...props}
     />
   );

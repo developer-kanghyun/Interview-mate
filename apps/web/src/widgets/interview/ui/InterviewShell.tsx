@@ -1,6 +1,6 @@
 "use client";
 
-import { RoomView } from "@/widgets/interview-room/ui/RoomView";
+import dynamic from "next/dynamic";
 import { LoginRequiredModal } from "@/features/auth/ui/LoginRequiredModal";
 import { ResumeSessionModal } from "@/features/interview-session/ui/ResumeSessionModal";
 import { useInterviewShellState } from "@/features/interview-session/model/application/useInterviewShellState";
@@ -8,6 +8,22 @@ import type { InterviewStep } from "@/features/interview-session/model/interview
 import { getAuthRequiredMessage } from "@/shared/auth/session";
 import { InterviewShellHeader } from "@/widgets/interview/ui/InterviewShellHeader";
 import { InterviewShellStepContent } from "@/widgets/interview/ui/InterviewShellStepContent";
+import { LoadingSpinner } from "@/shared/ui/LoadingSpinner";
+
+const RoomViewSection = dynamic(
+  () => import("@/widgets/interview-room/ui/RoomView").then((module) => module.RoomView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-dvh min-h-dvh items-center justify-center bg-white">
+        <div className="flex flex-col items-center gap-3 text-im-text-muted">
+          <LoadingSpinner size="lg" tone="primary" label="면접 화면을 준비 중입니다." />
+          <p className="text-sm font-semibold">면접 화면을 준비하고 있어요...</p>
+        </div>
+      </div>
+    )
+  }
+);
 
 type InterviewShellProps = {
   initialStep?: InterviewStep;
@@ -31,7 +47,7 @@ export function InterviewShell({ initialStep, initialSessionId }: InterviewShell
 
   if (shellState.step === "room" && shellState.sessionId) {
     return (
-      <RoomView
+      <RoomViewSection
         character={shellState.character}
         avatarState={shellState.avatarState}
         avatarCueToken={shellState.avatarCueToken}

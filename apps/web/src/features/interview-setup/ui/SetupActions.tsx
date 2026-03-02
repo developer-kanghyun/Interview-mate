@@ -24,6 +24,8 @@ export function SetupActions({
   isStarting,
   canStart
 }: SetupActionsProps) {
+  const startVariant = !canStart && !isStarting ? "secondary" : "primary";
+
   return (
     <div className="mt-7 flex items-center justify-between gap-3 border-t border-im-border/50 pt-4">
       <Button variant="ghost" onClick={previousStep} disabled={step === 1 || isSetupBusy} className="px-6">
@@ -35,14 +37,19 @@ export function SetupActions({
           다음
         </Button>
       ) : (
-        <Button onClick={onStart} disabled={isStartDisabled} className="min-w-[180px] gap-2 shadow-glow">
+        <Button
+          variant={startVariant}
+          onClick={onStart}
+          disabled={isStartDisabled}
+          className={`min-w-[180px] gap-2 ${startVariant === "primary" ? "shadow-glow" : ""}`}
+        >
           {isStarting ? (
             <>
-              <LoadingSpinner size="sm" tone="on-primary" />
+              <LoadingSpinner size="sm" tone={startVariant === "primary" ? "on-primary" : "primary"} />
               면접 준비 중...
             </>
           ) : !canStart ? (
-            "인증 확인 중..."
+            "로그인 후 시작"
           ) : (
             "면접 시작"
           )}

@@ -2,10 +2,10 @@
 
 import { Button } from "@/shared/ui/Button";
 import { BrandIdentityLink } from "@/shared/ui/BrandIdentityLink";
-import type { UseInterviewShellStateResult } from "@/features/interview-session/model/application/useInterviewShellState";
+import type { InterviewShellViewState } from "@/widgets/interview/ui/interviewShellView.types";
 
 type InterviewShellHeaderProps = {
-  shellState: UseInterviewShellStateResult;
+  shellState: InterviewShellViewState;
   isNavigationBusy: boolean;
 };
 

@@ -42,7 +42,7 @@ export function SetupStepCharacter({ value, onChange, isSetupBusy }: SetupStepCh
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className={`text-sm font-bold ${value.character === character.key ? "text-im-primary" : "text-im-text-main"}`}>
+                  <p className={`text-sm font-bold ${value.character === character.key ? "text-im-primary-strong" : "text-im-text-main"}`}>
                     {character.name}
                   </p>
                 </div>

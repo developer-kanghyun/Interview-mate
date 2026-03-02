@@ -29,6 +29,8 @@ function resolveAuthBootstrapErrorMessage(profileMessage: string | null, guestMe
 type BootstrapInterviewAuthOptions = {
   isActive: () => boolean;
   showErrorToast: boolean;
+  allowGuestIssue?: boolean;
+  setLoadingState?: boolean;
   setAuthStatus: (next: AuthStatus) => void;
   setIsGuestUser: (next: boolean) => void;
   setAuthPromptReason: (next: AuthPromptReason) => void;
@@ -40,6 +42,8 @@ type BootstrapInterviewAuthOptions = {
 export async function bootstrapInterviewAuth({
   isActive,
   showErrorToast,
+  allowGuestIssue = true,
+  setLoadingState = true,
   setAuthStatus,
   setIsGuestUser,
   setAuthPromptReason,
@@ -47,7 +51,9 @@ export async function bootstrapInterviewAuth({
   showToastError,
   onSyncResumeCandidate
 }: BootstrapInterviewAuthOptions) {
-  setAuthStatus("loading");
+  if (setLoadingState) {
+    setAuthStatus("loading");
+  }
 
   for (let attempt = 0; attempt < AUTH_BOOTSTRAP_MAX_ATTEMPTS; attempt += 1) {
     if (!isActive()) {
@@ -86,6 +92,13 @@ export async function bootstrapInterviewAuth({
           showToastError(profileMessage, "auth:profile");
         }
         setAuthStatus("error");
+        setAuthPromptReason(null);
+        setIsGuestUser(false);
+        return false;
+      }
+
+      if (!allowGuestIssue) {
+        setAuthStatus("anonymous");
         setAuthPromptReason(null);
         setIsGuestUser(false);
         return false;

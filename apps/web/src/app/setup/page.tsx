@@ -1,5 +1,5 @@
-import { InterviewShell } from "@/widgets/interview/ui/InterviewShell";
+import { InterviewShellSurface } from "@/widgets/interview/ui/InterviewShellSurface";
 
 export default function SetupPage() {
-  return <InterviewShell initialStep="setup" />;
+  return <InterviewShellSurface initialStep="setup" />;
 }

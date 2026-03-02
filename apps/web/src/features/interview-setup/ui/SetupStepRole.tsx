@@ -49,7 +49,7 @@ export function SetupStepRole({
                 });
               }}
             >
-              <p className={`text-base font-bold tracking-tight ${isSelected ? "text-im-primary" : "text-im-text-main"}`}>
+              <p className={`text-base font-bold tracking-tight ${isSelected ? "text-im-primary-strong" : "text-im-text-main"}`}>
                 {job.label}
               </p>
             </button>
