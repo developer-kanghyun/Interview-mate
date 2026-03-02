@@ -5,24 +5,31 @@ import com.interviewmate.conversation.repository.MessageRepository;
 import com.interviewmate.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.utility.DockerImageName;
 
 public abstract class IntegrationTestSupport {
 
-    @Container
     @SuppressWarnings("resource")
-    protected static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine");
+    protected static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine");
 
-    @Container
     @SuppressWarnings("resource")
-    protected static GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
+    protected static final GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
             .withExposedPorts(6379);
+
+    static {
+        if (!postgres.isRunning()) {
+            postgres.start();
+        }
+        if (!redis.isRunning()) {
+            redis.start();
+        }
+    }
 
     @DynamicPropertySource
     static void configureBaseProperties(DynamicPropertyRegistry registry) {
@@ -46,8 +53,12 @@ public abstract class IntegrationTestSupport {
     @Autowired
     protected JdbcTemplate jdbcTemplate;
 
+    @Autowired(required = false)
+    protected StringRedisTemplate stringRedisTemplate;
+
     @BeforeEach
     void clearAndSeedDefaultUser() {
+        flushRedis();
         jdbcTemplate.update("DELETE FROM interview_answers");
         jdbcTemplate.update("DELETE FROM interview_session_questions");
         jdbcTemplate.update("DELETE FROM interview_sessions");
@@ -58,5 +69,14 @@ public abstract class IntegrationTestSupport {
         jdbcTemplate.update(
                 "INSERT INTO users (id, api_key, created_at, updated_at) VALUES (1, 'test-key', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
         );
+    }
+
+    private void flushRedis() {
+        if (stringRedisTemplate == null || stringRedisTemplate.getConnectionFactory() == null) {
+            return;
+        }
+        try (var connection = stringRedisTemplate.getConnectionFactory().getConnection()) {
+            connection.serverCommands().flushAll();
+        }
     }
 }

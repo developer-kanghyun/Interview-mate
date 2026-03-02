@@ -3,6 +3,7 @@ package com.interviewmate.integration;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.interviewmate.application.ai.port.AiChatPort;
+import com.interviewmate.application.ai.port.AiChatStreamPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,10 +17,12 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -38,6 +41,9 @@ class InterviewFlowIntegrationTest extends IntegrationTestSupport {
     @MockBean
     private AiChatPort aiChatPort;
 
+    @MockBean
+    private AiChatStreamPort aiChatStreamPort;
+
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
         registry.add("app.rate-limit.enabled", () -> "false");
@@ -45,6 +51,8 @@ class InterviewFlowIntegrationTest extends IntegrationTestSupport {
 
     @BeforeEach
     void setUpAiMock() {
+        when(aiChatStreamPort.requestStream(anyList())).thenReturn(Flux.empty());
+
         when(aiChatPort.requestSingleResponse(anyString(), anyString()))
                 .thenAnswer(invocation -> {
                     String systemPrompt = invocation.getArgument(0, String.class);

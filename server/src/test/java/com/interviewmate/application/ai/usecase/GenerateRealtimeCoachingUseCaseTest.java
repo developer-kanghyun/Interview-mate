@@ -102,6 +102,33 @@ class GenerateRealtimeCoachingUseCaseTest {
         assertThat(systemPromptCaptor.getValue()).contains("비난, 조롱");
     }
 
+    @Test
+    void executeEnrichesGenericCoachingWithConcreteExample() {
+        when(aiChatPort.requestSingleResponse(anyString(), anyString()))
+                .thenReturn("""
+                        {
+                          "summary": "상태 관점은 잘 정리했습니다.",
+                          "coaching": "다음 답변에서는 구체적인 사례를 추가해보세요."
+                        }
+                        """);
+
+        GenerateRealtimeCoachingUseCase.RealtimeCoachingResult result = useCase.execute(
+                "frontend",
+                "React",
+                "jobseeker",
+                "React의 상태 관리 방법을 설명해보세요.",
+                "상태 관리는 중요합니다.",
+                evaluation(true, "weak_specificity"),
+                "weak_specificity",
+                "luna"
+        );
+
+        assertThat(result.coachingAvailable()).isTrue();
+        assertThat(result.coachingMessage()).contains("이렇게 답하세요:");
+        assertThat(result.coachingMessage()).contains("예시 답변:");
+        assertThat(result.coachingMessage()).contains("React Query");
+    }
+
     private AnswerEvaluationResult evaluation(boolean followupRequired, String followupReason) {
         return AnswerEvaluationResult.builder()
                 .accuracy(2.0)

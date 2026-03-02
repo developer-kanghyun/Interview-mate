@@ -86,15 +86,16 @@ public class ChatService {
                         },
                         () -> {
                             try {
-                                emitter.send(SseEmitter.event().name("done").data("[DONE]"));
-                                emitter.complete();
-                                
                                 String fullContent = gatheredContent.toString();
                                 if (!fullContent.isEmpty()) {
                                     conversationContextService.saveAssistantMessage(conversation, fullContent);
                                 }
-                            } catch (IOException e) {
+
+                                emitter.send(SseEmitter.event().name("done").data("[DONE]"));
+                                emitter.complete();
+                            } catch (Exception e) {
                                 log.error("SSE complete failed", e);
+                                emitter.completeWithError(e);
                             }
                         }
                 );

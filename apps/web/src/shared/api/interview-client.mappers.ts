@@ -1,6 +1,7 @@
 import type {
   InterviewHistoryApiResponse,
   SessionReportResponse,
+  SessionStudyResponse,
   SessionStateResponse
 } from "@/shared/api/interview";
 import type {
@@ -15,6 +16,7 @@ import {
   mapRole,
   mapStatus,
   pickLatestDate,
+  readResponseData,
   readReportData,
   toPercentScore
 } from "@/shared/api/interview-client.utils";
@@ -31,7 +33,7 @@ export function mapReportToInterviewReport(reportResponse: SessionReportResponse
     questionId: question.question_id,
     order: question.question_order,
     question: question.question_content,
-    feedback: question.improvement_tip || question.coaching_message || "피드백을 불러오지 못했습니다.",
+    feedback: question.coaching_message || question.improvement_tip || "피드백을 불러오지 못했습니다.",
     totalScore: toPercentScore(question.score.total_score),
     whyWeak:
       question.why_weak?.trim() ||
@@ -66,7 +68,14 @@ export function mapReportToInterviewReport(reportResponse: SessionReportResponse
 
   const studyGuide = dedupeAndLimitGuide([
     ...data.priority_focuses.map((focus) => `${focus} 축을 우선적으로 보완하세요.`),
-    ...data.questions.slice(0, 3).map((question) => question.improvement_tip)
+    ...data.questions
+      .slice(0, 3)
+      .map(
+        (question) =>
+          question.how_to_answer?.trim() ||
+          question.coaching_message?.trim() ||
+          question.improvement_tip
+      )
   ]);
 
   const summary = `총 ${data.answered_questions}/${data.total_questions}문항 답변, 성과 레벨 ${data.performance_level}.`;
@@ -80,6 +89,51 @@ export function mapReportToInterviewReport(reportResponse: SessionReportResponse
     questionFeedback,
     studyGuide,
     questionGuides
+  };
+}
+
+export function mergeStudyDataIntoInterviewReport(
+  report: InterviewReport,
+  studyResponse: SessionStudyResponse
+): InterviewReport {
+  const studyData = readResponseData(studyResponse, "공부 가이드 조회 실패");
+  const reportQuestionByOrder = new Map(report.questionFeedback.map((item) => [item.order, item] as const));
+
+  const questionGuides = studyData.question_guides.map((guide, index) => {
+    const matchedReportQuestion = reportQuestionByOrder.get(guide.question_order);
+    return {
+      questionId: matchedReportQuestion?.questionId ?? `study-q-${guide.question_order}-${index}`,
+      order: guide.question_order,
+      question: guide.question_content,
+      interviewerEmotion: mapEmotion(guide.interviewer_emotion),
+      weakConceptKeywords: guide.weak_concept_keywords ?? [],
+      actionTip:
+        guide.action_tip?.trim() ||
+        matchedReportQuestion?.feedback ||
+        "핵심 개념부터 답변하세요.",
+      howToAnswer:
+        guide.how_to_answer?.trim() ||
+        matchedReportQuestion?.howToAnswer ||
+        "결론-근거-예시 구조로 답변하세요.",
+      exampleAnswer:
+        guide.example_answer?.trim() ||
+        matchedReportQuestion?.exampleAnswer ||
+        guide.model_answer_preview?.trim() ||
+        "예시 답변을 생성하지 못했습니다."
+    };
+  });
+
+  const studyGuide = dedupeAndLimitGuide([
+    ...(studyData.recommended_actions ?? []),
+    ...questionGuides.slice(0, 2).map((guide) => guide.howToAnswer),
+    ...report.studyGuide
+  ]);
+
+  return {
+    ...report,
+    weakKeywords: studyData.weak_keywords?.length ? studyData.weak_keywords : report.weakKeywords,
+    studyGuide,
+    questionGuides: questionGuides.length ? questionGuides : report.questionGuides
   };
 }
 

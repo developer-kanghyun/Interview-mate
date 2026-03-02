@@ -3,6 +3,7 @@ import {
   getHealthStatus,
   getInterviewHistory,
   getInterviewSessionReport,
+  getInterviewSessionStudy,
   getInterviewSessionState
 } from "@/shared/api/interview";
 import {
@@ -10,6 +11,7 @@ import {
   runtimeStateEntries
 } from "@/shared/api/interview-client.runtime";
 import {
+  mergeStudyDataIntoInterviewReport,
   mapPersistedSessionHistoryItem,
   mapReportToInterviewReport
 } from "@/shared/api/interview-client.mappers";
@@ -23,8 +25,9 @@ export async function getReport(sessionId: string): Promise<InterviewReport> {
   try {
     const reportResponse = await getInterviewSessionReport(sessionId);
     const report = mapReportToInterviewReport(reportResponse);
+    const reportWithStudy = await enrichReportWithStudy(sessionId, report);
     deleteRuntimeState(sessionId);
-    return report;
+    return reportWithStudy;
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message !== "세션이 아직 종료되지 않았습니다.") {
@@ -37,7 +40,17 @@ export async function getReport(sessionId: string): Promise<InterviewReport> {
 
     const fallbackReportResponse = await getInterviewSessionReport(sessionId);
     const report = mapReportToInterviewReport(fallbackReportResponse);
+    const reportWithStudy = await enrichReportWithStudy(sessionId, report);
     deleteRuntimeState(sessionId);
+    return reportWithStudy;
+  }
+}
+
+async function enrichReportWithStudy(sessionId: string, report: InterviewReport): Promise<InterviewReport> {
+  try {
+    const studyResponse = await getInterviewSessionStudy(sessionId);
+    return mergeStudyDataIntoInterviewReport(report, studyResponse);
+  } catch {
     return report;
   }
 }
